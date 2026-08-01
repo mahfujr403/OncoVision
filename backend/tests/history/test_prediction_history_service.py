@@ -71,6 +71,11 @@ class TestPredictionHistoryServiceSkeleton:
         with pytest.raises(NotImplementedError):
             asyncio.run(service.get_history(history_id="hist-0001", user_id="user-0001"))
 
-    def test_list_history_is_not_yet_implemented(self, service: PredictionHistoryService) -> None:
-        with pytest.raises(NotImplementedError):
-            asyncio.run(service.list_history(user_id="user-0001", limit=10, offset=0))
+    def test_list_history_returns_empty_list_when_repository_has_no_records(
+        self, service: PredictionHistoryService
+    ) -> None:
+        """`list_history()` became real in Phase 5.3 (ADR-034); see
+        `tests/history/test_prediction_history_retrieval.py` for full coverage."""
+        results = asyncio.run(service.list_history(user_id="user-0001", limit=10, offset=0))
+
+        assert results == []

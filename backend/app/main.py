@@ -28,6 +28,10 @@ TAGS_METADATA = [
     {"name": "Health", "description": "Service health check endpoints."},
     {"name": "Authentication", "description": "Registration, login, and token management."},
     {"name": "Predictions", "description": "Histopathology image prediction requests."},
+    {
+        "name": "Prediction History",
+        "description": "Retrieval of the authenticated user's stored prediction history.",
+    },
 ]
 
 

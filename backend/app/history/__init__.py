@@ -14,12 +14,18 @@ already-computed `app.services.prediction_result.PredictionResult` and
 `app.services.prediction_context.PredictionContext` produced by the
 existing prediction pipeline.
 
-This phase (5.1) introduces the domain model and mapping architecture
-only. No database access, persistence, or retrieval exists in this
-package yet:
-    - Phase 5.1: Prediction History Foundation (this phase)
+Phase 5.1 introduced the domain model and mapping architecture. Later
+phases extend the same package without redesigning it:
+    - Phase 5.1: Prediction History Foundation
     - Phase 5.2: History Persistence (ADR-033)
-    - Phase 5.3: History Retrieval
-    - Phase 5.4: History Pagination & Filtering
+    - Phase 5.3: History Retrieval (ADR-034)
+    - Phase 5.4: History Pagination & Filtering (ADR-035, this phase) --
+      adds `PredictionHistoryFilter` (`filters.py`) and
+      `PredictionHistoryPageRequest` / `PredictionHistoryPageMetadata` /
+      `PredictionHistoryPage` (`pagination.py`) as the domain value
+      objects consumed by the now-implemented
+      `PredictionHistoryRepository.list_by_user()` /
+      `.count_by_user()` filter parameters and
+      `PredictionHistoryService.list_history_page()`.
     - Phase 5.5: History Detail API
 """

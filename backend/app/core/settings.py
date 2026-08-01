@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     # so new manifest entries never require a code change.
     STARTUP_MODEL_LOAD_LIMIT: int = 2
 
+    # Prediction History retrieval configuration (Phase 5.3, ADR-034)
+    # Internal upper bound on the number of records returned by the
+    # "list my prediction history" endpoint. Not exposed as a client-facing
+    # pagination control -- that begins with Phase 5.4 (History Pagination
+    # & Filtering) -- this value only keeps an unbounded query from being
+    # issued against the database.
+    PREDICTION_HISTORY_LIST_LIMIT: int = 200
+
     # CORS
     ALLOWED_ORIGINS: str = "*"
 

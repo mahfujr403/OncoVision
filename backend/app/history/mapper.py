@@ -22,9 +22,15 @@ computed:
       (`app.services.runtime_metadata.RuntimeMetadata`, ADR-016)
     - `PredictionContext` (request/user/image metadata, ADR-013)
 
-This phase introduces the mapping architecture only. `PredictionHistoryMapper`
-is not yet wired into `PredictionService` or the Prediction Router -- that
-begins with history persistence (Phase 5.2).
+Phase 5.1 introduced the mapping architecture and `to_history()` (pipeline
+result -> domain). Phase 5.3 (History Retrieval, ADR-034) adds the reverse
+projection, `to_domain()`: `app.models.prediction_history.PredictionHistoryRecord`
+(ORM) -> `PredictionHistory` (domain). Per ADR-034, `PredictionHistoryMapper`
+remains the single component responsible for ORM <-> Domain conversion --
+`SQLAlchemyPredictionHistoryRepository` never builds a `PredictionHistory`
+by hand. `to_domain()` performs a pure, side-effect-free field copy out of
+the record's already-persisted `history_metadata`/`summary` JSON columns;
+it never recalculates a prediction or re-derives `status`.
 """
 
 from app.core.logging import get_logger
@@ -35,9 +41,11 @@ from app.history.prediction_history import PredictionHistory
 from app.history.summary import PredictionHistoryModelEntry, PredictionHistorySummary
 from app.ml.prediction.prediction_result import IndividualPrediction
 from app.ml.response.response_result import PredictionResponseResult
+from app.models.prediction_history import PredictionHistoryRecord
 from app.services.prediction_context import PredictionContext
 from app.services.prediction_result import PredictionResult
 from app.utils.environment import generate_request_id, get_current_timestamp
+
 
 logger = get_logger(__name__)
 
@@ -102,6 +110,37 @@ class PredictionHistoryMapper:
         )
 
         return history
+
+    def to_domain(self, record: PredictionHistoryRecord) -> PredictionHistory:
+        """Build an immutable `PredictionHistory` from a persisted ORM row (Phase 5.3, ADR-034).
+
+        The reverse projection of `SQLAlchemyPredictionHistoryRepository._to_record()`
+        (Phase 5.2, ADR-033): reconstructs `PredictionHistoryMetadata` and
+        `PredictionHistorySummary` directly from `record.history_metadata`
+        and `record.summary` -- the same JSON payloads `_to_record()`
+        originally wrote via `model_dump(mode="json")` -- so every field is
+        copied, never recalculated or re-derived (ADR-032/ADR-034).
+
+        Args:
+            record: An already-persisted `PredictionHistoryRecord` row,
+                typically loaded by `SQLAlchemyPredictionHistoryRepository`.
+
+        Returns:
+            An immutable `PredictionHistory` domain object equivalent to
+            the one originally passed to `PredictionHistoryRepository.save()`.
+        """
+        metadata = PredictionHistoryMetadata.model_validate(record.history_metadata)
+        summary = PredictionHistorySummary.model_validate(record.summary)
+
+        return PredictionHistory(
+            history_id=str(record.id),
+            request_id=record.request_id,
+            user_id=str(record.user_id),
+            status=record.status,
+            created_at=record.created_at.isoformat(),
+            metadata=metadata,
+            summary=summary,
+        )
 
     @staticmethod
     def _validate(prediction_result: PredictionResult, context: PredictionContext) -> None:

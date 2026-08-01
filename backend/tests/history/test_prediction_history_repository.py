@@ -8,9 +8,11 @@ a real one.
 """
 
 import asyncio
+from datetime import datetime
 
 import pytest
 
+from app.history.filters import PredictionHistoryFilter
 from app.history.prediction_history import PredictionHistory
 from app.repositories.prediction_history_repository import PredictionHistoryRepository
 from tests.history.conftest_helpers import make_context
@@ -20,7 +22,12 @@ class InMemoryPredictionHistoryRepository(PredictionHistoryRepository):
     """Minimal fake used only to verify the abstract contract's shape.
 
     Not a Phase 5.2 deliverable -- has no bearing on the eventual
-    SQLAlchemy-backed implementation.
+    SQLAlchemy-backed implementation. Phase 5.4 (ADR-035) extends this
+    fake with `filters` support, applying the same filtering semantics
+    (status / predicted_class exact match, inclusive date range on
+    `created_at`, inclusive confidence range on `summary.confidence`) as
+    `SQLAlchemyPredictionHistoryRepository._apply_filters()`, so it stays
+    a faithful in-memory stand-in for Phase 5.4 tests.
     """
 
     def __init__(self) -> None:
@@ -37,13 +44,65 @@ class InMemoryPredictionHistoryRepository(PredictionHistoryRepository):
         return None
 
     async def list_by_user(
-        self, user_id: str, limit: int, offset: int
+        self,
+        user_id: str,
+        limit: int,
+        offset: int,
+        filters: PredictionHistoryFilter | None = None,
     ) -> list[PredictionHistory]:
-        matches = [record for record in self._records.values() if record.user_id == user_id]
+        matches = self._matches(user_id, filters)
         return matches[offset : offset + limit]
 
-    async def count_by_user(self, user_id: str) -> int:
-        return sum(1 for record in self._records.values() if record.user_id == user_id)
+    async def count_by_user(
+        self,
+        user_id: str,
+        filters: PredictionHistoryFilter | None = None,
+    ) -> int:
+        return len(self._matches(user_id, filters))
+
+    def _matches(
+        self, user_id: str, filters: PredictionHistoryFilter | None
+    ) -> list[PredictionHistory]:
+        """Apply ownership and (optional) filter predicates, newest first.
+
+        Mirrors `SQLAlchemyPredictionHistoryRepository`'s ordering
+        (`created_at` descending) and predicate semantics so this fake
+        remains a faithful stand-in across both `list_by_user()` and
+        `count_by_user()`.
+        """
+        matches = [record for record in self._records.values() if record.user_id == user_id]
+
+        if filters is not None and not filters.is_empty:
+            matches = [record for record in matches if self._matches_filters(record, filters)]
+
+        return sorted(matches, key=lambda record: record.created_at, reverse=True)
+
+    @staticmethod
+    def _matches_filters(record: PredictionHistory, filters: PredictionHistoryFilter) -> bool:
+        if filters.status is not None and record.status != filters.status:
+            return False
+
+        if (
+            filters.predicted_class is not None
+            and record.summary.predicted_class != filters.predicted_class
+        ):
+            return False
+
+        record_created_at = datetime.fromisoformat(record.created_at)
+
+        if filters.start_date is not None and record_created_at < filters.start_date:
+            return False
+
+        if filters.end_date is not None and record_created_at > filters.end_date:
+            return False
+
+        if filters.min_confidence is not None and record.summary.confidence < filters.min_confidence:
+            return False
+
+        if filters.max_confidence is not None and record.summary.confidence > filters.max_confidence:
+            return False
+
+        return True
 
 
 class TestPredictionHistoryRepositoryContract:

@@ -26,18 +26,44 @@ continuing to return a successful prediction response regardless.
 `PredictionOptions.save_history` is `true`, `PredictionService` calls
 `prepare_history_record()` followed by `persist()`.
 
+Phase 5.3 (History Retrieval, ADR-034) connects `list_history()` for
+real: it delegates to `self._repository.list_by_user(user_id, limit,
+offset)` -- ownership is enforced by the repository query itself, so
+this method never needs to filter or verify results afterward. The
+Prediction History Router (`app.api.v1.history.router`) calls
+`list_history()` with an internal, non-configurable bound so every
+authenticated user can retrieve their own full history, newest first,
+without exposing pagination controls to API clients.
+
+Phase 5.4 (History Pagination & Filtering, ADR-035) adds
+`list_history_page()` alongside the existing `list_history()` -- rather
+than changing `list_history()`'s signature or behavior -- so the
+Phase 5.3 unfiltered/unbounded contract (and its existing test coverage)
+remains untouched. `list_history_page()` is the method the Prediction
+History Router (`app.api.v1.history.router`) now calls: it accepts an
+already-validated `PredictionHistoryPageRequest`/`PredictionHistoryFilter`
+pair (page/page size bounds and filter range consistency are validated
+at construction time, ADR-035), coordinates two repository calls --
+`list_by_user()` for the page of records and `count_by_user()` for the
+total used to compute pagination metadata -- and returns a single
+`PredictionHistoryPage` combining both.
+
 Future phases extend this same class without changing its public
 surface:
-    - Phase 5.3: adds `get_history()` (single-record retrieval, with
-      ownership verification).
-    - Phase 5.4: adds pagination and filtering on top of `list_history()`.
-    - Phase 5.5: History Detail API wires this service into a dedicated
-      router.
+    - A future History Detail API wires `get_history()` (single-record
+      retrieval, with ownership verification, still unimplemented) into
+      a dedicated router endpoint.
 """
 
 from app.core.logging import get_logger
 from app.history.exceptions import PredictionHistoryPersistenceError
+from app.history.filters import PredictionHistoryFilter
 from app.history.mapper import PredictionHistoryMapper
+from app.history.pagination import (
+    PredictionHistoryPage,
+    PredictionHistoryPageMetadata,
+    PredictionHistoryPageRequest,
+)
 from app.history.prediction_history import PredictionHistory
 from app.repositories.prediction_history_repository import PredictionHistoryRepository
 from app.services.prediction_context import PredictionContext
@@ -133,15 +159,16 @@ class PredictionHistoryService:
     async def get_history(self, history_id: str, user_id: str) -> PredictionHistory | None:
         """Retrieve a single history record owned by `user_id`.
 
-        Not implemented in this phase. Reserved for Phase 5.3 (History
-        Retrieval), which will delegate to
+        Not implemented in this phase. Reserved for a future single-record
+        History Detail API, which will delegate to
         `self._repository.get_by_id(history_id, user_id)`.
 
         Raises:
             NotImplementedError: Always, in this phase.
         """
         raise NotImplementedError(
-            "Prediction History retrieval begins in Phase 5.3; "
+            "Single-record Prediction History retrieval is reserved for a "
+            "future History Detail API; "
             "PredictionHistoryService.get_history() is not yet implemented."
         )
 
@@ -151,17 +178,115 @@ class PredictionHistoryService:
         limit: int,
         offset: int,
     ) -> list[PredictionHistory]:
-        """Retrieve a page of history records owned by `user_id`.
+        """Retrieve `user_id`'s prediction history, newest first (Phase 5.3, ADR-034).
 
-        Not implemented in this phase. Reserved for Phase 5.4 (History
-        Pagination & Filtering), which will delegate to
-        `self._repository.list_by_user(user_id, limit, offset)`.
+        Delegates entirely to `self._repository.list_by_user(user_id,
+        limit, offset)`; this method performs no querying, filtering, or
+        ordering logic of its own so the two layers cannot drift out of
+        sync. Ownership is enforced by the repository query itself
+        (ADR-034) -- this method never receives, and therefore never needs
+        to filter out, another user's records.
 
-        Raises:
-            NotImplementedError: Always, in this phase.
+        Args:
+            user_id: Identifier of the authenticated user whose history is
+                being retrieved.
+            limit: Maximum number of records to return. Supplied by the
+                caller; Phase 5.3 callers pass an internal, non-configurable
+                bound rather than a client-supplied value (pagination
+                controls are not exposed until Phase 5.4).
+            offset: Number of newest-first records to skip before
+                collecting `limit` results.
+
+        Returns:
+            An immutable list of `PredictionHistory` domain objects owned
+            by `user_id`, ordered newest first. Empty when the user has no
+            history records.
         """
-        raise NotImplementedError(
-            "Prediction History pagination begins in Phase 5.4; "
-            "PredictionHistoryService.list_history() is not yet implemented."
+        logger.info(
+            "Prediction history list retrieval started: user_id=%s limit=%d offset=%d",
+            user_id,
+            limit,
+            offset,
         )
+
+        records = await self._repository.list_by_user(
+            user_id=user_id, limit=limit, offset=offset
+        )
+
+        logger.info(
+            "Prediction history list retrieval completed: user_id=%s record_count=%d",
+            user_id,
+            len(records),
+        )
+
+        return records
+
+    async def list_history_page(
+        self,
+        user_id: str,
+        page_request: PredictionHistoryPageRequest,
+        filters: PredictionHistoryFilter | None = None,
+    ) -> PredictionHistoryPage:
+        """Retrieve one validated, optionally filtered page of `user_id`'s history (Phase 5.4, ADR-035).
+
+        Orchestrates pagination and filtering on top of the repository
+        contract introduced in Phase 5.3 (ADR-034): it issues one
+        `list_by_user()` call for this page's records and one
+        `count_by_user()` call for the total matching record count, then
+        derives `PredictionHistoryPageMetadata` from that total via
+        `PredictionHistoryPageMetadata.from_totals()`. This method performs
+        no pagination arithmetic of its own beyond delegating to that
+        helper, and no filtering logic of its own -- `filters` is passed
+        straight through to the repository, which is the only layer that
+        turns it into SQL predicates.
+
+        Ownership is enforced by the repository query itself for both
+        calls, exactly as it already is for `list_history()` -- this
+        method never receives, and therefore never needs to filter out,
+        another user's records.
+
+        Args:
+            user_id: Identifier of the authenticated user whose history is
+                being retrieved.
+            page_request: An already-validated `PredictionHistoryPageRequest`
+                (`page`/`page_size`, both range-checked at construction).
+            filters: An already-validated `PredictionHistoryFilter`, or
+                `None` to apply no filtering.
+
+        Returns:
+            A `PredictionHistoryPage` combining this page's
+            `PredictionHistory` records (newest first) with pagination
+            metadata describing the full, filtered result set.
+        """
+        logger.info(
+            "Prediction history paginated retrieval started: user_id=%s page=%d "
+            "page_size=%d filtered=%s",
+            user_id,
+            page_request.page,
+            page_request.page_size,
+            filters is not None and not filters.is_empty,
+        )
+
+        records = await self._repository.list_by_user(
+            user_id=user_id,
+            limit=page_request.limit,
+            offset=page_request.offset,
+            filters=filters,
+        )
+        total_records = await self._repository.count_by_user(user_id=user_id, filters=filters)
+
+        metadata = PredictionHistoryPageMetadata.from_totals(
+            page_request=page_request, total_records=total_records
+        )
+
+        logger.info(
+            "Prediction history paginated retrieval completed: user_id=%s "
+            "record_count=%d total_records=%d total_pages=%d",
+            user_id,
+            len(records),
+            metadata.total_records,
+            metadata.total_pages,
+        )
+
+        return PredictionHistoryPage(items=records, metadata=metadata)
 
