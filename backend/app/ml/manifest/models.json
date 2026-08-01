@@ -1,0 +1,74 @@
+{
+  "manifest_version": "1.0.1",
+  "models": [
+    {
+      "id": "mobilenetv2",
+      "display_name": "MobileNetV2",
+      "version": "1.0.0",
+      "framework": "tensorflow",
+      "format": "h5",
+      "repository": "mahfujr403/lung-colon-MobileNetV2-99.92",
+      "filename": "MobileNetV2.h5",
+      "priority": 1,
+      "ensemble_weight": 0.3,
+      "input_size": 224,
+      "num_classes": 5,
+      "class_labels": [
+        "Colon Adenocarcinoma",
+        "Colon Benign Tissue",
+        "Lung Adenocarcinoma",
+        "Lung Benign Tissue",
+        "Lung Squamous Cell Carcinoma"
+      ],
+      "sha256": "db71012b2b762880a20e49218ed5f0672c9b9591d148c2a0969ba464d4d7fa34",
+      "enabled": true,
+      "description": "Lightweight MobileNetV2 classifier for lung and colon histopathology image classification. Lowest loading priority for fast, low-memory availability on Render Free."
+    },
+    {
+      "id": "densenet121",
+      "display_name": "DenseNet121",
+      "version": "1.0.0",
+      "framework": "tensorflow",
+      "format": "h5",
+      "repository": "mahfujr403/lung-colon-DenseNet121-99.44",
+      "filename": "DenseNet121.h5",
+      "priority": 2,
+      "ensemble_weight": 0.33,
+      "input_size": 224,
+      "num_classes": 5,
+      "class_labels": [
+        "Colon Adenocarcinoma",
+        "Colon Benign Tissue",
+        "Lung Adenocarcinoma",
+        "Lung Benign Tissue",
+        "Lung Squamous Cell Carcinoma"
+      ],
+      "sha256": "875ee5cab9850e6b8370d9c52738ce194a60d8747ba73e379ec63e640baba781",
+      "enabled": true,
+      "description": "DenseNet121 classifier for lung and colon histopathology image classification, offering stronger feature reuse than MobileNetV2."
+    },
+    {
+      "id": "efficientnetv2b0_resnet50_fusion",
+      "display_name": "EfficientNetV2B0 + ResNet50 Feature Fusion",
+      "version": "1.0.0",
+      "framework": "tensorflow",
+      "format": "h5",
+      "repository": "mahfujr403/lung-colon-EfficientNetV2B0-ResNet50-Fusion-99.97",
+      "filename": "Fusion_EfficientNetV2B0_ResNet50.h5",
+      "priority": 3,        
+      "ensemble_weight": 0.37,
+      "input_size": 224,
+      "num_classes": 5,
+      "class_labels": [
+        "Colon Adenocarcinoma",
+        "Colon Benign Tissue",
+        "Lung Adenocarcinoma",
+        "Lung Benign Tissue",
+        "Lung Squamous Cell Carcinoma"
+      ],
+      "sha256": "2a429aff46c840219bc30bdc4a4ccf76459c44631b1dc7bf7165fa77d772f57b",
+      "enabled": true,
+      "description": "Feature-fusion classifier combining EfficientNetV2B0 and ResNet50 backbones for the highest baseline ensemble weight among production models."
+    }
+  ]
+}
