@@ -35,23 +35,36 @@ client-supplied `page_size` is now itself bounded by
 remains defined in `app.core.settings` for backward compatibility and
 potential reuse elsewhere.
 
-A future History Detail API extends this router further without
-requiring any change to the already-implemented
-`PredictionHistoryService.list_history_page()` /
-`PredictionHistoryRepository.list_by_user()` / `.count_by_user()`.
+Phase 5.5 (History Detail Retrieval, ADR-035 update) extends this router
+with `GET /api/v1/predictions/history/{history_id}`, returning the
+complete, immutable prediction information for exactly one history
+record owned by the authenticated user. It is added as a second route on
+this same `router` (rather than a new module) so it continues sharing
+the `/predictions/history` prefix, tag, and dependency-injection seams
+already established by the Phase 5.3/5.4 list endpoint. Like the list
+endpoint, it performs no business logic itself: the router validates
+nothing beyond FastAPI's own path-parameter handling and delegates
+entirely to `PredictionHistoryService.get_history()`, scoped to
+`current_user.id`. A `None` result -- returned uniformly whether
+`history_id` does not exist or is owned by a different user -- is
+translated into a `PredictionHistoryNotFoundError`, so ownership
+violations are never distinguishable from a missing record.
 """
 
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Path, Query, status
 
-from app.api.v1.history.examples import FILTER_VALIDATION_ERROR_EXAMPLE
+from app.api.v1.history.examples import FILTER_VALIDATION_ERROR_EXAMPLE, HISTORY_NOT_FOUND_EXAMPLE
 from app.api.v1.history.responses import (
+    PredictionHistoryDetailResponseSchema,
+    PredictionHistoryImageMetadataSchema,
     PredictionHistoryItemSchema,
     PredictionHistoryListResponseSchema,
     PredictionHistoryModelEntrySchema,
     PredictionHistoryPaginationSchema,
+    PredictionHistoryRuntimeInfoSchema,
     PredictionHistoryStatus,
 )
 from app.api.v1.predictions.examples import AUTHENTICATION_ERROR_EXAMPLE, INTERNAL_ERROR_EXAMPLE
@@ -59,6 +72,7 @@ from app.constants.app import TAG_PREDICTION_HISTORY
 from app.core.logging import get_logger
 from app.dependencies.auth import get_current_active_user
 from app.dependencies.services import get_prediction_history_service
+from app.history.exceptions import PredictionHistoryNotFoundError
 from app.history.filters import PredictionHistoryFilter
 from app.history.pagination import (
     DEFAULT_PAGE,
@@ -109,6 +123,55 @@ def _build_history_item(history: PredictionHistory) -> PredictionHistoryItemSche
         failed_models=list(history.summary.failed_models),
         participating_models=history.summary.participating_models,
         individual_predictions=individual_predictions,
+    )
+
+
+def _build_history_detail(history: PredictionHistory) -> PredictionHistoryDetailResponseSchema:
+    """Project an internal `PredictionHistory` domain object onto the detail contract.
+
+    Mirrors `_build_history_item()` above -- `PredictionHistory` is never
+    returned to API clients directly; this is the router-owned
+    translation into `PredictionHistoryDetailResponseSchema` (Phase 5.5,
+    ADR-035 update). Every field is copied directly, including the full
+    `PredictionHistoryMetadata` snapshot omitted from the summarized list
+    projection -- no calculation is performed here.
+    """
+    individual_predictions = [
+        PredictionHistoryModelEntrySchema(
+            model_name=entry.model_name,
+            prediction=entry.prediction,
+            confidence=entry.confidence,
+            inference_time_ms=entry.inference_time_ms,
+        )
+        for entry in history.summary.individual_predictions
+    ]
+
+    image_metadata = PredictionHistoryImageMetadataSchema(
+        filename=history.metadata.image_filename,
+        content_type=history.metadata.image_content_type,
+        size_bytes=history.metadata.image_size_bytes,
+        width=history.metadata.image_width,
+        height=history.metadata.image_height,
+    )
+    runtime_info = PredictionHistoryRuntimeInfoSchema(
+        model_manifest_version=history.metadata.model_manifest_version,
+        processing_time_ms=history.metadata.processing_time_ms,
+    )
+
+    return PredictionHistoryDetailResponseSchema(
+        history_id=history.history_id,
+        request_id=history.request_id,
+        status=history.status,
+        created_at=history.created_at,
+        predicted_class=history.summary.predicted_class,
+        confidence=history.summary.confidence,
+        agreement_ratio=history.summary.agreement_ratio,
+        successful_models=list(history.summary.successful_models),
+        failed_models=list(history.summary.failed_models),
+        participating_models=history.summary.participating_models,
+        individual_predictions=individual_predictions,
+        image_metadata=image_metadata,
+        runtime_info=runtime_info,
     )
 
 
@@ -261,4 +324,89 @@ async def list_prediction_history(
     return success_response(
         data=response_data.model_dump(mode="json"),
         message="Prediction history retrieved successfully.",
+    )
+
+
+@router.get(
+    "/{history_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Retrieve the complete details of a single prediction history record",
+    description=(
+        "Returns the complete, immutable prediction information for exactly "
+        "one history record owned by the authenticated user (Phase 5.5, "
+        "ADR-035 update). This is a read-only operation: no prediction "
+        "logic is executed, no AI models are loaded, and the returned "
+        "record is never modified.\n\n"
+        "Ownership is enforced at the database query itself, so a user can "
+        "never receive another user's history. A `history_id` that does "
+        "not exist and a `history_id` owned by a different user are "
+        "intentionally indistinguishable to the client -- both return `404`."
+    ),
+    response_model=APIResponse[PredictionHistoryDetailResponseSchema],
+    responses={
+        200: {"description": "The requested prediction history record was retrieved."},
+        401: {
+            "description": "Missing or invalid authentication credentials.",
+            "content": {"application/json": {"example": AUTHENTICATION_ERROR_EXAMPLE}},
+        },
+        404: {
+            "description": (
+                "No history record matches `history_id` for the authenticated "
+                "user -- either the record does not exist, or it is owned by "
+                "a different user."
+            ),
+            "content": {"application/json": {"example": HISTORY_NOT_FOUND_EXAMPLE}},
+        },
+        500: {
+            "description": "An unexpected internal server error occurred.",
+            "content": {"application/json": {"example": INTERNAL_ERROR_EXAMPLE}},
+        },
+    },
+)
+async def get_prediction_history_detail(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    history_service: Annotated[PredictionHistoryService, Depends(get_prediction_history_service)],
+    history_id: Annotated[
+        str, Path(description="Unique identifier of the history record to retrieve.")
+    ],
+):
+    """Return the complete details of one of the authenticated user's own prediction history records.
+
+    Delegates entirely to `PredictionHistoryService.get_history()`,
+    scoped to `current_user.id`. No business logic, lookup, or ownership
+    verification is performed in this router beyond passing the
+    authenticated user's own identifier through -- ownership is enforced
+    by the service/repository (ADR-035). A `None` result is translated
+    into a `PredictionHistoryNotFoundError`, which the application's
+    global exception handler turns into a standard `404` response.
+    """
+    user_id = str(current_user.id)
+
+    logger.info(
+        "Prediction history detail retrieval requested: user_id=%s history_id=%s",
+        user_id,
+        history_id,
+    )
+
+    history = await history_service.get_history(history_id=history_id, user_id=user_id)
+
+    if history is None:
+        logger.warning(
+            "Prediction history detail retrieval failed: user_id=%s history_id=%s not_found=True",
+            user_id,
+            history_id,
+        )
+        raise PredictionHistoryNotFoundError()
+
+    logger.info(
+        "Prediction history detail retrieval completed: user_id=%s history_id=%s",
+        user_id,
+        history_id,
+    )
+
+    response_data = _build_history_detail(history)
+
+    return success_response(
+        data=response_data.model_dump(mode="json"),
+        message="Prediction history record retrieved successfully.",
     )

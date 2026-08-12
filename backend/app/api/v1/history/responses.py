@@ -1,6 +1,7 @@
-"""Prediction History API response schemas (Phase 5.3/5.4 - ADR-034/ADR-035).
+"""Prediction History API response schemas (Phase 5.3/5.4/5.5 - ADR-034/ADR-035).
 
-Defines the public response contract for `GET /api/v1/predictions/history`.
+Defines the public response contract for `GET /api/v1/predictions/history`
+and `GET /api/v1/predictions/history/{history_id}`.
 
 These schemas represent the EXTERNAL API only and are intentionally kept
 independent from the Prediction API's own response contract
@@ -19,6 +20,17 @@ and makes it a required part of `PredictionHistoryListResponseSchema` --
 every field is copied verbatim from the already-computed
 `PredictionHistoryPageMetadata`; this module still performs no pagination
 arithmetic of its own.
+
+Phase 5.5 (History Detail Retrieval, ADR-035 update) adds
+`PredictionHistoryImageMetadataSchema`, `PredictionHistoryRuntimeInfoSchema`,
+and `PredictionHistoryDetailResponseSchema`. Unlike
+`PredictionHistoryItemSchema` (the summarized list-response projection),
+the detail schema additionally exposes the full
+`app.history.metadata.PredictionHistoryMetadata` snapshot -- uploaded
+image metadata and runtime information -- for a single record. Every
+field is still copied directly from the already-computed
+`PredictionHistory` domain object; this module performs no calculation
+of its own here either.
 """
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,6 +43,9 @@ __all__ = [
     "PredictionHistoryItemSchema",
     "PredictionHistoryPaginationSchema",
     "PredictionHistoryListResponseSchema",
+    "PredictionHistoryImageMetadataSchema",
+    "PredictionHistoryRuntimeInfoSchema",
+    "PredictionHistoryDetailResponseSchema",
 ]
 
 
@@ -181,4 +196,141 @@ class PredictionHistoryListResponseSchema(BaseModel):
     pagination: PredictionHistoryPaginationSchema = Field(
         description="Pagination metadata describing this page relative to the full, "
         "optionally filtered result set (Phase 5.4, ADR-035)."
+    )
+
+
+class PredictionHistoryImageMetadataSchema(BaseModel):
+    """Uploaded image metadata for a single history record (Phase 5.5, ADR-035 update).
+
+    A public projection of the image-scoped fields already carried on
+    `app.history.metadata.PredictionHistoryMetadata` -- every field is
+    copied directly; this schema performs no calculation of its own.
+    """
+
+    filename: str = Field(description="Original filename of the uploaded image.")
+    content_type: str = Field(description="Declared MIME type of the uploaded image.")
+    size_bytes: int = Field(description="Size of the uploaded image, in bytes.")
+    width: int = Field(description="Uploaded image width, in pixels.")
+    height: int = Field(description="Uploaded image height, in pixels.")
+
+
+class PredictionHistoryRuntimeInfoSchema(BaseModel):
+    """Runtime information for a single history record (Phase 5.5, ADR-035 update).
+
+    A public projection of the runtime-scoped fields already carried on
+    `app.history.metadata.PredictionHistoryMetadata` -- every field is
+    copied directly; this schema performs no calculation of its own.
+    """
+
+    model_manifest_version: str | None = Field(
+        default=None,
+        description=(
+            "Version identifier of the Model Manifest active at prediction "
+            "time. Null when unavailable at mapping time."
+        ),
+    )
+    processing_time_ms: float | None = Field(
+        default=None,
+        description=(
+            "Total end-to-end wall-clock time spent handling the original "
+            "request, in milliseconds. Null when unavailable at mapping time."
+        ),
+    )
+
+
+class PredictionHistoryDetailResponseSchema(BaseModel):
+    """Complete public response payload for a single prediction history record.
+
+    A public projection of `app.history.prediction_history.PredictionHistory`
+    (ADR-032), extended -- relative to `PredictionHistoryItemSchema` -- with
+    the full uploaded image metadata and runtime information for this one
+    record (Phase 5.5, ADR-035 update). Carried as the `data` field of the
+    application's global `APIResponse` envelope (`app.schemas.response.APIResponse`)
+    -- never returned standalone.
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "history_id": "b1f0c6b2-5c1a-4e9e-9c3a-2f6a0e0f9a11",
+                "request_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                "status": "success",
+                "created_at": "2026-07-19T10:00:00+00:00",
+                "predicted_class": "lung_adenocarcinoma",
+                "confidence": 96.42,
+                "agreement_ratio": 1.0,
+                "successful_models": ["mobilenetv2", "densenet121"],
+                "failed_models": [],
+                "participating_models": 2,
+                "individual_predictions": [
+                    {
+                        "model_name": "MobileNetV2",
+                        "prediction": "lung_adenocarcinoma",
+                        "confidence": 95.10,
+                        "inference_time_ms": 42.3,
+                    },
+                    {
+                        "model_name": "DenseNet121",
+                        "prediction": "lung_adenocarcinoma",
+                        "confidence": 97.05,
+                        "inference_time_ms": 88.7,
+                    },
+                ],
+                "image_metadata": {
+                    "filename": "sample_slide.png",
+                    "content_type": "image/png",
+                    "size_bytes": 204800,
+                    "width": 224,
+                    "height": 224,
+                },
+                "runtime_info": {
+                    "model_manifest_version": "2026.07.1",
+                    "processing_time_ms": 154.8,
+                },
+            }
+        }
+    )
+
+    history_id: str = Field(description="Unique identifier of this history record.")
+    request_id: str = Field(
+        description="Identifier of the original prediction request this record describes."
+    )
+    status: PredictionHistoryStatus = Field(
+        description="Outcome of the prediction pipeline run this record describes."
+    )
+    created_at: str = Field(
+        description="ISO 8601 timestamp of when this history record was created."
+    )
+    predicted_class: str | None = Field(
+        default=None,
+        description="Final predicted class label. Null when no winning class was produced.",
+    )
+    confidence: float = Field(
+        ge=0.0,
+        le=100.0,
+        description="Final prediction confidence, as a percentage (0-100).",
+    )
+    agreement_ratio: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Proportion of successful models that agree with `predicted_class`.",
+    )
+    successful_models: list[str] = Field(
+        description="Model IDs whose predictions participated in the final prediction."
+    )
+    failed_models: list[str] = Field(
+        description="Model IDs that were attempted but failed to produce a prediction."
+    )
+    participating_models: int = Field(
+        description="Total number of models attempted (successful and failed)."
+    )
+    individual_predictions: list[PredictionHistoryModelEntrySchema] = Field(
+        default_factory=list,
+        description="Per-model prediction breakdown recorded for this request.",
+    )
+    image_metadata: PredictionHistoryImageMetadataSchema = Field(
+        description="Metadata of the image that was uploaded for this prediction request."
+    )
+    runtime_info: PredictionHistoryRuntimeInfoSchema = Field(
+        description="Runtime information recorded for this prediction request."
     )

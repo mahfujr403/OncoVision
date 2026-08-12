@@ -81,6 +81,28 @@ class Settings(BaseSettings):
     # issued against the database.
     PREDICTION_HISTORY_LIST_LIMIT: int = 200
 
+    # Reporting export configuration (Phase 6.6, ADR-042)
+    # Maximum number of Prediction History records a single Reporting
+    # Foundation report, Prediction Analytics computation, CSV export, or
+    # PDF export run may include. Enforced identically by
+    # `ReportService`, `PredictionAnalyticsService`, `CSVExportService`,
+    # and `PDFExportService` against `PredictionHistoryRepository.count_by_user()`
+    # before any history rows are retrieved. Replaces the fixed,
+    # non-configurable per-service bounds used through Phase 6.5 -- a
+    # request whose matching history exceeds this bound is now rejected
+    # with a `413` rather than silently truncated.
+    REPORT_EXPORT_MAX_ROWS: int = 1000
+
+    # Hard safety cap, in bytes, on the size of a single generated CSV or
+    # PDF export document (Phase 6.6, ADR-042). Guards against an
+    # unexpectedly large in-memory/response document even when
+    # `REPORT_EXPORT_MAX_ROWS` is respected -- for example, an unusually
+    # large number of individual model predictions per record. Checked by
+    # `CSVExportService`/`PDFExportService` only after generation, as a
+    # last line of defense; not expected to be reached under normal
+    # operation at the default `REPORT_EXPORT_MAX_ROWS`.
+    REPORT_EXPORT_MAX_SIZE_BYTES: int = 5 * 1024 * 1024  # 5 MB
+
     # CORS
     ALLOWED_ORIGINS: str = "*"
 

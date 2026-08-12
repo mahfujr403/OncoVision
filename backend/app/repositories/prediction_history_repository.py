@@ -23,8 +23,8 @@ service depends only on this abstract contract).
 Phase 5.3 (History Retrieval, ADR-034) additionally implements
 `list_by_user()`: a read-only, user-scoped, newest-first query that
 returns domain-level `PredictionHistory` objects via
-`PredictionHistoryMapper.to_domain()`. `get_by_id()` remains
-unimplemented, reserved for a future History Detail API.
+`PredictionHistoryMapper.to_domain()`. `get_by_id()` remained
+unimplemented as of Phase 5.3, reserved for a future History Detail API.
 
 Phase 5.4 (History Pagination & Filtering, ADR-035) extends
 `list_by_user()` with an optional `filters` parameter and implements
@@ -34,6 +34,16 @@ other. Ownership continues to be enforced by filtering on `user_id`
 directly in each query -- `filters` never carries a `user_id` of its
 own (`app.history.filters.PredictionHistoryFilter`), so a caller cannot
 use filtering to widen a query beyond its own records.
+
+Phase 5.5 (History Detail Retrieval, ADR-035 update) implements
+`get_by_id()`: a single-record, user-scoped lookup by primary key.
+Ownership is enforced the same way it already is for `list_by_user()` /
+`count_by_user()` -- by filtering on `user_id` directly in the query --
+so a record owned by another user is indistinguishable from a
+non-existent one at this layer; both simply return `None`. Reuses the
+same `_parse_user_id()` malformed-identifier handling already
+established by Phase 5.3/5.4, extended with an equivalent
+`_parse_history_id()` for the record's own primary key.
 """
 
 import uuid
@@ -74,9 +84,11 @@ class PredictionHistoryRepository(ABC):
     async def get_by_id(self, history_id: str, user_id: str) -> PredictionHistory | None:
         """Return a single history record owned by `user_id`, or `None` if not found.
 
-        Reserved for Phase 5.3 (History Retrieval). `user_id` is required
-        on every lookup so ownership is enforced at the repository
-        boundary, not left to callers.
+        Implemented by Phase 5.5 (History Detail Retrieval, ADR-035
+        update). `user_id` is required on every lookup so ownership is
+        enforced at the repository boundary, not left to callers -- a
+        record that exists but is owned by a different user returns
+        `None`, exactly as a genuinely missing record would.
         """
         raise NotImplementedError
 
@@ -180,17 +192,63 @@ class SQLAlchemyPredictionHistoryRepository(PredictionHistoryRepository):
         return history
 
     async def get_by_id(self, history_id: str, user_id: str) -> PredictionHistory | None:
-        """Not implemented in this phase.
+        """Return a single history record owned by `user_id` (Phase 5.5, ADR-035 update).
 
-        Reserved for a future single-record History Detail API, which will
-        read a `PredictionHistoryRecord` row and translate it back into a
-        `PredictionHistory` domain object via `PredictionHistoryMapper.to_domain()`.
+        Queries `PredictionHistoryRecord` by primary key, scoped to
+        `user_id` in the same `WHERE` clause -- exactly the same
+        ownership-at-the-query-boundary approach `list_by_user()` /
+        `count_by_user()` already use. A record that exists but is owned
+        by a different user is therefore indistinguishable from a
+        genuinely missing one: both simply return `None`, and it is the
+        caller's responsibility (`PredictionHistoryService.get_history()`)
+        to translate that into a `PredictionHistoryNotFoundError` (404).
+
+        The single matching row, if any, is translated into an immutable
+        `PredictionHistory` domain object via
+        `PredictionHistoryMapper.to_domain()` -- no `PredictionHistoryRecord`
+        ever leaves this repository.
+
+        Args:
+            history_id: Identifier of the history record to retrieve.
+                Must be a valid UUID string.
+            user_id: Identifier of the authenticated user who must own
+                `history_id`. Must be a valid UUID string.
+
+        Returns:
+            The matching `PredictionHistory`, or `None` when no such
+            record exists, `history_id`/`user_id` is owned by a different
+            user, or either identifier is not a well-formed UUID.
         """
-        raise NotImplementedError(
-            "Single-record Prediction History retrieval is reserved for a "
-            "future History Detail API; "
-            "SQLAlchemyPredictionHistoryRepository.get_by_id() is not yet implemented."
+        record_id = self._parse_history_id(history_id)
+        owner_id = self._parse_user_id(user_id, operation="detail retrieval")
+        if record_id is None or owner_id is None:
+            return None
+
+        statement = select(PredictionHistoryRecord).where(
+            PredictionHistoryRecord.id == record_id,
+            PredictionHistoryRecord.user_id == owner_id,
         )
+
+        result = await self._session.execute(statement)
+        record = result.scalars().first()
+
+        if record is None:
+            logger.info(
+                "Prediction history detail lookup found no matching record: "
+                "history_id=%s user_id=%s",
+                history_id,
+                user_id,
+            )
+            return None
+
+        logger.info(
+            "Prediction history detail record retrieved from database: "
+            "history_id=%s user_id=%s",
+            history_id,
+            user_id,
+        )
+
+        return self._mapper.to_domain(record)
 
     async def list_by_user(
         self,
@@ -313,6 +371,21 @@ class SQLAlchemyPredictionHistoryRepository(PredictionHistoryRepository):
         except (ValueError, TypeError, AttributeError):
             logger.warning(
                 "Prediction history %s received a malformed user_id.", operation
+            )
+            return None
+
+    @staticmethod
+    def _parse_history_id(history_id: str) -> uuid.UUID | None:
+        """Parse `history_id` into a UUID, or `None` (logged) when malformed.
+
+        Mirrors `_parse_user_id()` for the record's own primary key
+        (Phase 5.5, ADR-035 update).
+        """
+        try:
+            return uuid.UUID(history_id)
+        except (ValueError, TypeError, AttributeError):
+            logger.warning(
+                "Prediction history detail retrieval received a malformed history_id."
             )
             return None
 

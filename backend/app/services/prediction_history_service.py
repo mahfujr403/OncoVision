@@ -48,11 +48,18 @@ at construction time, ADR-035), coordinates two repository calls --
 total used to compute pagination metadata -- and returns a single
 `PredictionHistoryPage` combining both.
 
-Future phases extend this same class without changing its public
-surface:
-    - A future History Detail API wires `get_history()` (single-record
-      retrieval, with ownership verification, still unimplemented) into
-      a dedicated router endpoint.
+Phase 5.5 (History Detail Retrieval, ADR-035 update) connects
+`get_history()` for real: it delegates to
+`self._repository.get_by_id(history_id, user_id)` -- ownership is
+enforced by the repository query itself, exactly as it already is for
+`list_history()` / `list_history_page()`, so this method never needs to
+verify ownership after the fact. The Prediction History Router
+(`app.api.v1.history.router`) calls `get_history()` and translates a
+`None` result into a `PredictionHistoryNotFoundError` (404) -- the
+repository intentionally returns the same `None` whether the record is
+genuinely missing or owned by a different user, so a client can never
+distinguish "not found" from "not yours" (ADR-035's detail retrieval
+policy).
 """
 
 from app.core.logging import get_logger
@@ -157,20 +164,44 @@ class PredictionHistoryService:
             raise PredictionHistoryPersistenceError() from exc
 
     async def get_history(self, history_id: str, user_id: str) -> PredictionHistory | None:
-        """Retrieve a single history record owned by `user_id`.
+        """Retrieve a single history record owned by `user_id` (Phase 5.5, ADR-035 update).
 
-        Not implemented in this phase. Reserved for a future single-record
-        History Detail API, which will delegate to
-        `self._repository.get_by_id(history_id, user_id)`.
+        Delegates entirely to `self._repository.get_by_id(history_id,
+        user_id)`; this method performs no lookup, ownership-checking, or
+        mapping logic of its own so the two layers cannot drift out of
+        sync. Ownership is enforced by the repository query itself
+        (mirroring `list_history()` / `list_history_page()`) -- a record
+        owned by another user is returned as `None`, identically to a
+        genuinely missing record.
 
-        Raises:
-            NotImplementedError: Always, in this phase.
+        Args:
+            history_id: Identifier of the history record to retrieve.
+            user_id: Identifier of the authenticated user who must own
+                `history_id`.
+
+        Returns:
+            The matching `PredictionHistory`, or `None` when no such
+            record exists, is owned by a different user, or either
+            identifier is not a well-formed UUID. Callers (the Prediction
+            History Router) are responsible for translating a `None`
+            result into a `PredictionHistoryNotFoundError` (404).
         """
-        raise NotImplementedError(
-            "Single-record Prediction History retrieval is reserved for a "
-            "future History Detail API; "
-            "PredictionHistoryService.get_history() is not yet implemented."
+        logger.info(
+            "Prediction history detail retrieval started: history_id=%s user_id=%s",
+            history_id,
+            user_id,
         )
+
+        history = await self._repository.get_by_id(history_id=history_id, user_id=user_id)
+
+        logger.info(
+            "Prediction history detail retrieval completed: history_id=%s user_id=%s found=%s",
+            history_id,
+            user_id,
+            history is not None,
+        )
+
+        return history
 
     async def list_history(
         self,

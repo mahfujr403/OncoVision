@@ -13,6 +13,7 @@ TAG_SYSTEM: Final[str] = "System"
 TAG_AUTH: Final[str] = "Authentication"
 TAG_PREDICTIONS: Final[str] = "Predictions"
 TAG_PREDICTION_HISTORY: Final[str] = "Prediction History"
+TAG_REPORTS: Final[str] = "Reports"
 
 REQUEST_ID_HEADER: Final[str] = "X-Request-ID"
 PROCESS_TIME_HEADER: Final[str] = "X-Process-Time"

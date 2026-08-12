@@ -8,9 +8,9 @@ Covers what this phase introduces on top of Phase 5.1/5.2:
     - `PredictionHistoryService.list_history()` -- delegates to the
       repository without performing any filtering of its own.
 
-`get_by_id()` / `get_history()` remain reserved for a future single-record
-History Detail API and are not exercised here (still `NotImplementedError`,
-covered by `test_prediction_history_repository.py` / `test_prediction_history_service.py`).
+`get_by_id()` / `get_history()` are not exercised here; they became real
+in Phase 5.5 (ADR-035 update) and are covered by
+`tests/history/test_prediction_history_detail.py`.
 """
 
 import asyncio

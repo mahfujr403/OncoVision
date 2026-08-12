@@ -29,11 +29,23 @@ from app.repositories.prediction_history_repository import (
 )
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
+from app.reports.analytics.analytics_builder import AnalyticsBuilder
+from app.reports.analytics.analytics_validator import AnalyticsValidator
+from app.reports.builder import ReportBuilder
+from app.reports.csv.csv_builder import CSVExportBuilder
+from app.reports.csv.csv_validator import CSVValidator
+from app.reports.pdf.pdf_builder import PDFBuilder
+from app.reports.pdf.pdf_validator import PDFValidator
+from app.reports.validator import ReportValidator
 from app.services.auth_service import AuthService
 from app.services.jwt_service import JWTService
 from app.services.password_service import PasswordService
+from app.services.prediction_analytics_service import PredictionAnalyticsService
 from app.services.prediction_history_service import PredictionHistoryService
 from app.services.prediction_service import PredictionService
+from app.reports.csv.csv_export_service import CSVExportService
+from app.reports.pdf.pdf_export_service import PDFExportService
+from app.services.report_service import ReportService
 from app.services.runtime_adapter import RuntimeAdapter
 from app.services.runtime_metadata import RuntimeMetadataService
 from app.services.runtime_validator import RuntimeValidator
@@ -379,6 +391,182 @@ def get_prediction_history_service(
     `get_prediction_service`).
     """
     return PredictionHistoryService(repository=repository)
+
+
+@lru_cache
+def get_report_builder() -> ReportBuilder:
+    """Provide a cached `ReportBuilder` instance for dependency injection (Phase 6.1, ADR-037).
+
+    `ReportBuilder` is stateless and has no external dependencies -- it
+    only aggregates fields already present on the `PredictionHistory`
+    collection it is given -- so a single shared instance is reused
+    across every request, consistent with `get_prediction_response_builder()`.
+    """
+    return ReportBuilder()
+
+
+@lru_cache
+def get_report_validator() -> ReportValidator:
+    """Provide a cached `ReportValidator` instance for dependency injection (Phase 6.1, ADR-037).
+
+    `ReportValidator` is stateless and has no external dependencies, so a
+    single shared instance is reused across every request, consistent
+    with `get_upload_validator()`.
+    """
+    return ReportValidator()
+
+
+def get_report_service(
+    history_repository: PredictionHistoryRepository = Depends(get_prediction_history_repository),
+    builder: ReportBuilder = Depends(get_report_builder),
+    validator: ReportValidator = Depends(get_report_validator),
+) -> ReportService:
+    """Provide a request-scoped `ReportService` wired with its dependencies (Phase 6.1, ADR-037).
+
+    Not cached: depends transitively on the request-scoped `AsyncSession`
+    through `get_prediction_history_repository`, mirroring
+    `get_prediction_history_service`. Reuses `PredictionHistoryRepository`
+    directly -- no separate reporting repository exists (ADR-037).
+    """
+    return ReportService(
+        history_repository=history_repository,
+        validator=validator,
+        builder=builder,
+    )
+
+
+@lru_cache
+def get_analytics_builder() -> AnalyticsBuilder:
+    """Provide a cached `AnalyticsBuilder` instance for dependency injection (Phase 6.2, ADR-038).
+
+    `AnalyticsBuilder` is stateless and has no external dependencies -- it
+    only aggregates fields already present on the `PredictionHistory`
+    collection it is given -- so a single shared instance is reused
+    across every request, consistent with `get_report_builder()`.
+    """
+    return AnalyticsBuilder()
+
+
+@lru_cache
+def get_analytics_validator() -> AnalyticsValidator:
+    """Provide a cached `AnalyticsValidator` instance for dependency injection (Phase 6.2, ADR-038).
+
+    `AnalyticsValidator` is stateless and has no external dependencies, so
+    a single shared instance is reused across every request, consistent
+    with `get_report_validator()`.
+    """
+    return AnalyticsValidator()
+
+
+def get_prediction_analytics_service(
+    history_repository: PredictionHistoryRepository = Depends(get_prediction_history_repository),
+    builder: AnalyticsBuilder = Depends(get_analytics_builder),
+    validator: AnalyticsValidator = Depends(get_analytics_validator),
+) -> PredictionAnalyticsService:
+    """Provide a request-scoped `PredictionAnalyticsService` wired with its dependencies (Phase 6.2, ADR-038).
+
+    Not cached: depends transitively on the request-scoped `AsyncSession`
+    through `get_prediction_history_repository`, mirroring
+    `get_report_service`. Reuses `PredictionHistoryRepository` directly --
+    no separate analytics repository exists (ADR-038).
+    """
+    return PredictionAnalyticsService(
+        history_repository=history_repository,
+        validator=validator,
+        builder=builder,
+    )
+
+
+@lru_cache
+def get_csv_export_builder() -> CSVExportBuilder:
+    """Provide a cached `CSVExportBuilder` instance for dependency injection (Phase 6.3, ADR-039).
+
+    `CSVExportBuilder` is stateless and has no external dependencies -- it
+    only serializes fields already present on the `PredictionHistory`
+    collection and `PredictionAnalyticsResult` it is given -- so a single
+    shared instance is reused across every request, consistent with
+    `get_analytics_builder()`.
+    """
+    return CSVExportBuilder()
+
+
+@lru_cache
+def get_csv_validator() -> CSVValidator:
+    """Provide a cached `CSVValidator` instance for dependency injection (Phase 6.3, ADR-039).
+
+    `CSVValidator` is stateless and has no external dependencies, so a
+    single shared instance is reused across every request, consistent
+    with `get_analytics_validator()`.
+    """
+    return CSVValidator()
+
+
+def get_csv_export_service(
+    history_repository: PredictionHistoryRepository = Depends(get_prediction_history_repository),
+    analytics_service: PredictionAnalyticsService = Depends(get_prediction_analytics_service),
+    builder: CSVExportBuilder = Depends(get_csv_export_builder),
+    validator: CSVValidator = Depends(get_csv_validator),
+) -> CSVExportService:
+    """Provide a request-scoped `CSVExportService` wired with its dependencies (Phase 6.3, ADR-039).
+
+    Not cached: depends transitively on the request-scoped `AsyncSession`
+    through `get_prediction_history_repository`, mirroring
+    `get_prediction_analytics_service`. Reuses `PredictionHistoryRepository`
+    and `PredictionAnalyticsService` directly -- no separate CSV export
+    repository exists (ADR-039).
+    """
+    return CSVExportService(
+        history_repository=history_repository,
+        analytics_service=analytics_service,
+        validator=validator,
+        builder=builder,
+    )
+
+
+@lru_cache
+def get_pdf_builder() -> PDFBuilder:
+    """Provide a cached `PDFBuilder` instance for dependency injection (Phase 6.4, ADR-040).
+
+    `PDFBuilder` is stateless and has no external dependencies -- it only
+    renders fields already present on the `PredictionHistory` collection
+    and `PredictionAnalyticsResult` it is given -- so a single shared
+    instance is reused across every request, consistent with
+    `get_csv_export_builder()`.
+    """
+    return PDFBuilder()
+
+
+@lru_cache
+def get_pdf_validator() -> PDFValidator:
+    """Provide a cached `PDFValidator` instance for dependency injection (Phase 6.4, ADR-040).
+
+    `PDFValidator` is stateless and has no external dependencies, so a
+    single shared instance is reused across every request, consistent
+    with `get_csv_validator()`.
+    """
+    return PDFValidator()
+
+
+def get_pdf_export_service(
+    history_repository: PredictionHistoryRepository = Depends(get_prediction_history_repository),
+    analytics_service: PredictionAnalyticsService = Depends(get_prediction_analytics_service),
+    builder: PDFBuilder = Depends(get_pdf_builder),
+    validator: PDFValidator = Depends(get_pdf_validator),
+) -> PDFExportService:
+    """Provide a request-scoped `PDFExportService` wired with its dependencies (Phase 6.4, ADR-040).
+
+    Not cached: depends transitively on the request-scoped `AsyncSession`
+    through `get_prediction_history_repository`, mirroring
+    `get_csv_export_service`. Reuses `PredictionHistoryRepository` and
+    `PredictionAnalyticsService` directly -- no separate PDF export
+    repository exists (ADR-040).
+    """
+    return PDFExportService(
+        history_repository=history_repository,
+        analytics_service=analytics_service,
+        validator=validator,
+        builder=builder,
+    )
 
 
 def get_user_repository(session: AsyncSession = Depends(get_db)) -> UserRepository:
