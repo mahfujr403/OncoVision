@@ -37,6 +37,9 @@ from app.reports.csv.csv_validator import CSVValidator
 from app.reports.pdf.pdf_builder import PDFBuilder
 from app.reports.pdf.pdf_validator import PDFValidator
 from app.reports.validator import ReportValidator
+from app.services.admin_history_service import AdminHistoryService
+from app.services.admin_system_service import AdminSystemService
+from app.services.admin_user_service import AdminUserService
 from app.services.auth_service import AuthService
 from app.services.jwt_service import JWTService
 from app.services.password_service import PasswordService
@@ -572,6 +575,46 @@ def get_pdf_export_service(
 def get_user_repository(session: AsyncSession = Depends(get_db)) -> UserRepository:
     """Provide a request-scoped `UserRepository` bound to the current session."""
     return UserRepository(session)
+
+
+def get_admin_user_service(
+    session: AsyncSession = Depends(get_db),
+    user_repository: UserRepository = Depends(get_user_repository),
+) -> AdminUserService:
+    """Provide a request-scoped `AdminUserService` wired with its dependencies (Phase 7.2/7.3).
+
+    Not cached: depends transitively on the request-scoped `AsyncSession`,
+    mirroring `get_auth_service`. Intentionally never wired with
+    `PasswordService`/`JWTService` -- administrators must never be able to
+    manipulate password hashes or tokens directly (ADR-036).
+    """
+    return AdminUserService(session=session, user_repository=user_repository)
+
+
+def get_admin_history_service(
+    history_service: PredictionHistoryService = Depends(get_prediction_history_service),
+) -> AdminHistoryService:
+    """Provide a request-scoped `AdminHistoryService` wired with its dependencies (Phase 7.4).
+
+    Not cached: depends transitively on the request-scoped `AsyncSession`
+    through `get_prediction_history_service`. Reuses `PredictionHistoryService`
+    directly -- no separate admin history repository exists (ADR-036).
+    """
+    return AdminHistoryService(history_service=history_service)
+
+
+@lru_cache
+def get_admin_system_service() -> AdminSystemService:
+    """Provide a cached `AdminSystemService` instance for dependency injection (Phase 7.5).
+
+    Reuses the singleton `AIRuntimeManager` (see `get_ai_runtime_manager`)
+    and the cached `SystemService` -- no second runtime manager is
+    introduced (ADR-036).
+    """
+    return AdminSystemService(
+        runtime_manager=get_ai_runtime_manager(),
+        system_service=get_system_service(),
+    )
 
 
 def get_refresh_token_repository(

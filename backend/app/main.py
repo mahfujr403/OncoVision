@@ -32,6 +32,14 @@ TAGS_METADATA = [
         "name": "Prediction History",
         "description": "Retrieval of the authenticated user's stored prediction history.",
     },
+    {"name": "Reports", "description": "Prediction analytics, CSV export, and PDF export."},
+    {
+        "name": "Administration",
+        "description": (
+            "Administrative user management, prediction/history oversight, and "
+            "system status. Every endpoint requires administrator authorization."
+        ),
+    },
 ]
 
 

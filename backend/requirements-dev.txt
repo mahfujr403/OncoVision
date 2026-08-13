@@ -1,0 +1,19 @@
+# ==================================================
+# OncoVision AI Backend — Development / Test Dependencies
+# ==================================================
+#
+# Installed ON TOP OF requirements.txt for local development and CI test
+# runs only. Deliberately NOT installed inside the production Docker
+# image (`Dockerfile` installs `requirements.txt` alone) -- the project
+# already separates production and development dependencies (Phase 7.7),
+# and adding a test framework to the runtime image would bloat it for no
+# production benefit.
+#
+# Usage:
+#
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   python -m compileall app tests
+#   python -m pytest tests -v
+#   python -m alembic upgrade head
+
+pytest==8.3.4

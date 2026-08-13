@@ -321,3 +321,104 @@ class PredictionHistoryService:
 
         return PredictionHistoryPage(items=records, metadata=metadata)
 
+    async def list_history_admin(
+        self,
+        page_request: PredictionHistoryPageRequest,
+        filters: PredictionHistoryFilter | None = None,
+        user_id: str | None = None,
+    ) -> PredictionHistoryPage:
+        """Retrieve one page of history records across every user (Phase 7.4, ADR-036).
+
+        Reuses this same service -- no separate Prediction History
+        implementation is introduced (ADR-036) -- but delegates to the
+        repository's admin-facing `list_all()`/`count_all()` rather than
+        the user-scoped `list_by_user()`/`count_by_user()` that
+        `list_history_page()` above uses. `user_id`, when supplied,
+        narrows the page to a single user's own records without changing
+        the method used, letting the Admin History Router support both
+        "all users" and "one user" oversight views through one code path.
+
+        Callers are responsible for ensuring only an authorized
+        administrator can reach this method -- it performs no
+        authorization itself, matching every other service in this
+        codebase (authorization is enforced once, at the router/dependency
+        layer, via `require_admin`).
+
+        Args:
+            page_request: An already-validated `PredictionHistoryPageRequest`.
+            filters: An already-validated `PredictionHistoryFilter`, or
+                `None` to apply no filtering.
+            user_id: Optional identifier narrowing results to one user's
+                history. `None` (the default) returns records across
+                every user.
+
+        Returns:
+            A `PredictionHistoryPage` combining this page's records
+            (newest first, across every user unless `user_id` is
+            supplied) with pagination metadata describing the full,
+            filtered result set.
+        """
+        logger.info(
+            "Administrative prediction history retrieval started: user_id=%s "
+            "page=%d page_size=%d filtered=%s",
+            user_id,
+            page_request.page,
+            page_request.page_size,
+            filters is not None and not filters.is_empty,
+        )
+
+        records = await self._repository.list_all(
+            limit=page_request.limit,
+            offset=page_request.offset,
+            filters=filters,
+            user_id=user_id,
+        )
+        total_records = await self._repository.count_all(filters=filters, user_id=user_id)
+
+        metadata = PredictionHistoryPageMetadata.from_totals(
+            page_request=page_request, total_records=total_records
+        )
+
+        logger.info(
+            "Administrative prediction history retrieval completed: user_id=%s "
+            "record_count=%d total_records=%d total_pages=%d",
+            user_id,
+            len(records),
+            metadata.total_records,
+            metadata.total_pages,
+        )
+
+        return PredictionHistoryPage(items=records, metadata=metadata)
+
+    async def get_history_admin(self, history_id: str) -> PredictionHistory | None:
+        """Retrieve a single history record by ID, regardless of owner (Phase 7.4, ADR-036).
+
+        Delegates entirely to `self._repository.get_by_id_unscoped()`.
+        Unlike `get_history()`, performs no ownership check -- reserved
+        for administrative detail retrieval, where authorization has
+        already been established by `require_admin` before this method
+        is ever called.
+
+        Args:
+            history_id: Identifier of the history record to retrieve.
+
+        Returns:
+            The matching `PredictionHistory`, or `None` when no such
+            record exists or `history_id` is not a well-formed UUID.
+        """
+        logger.info(
+            "Administrative prediction history detail retrieval started: history_id=%s",
+            history_id,
+        )
+
+        history = await self._repository.get_by_id_unscoped(history_id=history_id)
+
+        logger.info(
+            "Administrative prediction history detail retrieval completed: "
+            "history_id=%s found=%s",
+            history_id,
+            history is not None,
+        )
+
+        return history
+

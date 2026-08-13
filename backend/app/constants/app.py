@@ -14,6 +14,7 @@ TAG_AUTH: Final[str] = "Authentication"
 TAG_PREDICTIONS: Final[str] = "Predictions"
 TAG_PREDICTION_HISTORY: Final[str] = "Prediction History"
 TAG_REPORTS: Final[str] = "Reports"
+TAG_ADMIN: Final[str] = "Administration"
 
 REQUEST_ID_HEADER: Final[str] = "X-Request-ID"
 PROCESS_TIME_HEADER: Final[str] = "X-Process-Time"

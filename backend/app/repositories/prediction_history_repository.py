@@ -124,6 +124,62 @@ class PredictionHistoryRepository(ABC):
         """
         raise NotImplementedError
 
+    # -- Phase 7.4 (Administrative Prediction/History Oversight, ADR-036) --
+    #
+    # The three methods below support read-only, cross-user administrative
+    # oversight. They are intentionally NOT declared with `@abstractmethod`:
+    # every pre-Phase-7 concrete/fake implementation of this contract
+    # (`SQLAlchemyPredictionHistoryRepository` and the various in-memory
+    # test doubles under `tests/`) predates them and must keep working
+    # unmodified. Each method's default body raises `NotImplementedError`
+    # so callers that genuinely need admin-scoped access get an explicit,
+    # unambiguous failure rather than silently misbehaving; the concrete
+    # SQLAlchemy repository below overrides all three for real.
+    #
+    # None of these methods narrow ownership on the caller's behalf --
+    # unlike `list_by_user()`/`get_by_id()`, they are permitted to return
+    # records across every user. Restricting who may invoke them is an
+    # authorization concern enforced upstream by `require_admin`
+    # (`app.dependencies.auth`), never by this repository.
+
+    async def list_all(
+        self,
+        limit: int,
+        offset: int,
+        filters: PredictionHistoryFilter | None = None,
+        user_id: str | None = None,
+    ) -> list[PredictionHistory]:
+        """Return one page of history records across every user, newest first.
+
+        `user_id`, when supplied, narrows the result set to a single
+        user's records without changing the underlying query shape --
+        letting administrative oversight inspect either the full history
+        table or one user's own history through the same method.
+        """
+        raise NotImplementedError
+
+    async def count_all(
+        self,
+        filters: PredictionHistoryFilter | None = None,
+        user_id: str | None = None,
+    ) -> int:
+        """Return the total number of history records matching `filters`/`user_id`.
+
+        Mirrors `count_by_user()`'s role for `list_by_user()`: applies the
+        exact same predicates as the corresponding `list_all()` call so
+        pagination metadata stays consistent.
+        """
+        raise NotImplementedError
+
+    async def get_by_id_unscoped(self, history_id: str) -> PredictionHistory | None:
+        """Return a single history record by primary key, regardless of owner.
+
+        Unlike `get_by_id()`, performs no `user_id` ownership check --
+        reserved for administrative detail retrieval, where the caller's
+        authorization has already been established by `require_admin`.
+        """
+        raise NotImplementedError
+
 
 class SQLAlchemyPredictionHistoryRepository(PredictionHistoryRepository):
     """SQLAlchemy Async-backed `PredictionHistoryRepository` (Phase 5.2, ADR-033).
@@ -362,6 +418,119 @@ class SQLAlchemyPredictionHistoryRepository(PredictionHistoryRepository):
         )
 
         return total
+
+    async def list_all(
+        self,
+        limit: int,
+        offset: int,
+        filters: PredictionHistoryFilter | None = None,
+        user_id: str | None = None,
+    ) -> list[PredictionHistory]:
+        """Return one page of history records across every user, newest first (Phase 7.4, ADR-036).
+
+        Mirrors `list_by_user()` exactly, except the `user_id` ownership
+        predicate is applied only when a caller explicitly supplies one
+        (narrowing administrative oversight to a single user) rather than
+        unconditionally. `filters` is applied through the same
+        `_apply_filters()` helper `list_by_user()`/`count_by_user()`
+        already use, so all three query paths can never drift out of sync.
+        """
+        statement = select(PredictionHistoryRecord)
+
+        if user_id is not None:
+            owner_id = self._parse_user_id(user_id, operation="admin list retrieval")
+            if owner_id is None:
+                return []
+            statement = statement.where(PredictionHistoryRecord.user_id == owner_id)
+
+        statement = self._apply_filters(statement, filters)
+        statement = statement.order_by(PredictionHistoryRecord.created_at.desc())
+        statement = statement.limit(limit).offset(offset)
+
+        result = await self._session.execute(statement)
+        records = result.scalars().all()
+
+        logger.info(
+            "Administrative prediction history list retrieved from database: "
+            "user_id=%s record_count=%d limit=%d offset=%d filtered=%s",
+            user_id,
+            len(records),
+            limit,
+            offset,
+            filters is not None and not filters.is_empty,
+        )
+
+        return [self._mapper.to_domain(record) for record in records]
+
+    async def count_all(
+        self,
+        filters: PredictionHistoryFilter | None = None,
+        user_id: str | None = None,
+    ) -> int:
+        """Return the total number of history records matching `filters`/`user_id` (Phase 7.4, ADR-036).
+
+        Applies the exact same predicates as `list_all()` -- built from
+        the same `_apply_filters()` helper -- so the returned total always
+        matches what `list_all()` would return across every page for the
+        same `filters`/`user_id` pair.
+        """
+        statement = select(func.count(PredictionHistoryRecord.id))
+
+        if user_id is not None:
+            owner_id = self._parse_user_id(user_id, operation="admin count retrieval")
+            if owner_id is None:
+                return 0
+            statement = statement.where(PredictionHistoryRecord.user_id == owner_id)
+
+        statement = self._apply_filters(statement, filters)
+
+        result = await self._session.execute(statement)
+        total = result.scalar_one()
+
+        logger.info(
+            "Administrative prediction history count retrieved from database: "
+            "user_id=%s total_records=%d filtered=%s",
+            user_id,
+            total,
+            filters is not None and not filters.is_empty,
+        )
+
+        return total
+
+    async def get_by_id_unscoped(self, history_id: str) -> PredictionHistory | None:
+        """Return a single history record by primary key, regardless of owner (Phase 7.4, ADR-036).
+
+        Identical to `get_by_id()` except no `user_id` predicate is
+        applied -- reserved for administrative detail retrieval, where
+        authorization has already been established by `require_admin`
+        (`app.dependencies.auth`) before this method is ever called.
+        """
+        record_id = self._parse_history_id(history_id)
+        if record_id is None:
+            return None
+
+        statement = select(PredictionHistoryRecord).where(
+            PredictionHistoryRecord.id == record_id
+        )
+
+        result = await self._session.execute(statement)
+        record = result.scalars().first()
+
+        if record is None:
+            logger.info(
+                "Administrative prediction history detail lookup found no matching "
+                "record: history_id=%s",
+                history_id,
+            )
+            return None
+
+        logger.info(
+            "Administrative prediction history detail record retrieved from "
+            "database: history_id=%s",
+            history_id,
+        )
+
+        return self._mapper.to_domain(record)
 
     @staticmethod
     def _parse_user_id(user_id: str, operation: str) -> uuid.UUID | None:
