@@ -16,6 +16,7 @@ from app.core.exceptions import register_exception_handlers
 from app.lifecycle.shutdown import run_shutdown
 from app.lifecycle.startup import run_startup
 from app.middleware.logging import LoggingMiddleware
+from app.middleware.metrics import RequestMetricsMiddleware
 from app.middleware.process_time import ProcessTimeMiddleware
 from app.middleware.request_id import RequestIDMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
@@ -38,6 +39,14 @@ TAGS_METADATA = [
         "description": (
             "Administrative user management, prediction/history oversight, and "
             "system status. Every endpoint requires administrator authorization."
+        ),
+    },
+    {
+        "name": "Monitoring",
+        "description": (
+            "Aggregated operational monitoring: application health, database "
+            "connectivity, AI Runtime Manager health, and per-model availability. "
+            "Requires administrator authorization."
         ),
     },
 ]
@@ -72,6 +81,7 @@ def create_application() -> FastAPI:
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(LoggingMiddleware)
+    app.add_middleware(RequestMetricsMiddleware)
     app.add_middleware(ProcessTimeMiddleware)
     app.add_middleware(RequestIDMiddleware)
 

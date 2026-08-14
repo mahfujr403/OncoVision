@@ -6,6 +6,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.upload import UploadValidator
+from app.core.request_metrics import default_request_metrics_collector
 from app.database.database import get_db
 from app.ml.cache.cache_manager import ModelCacheManager
 from app.ml.downloader.download_manager import ModelDownloadManager
@@ -42,6 +43,7 @@ from app.services.admin_system_service import AdminSystemService
 from app.services.admin_user_service import AdminUserService
 from app.services.auth_service import AuthService
 from app.services.jwt_service import JWTService
+from app.services.monitoring_service import MonitoringService
 from app.services.password_service import PasswordService
 from app.services.prediction_analytics_service import PredictionAnalyticsService
 from app.services.prediction_history_service import PredictionHistoryService
@@ -614,6 +616,21 @@ def get_admin_system_service() -> AdminSystemService:
     return AdminSystemService(
         runtime_manager=get_ai_runtime_manager(),
         system_service=get_system_service(),
+    )
+
+
+@lru_cache
+def get_monitoring_service() -> MonitoringService:
+    """Provide a cached `MonitoringService` instance for dependency injection (Phase 8.1).
+
+    Reuses the singleton `AIRuntimeManager` (see `get_ai_runtime_manager`)
+    and the cached `SystemService` -- no second runtime manager is
+    introduced (ADR-036).
+    """
+    return MonitoringService(
+        runtime_manager=get_ai_runtime_manager(),
+        system_service=get_system_service(),
+        request_metrics_collector=default_request_metrics_collector,
     )
 
 
