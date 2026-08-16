@@ -1,0 +1,648 @@
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:361 | Administrative prediction history retrieval started: user_id=None page=1 page_size=10 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:382 | Administrative prediction history retrieval completed: user_id=None record_count=2 total_records=2 total_pages=1
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:361 | Administrative prediction history retrieval started: user_id=user-a page=1 page_size=10 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:382 | Administrative prediction history retrieval completed: user_id=user-a record_count=1 total_records=1 total_pages=1
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:361 | Administrative prediction history retrieval started: user_id=None page=1 page_size=10 filtered=True
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:382 | Administrative prediction history retrieval completed: user_id=None record_count=1 total_records=1 total_pages=1
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:361 | Administrative prediction history retrieval started: user_id=None page=1 page_size=2 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:382 | Administrative prediction history retrieval completed: user_id=None record_count=2 total_records=5 total_pages=3
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:409 | Administrative prediction history detail retrieval started: history_id=hist-1
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:416 | Administrative prediction history detail retrieval completed: history_id=hist-1 found=True
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:409 | Administrative prediction history detail retrieval started: history_id=does-not-exist
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:416 | Administrative prediction history detail retrieval completed: history_id=does-not-exist found=False
+2026-08-16 04:14:16 | INFO     | app.services.admin_system_service | admin_system_service.py:49 | Admin system status generated: database_connected=True
+2026-08-16 04:14:16 | INFO     | app.services.admin_system_service | admin_system_service.py:49 | Admin system status generated: database_connected=False
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:68 | Admin user list retrieval started: page=1 page_size=2
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:82 | Admin user list retrieval completed: record_count=2 total_records=5
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:112 | Admin user activation completed: user_id=7992c498-3fae-4a95-9196-62ba07e3480b
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:148 | Admin user deactivation completed: user_id=73af2cf2-d3ec-4536-b4ef-af5472bce9da
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:148 | Admin user deactivation completed: user_id=80cdb389-64b9-429d-9095-efc43420dc5f
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:148 | Admin user deactivation completed: user_id=ee742d92-3814-4327-9a13-3f42664e4b78
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/history status_code=401 duration_ms=5.99 client_ip=testclient request_id=1fff3dd8-900c-4b7b-8609-6bff49929201
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/history "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/history status_code=403 duration_ms=1.49 client_ip=testclient request_id=61a2f9b3-b04a-4db7-a80e-e9bd0759ecbc
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/history "HTTP/1.1 403 Forbidden"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.history | history.py:184 | Admin history list requested: user_id=None page=1 page_size=20 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:361 | Administrative prediction history retrieval started: user_id=None page=1 page_size=20 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:382 | Administrative prediction history retrieval completed: user_id=None record_count=2 total_records=2 total_pages=1
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/history status_code=200 duration_ms=2.27 client_ip=testclient request_id=8058b9dc-533c-470e-a169-869592920433
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/history "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.history | history.py:184 | Admin history list requested: user_id=None page=1 page_size=20 filtered=True
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:361 | Administrative prediction history retrieval started: user_id=None page=1 page_size=20 filtered=True
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:382 | Administrative prediction history retrieval completed: user_id=None record_count=1 total_records=1 total_pages=1
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/history status_code=200 duration_ms=1.94 client_ip=testclient request_id=e5787298-0b83-4d90-a466-d1bf290ef907
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/history?status=failed "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.history | history.py:184 | Admin history list requested: user_id=user-a page=1 page_size=20 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:361 | Administrative prediction history retrieval started: user_id=user-a page=1 page_size=20 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:382 | Administrative prediction history retrieval completed: user_id=user-a record_count=1 total_records=1 total_pages=1
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/history status_code=200 duration_ms=1.91 client_ip=testclient request_id=7fb8053d-e2f7-41b2-8591-02769fc1019e
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/history?user_id=user-a "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.history | history.py:184 | Admin history list requested: user_id=None page=1 page_size=2 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:361 | Administrative prediction history retrieval started: user_id=None page=1 page_size=2 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:382 | Administrative prediction history retrieval completed: user_id=None record_count=2 total_records=5 total_pages=3
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/history status_code=200 duration_ms=2.54 client_ip=testclient request_id=2b2f4a6e-578a-476e-a964-6d8e5e575fe2
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/history?page=1&page_size=2 "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.history | history.py:247 | Admin history detail requested: history_id=hist-1
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:409 | Administrative prediction history detail retrieval started: history_id=hist-1
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:416 | Administrative prediction history detail retrieval completed: history_id=hist-1 found=True
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/history/hist-1 status_code=200 duration_ms=1.59 client_ip=testclient request_id=28a8895d-d183-41c4-8ed5-c2ff6e47874e
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/history/hist-1 "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.history | history.py:247 | Admin history detail requested: history_id=does-not-exist
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:409 | Administrative prediction history detail retrieval started: history_id=does-not-exist
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:416 | Administrative prediction history detail retrieval completed: history_id=does-not-exist found=False
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/history/does-not-exist status_code=404 duration_ms=1.74 client_ip=testclient request_id=0175ce54-a6a0-4d44-908c-3daff844a83e
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/history/does-not-exist "HTTP/1.1 404 Not Found"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/system status_code=401 duration_ms=1.67 client_ip=testclient request_id=553232bf-f177-46f6-a6da-e7fca78ec85c
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/system "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/system status_code=403 duration_ms=1.29 client_ip=testclient request_id=3a3c1ba1-cce6-46b1-bde4-e65e763b932b
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/system "HTTP/1.1 403 Forbidden"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.system | system.py:67 | Admin system status requested.
+2026-08-16 04:14:16 | INFO     | app.services.admin_system_service | admin_system_service.py:49 | Admin system status generated: database_connected=True
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/system status_code=200 duration_ms=1.68 client_ip=testclient request_id=ef74fa4c-2ecb-45e9-b99b-c4ea0c0de9c9
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/system "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.system | system.py:67 | Admin system status requested.
+2026-08-16 04:14:16 | INFO     | app.services.admin_system_service | admin_system_service.py:49 | Admin system status generated: database_connected=True
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/system status_code=200 duration_ms=1.66 client_ip=testclient request_id=f9399e64-ba75-41d5-ba86-9d9d3691ec25
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/system "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/users status_code=401 duration_ms=1.61 client_ip=testclient request_id=2fafa6c5-4584-4323-8392-c6b6914bb671
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/users "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/users status_code=403 duration_ms=1.49 client_ip=testclient request_id=071a004c-7e62-4363-9732-7368dda0095b
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/users "HTTP/1.1 403 Forbidden"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:100 | Admin user list requested: page=1 page_size=20
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:68 | Admin user list retrieval started: page=1 page_size=20
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:82 | Admin user list retrieval completed: record_count=1 total_records=1
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/users status_code=200 duration_ms=1.87 client_ip=testclient request_id=3cda0c5f-f6f1-43a4-9f71-efee27b077fc
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/users "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:100 | Admin user list requested: page=1 page_size=2
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:68 | Admin user list retrieval started: page=1 page_size=2
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:82 | Admin user list retrieval completed: record_count=2 total_records=4
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/users status_code=200 duration_ms=1.88 client_ip=testclient request_id=ea6030ad-5126-44c6-8f76-b2f9893ca69e
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/users?page=1&page_size=2 "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:151 | Admin user detail requested: user_id=2b30e73d-2d8e-4975-9d4d-a9fbde2c4662
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/users/2b30e73d-2d8e-4975-9d4d-a9fbde2c4662 status_code=200 duration_ms=1.64 client_ip=testclient request_id=9c0ee9ce-c15b-4714-b9cf-c5b7b4678224
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/users/2b30e73d-2d8e-4975-9d4d-a9fbde2c4662 "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:151 | Admin user detail requested: user_id=72459ab8-d47c-4d6f-82db-d35e5e4db3cf
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/users/72459ab8-d47c-4d6f-82db-d35e5e4db3cf status_code=404 duration_ms=1.85 client_ip=testclient request_id=4146603e-048d-4746-8a52-baf78b649e6a
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/users/72459ab8-d47c-4d6f-82db-d35e5e4db3cf "HTTP/1.1 404 Not Found"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:151 | Admin user detail requested: user_id=not-a-uuid
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/admin/users/not-a-uuid status_code=404 duration_ms=1.50 client_ip=testclient request_id=c1a649ed-8ee4-4dff-850e-6bdf9d053b53
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/admin/users/not-a-uuid "HTTP/1.1 404 Not Found"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:193 | Admin user activation requested: user_id=b75c142d-33a6-4492-a7a8-92420a30ca8e
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:112 | Admin user activation completed: user_id=b75c142d-33a6-4492-a7a8-92420a30ca8e
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=POST path=/api/v1/admin/users/b75c142d-33a6-4492-a7a8-92420a30ca8e/activate status_code=200 duration_ms=1.57 client_ip=testclient request_id=f0f7588f-69ce-49c1-a897-4f7107c0ac16
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: POST http://testserver/api/v1/admin/users/b75c142d-33a6-4492-a7a8-92420a30ca8e/activate "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:193 | Admin user activation requested: user_id=22f79844-f0dd-4266-bce1-cb20487d08f9
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=POST path=/api/v1/admin/users/22f79844-f0dd-4266-bce1-cb20487d08f9/activate status_code=404 duration_ms=1.50 client_ip=testclient request_id=e51cb60f-3cf4-4dac-8e86-c908087979a2
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: POST http://testserver/api/v1/admin/users/22f79844-f0dd-4266-bce1-cb20487d08f9/activate "HTTP/1.1 404 Not Found"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:250 | Admin user deactivation requested: user_id=7b937a17-c506-482f-a0ca-2700eefe1484 by=32f65683-4d0b-4990-8004-65dcfa5fe8fa
+2026-08-16 04:14:16 | INFO     | app.services.admin_user_service | admin_user_service.py:148 | Admin user deactivation completed: user_id=7b937a17-c506-482f-a0ca-2700eefe1484
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=POST path=/api/v1/admin/users/7b937a17-c506-482f-a0ca-2700eefe1484/deactivate status_code=200 duration_ms=1.58 client_ip=testclient request_id=89bfbfab-b5c3-408e-8981-fbec34a30faa
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: POST http://testserver/api/v1/admin/users/7b937a17-c506-482f-a0ca-2700eefe1484/deactivate "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:250 | Admin user deactivation requested: user_id=63503ade-ac3d-472e-b9a5-8c1c68145120 by=62858fc9-e8e5-428f-97eb-2ec1974182c5
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=POST path=/api/v1/admin/users/63503ade-ac3d-472e-b9a5-8c1c68145120/deactivate status_code=404 duration_ms=1.61 client_ip=testclient request_id=5e4377e1-4044-4562-b120-afc0db94be12
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: POST http://testserver/api/v1/admin/users/63503ade-ac3d-472e-b9a5-8c1c68145120/deactivate "HTTP/1.1 404 Not Found"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:250 | Admin user deactivation requested: user_id=3e7a64d4-05b0-4b72-8b07-9efca7535ec1 by=3e7a64d4-05b0-4b72-8b07-9efca7535ec1
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=POST path=/api/v1/admin/users/3e7a64d4-05b0-4b72-8b07-9efca7535ec1/deactivate status_code=400 duration_ms=1.74 client_ip=testclient request_id=80e30cf6-ad6d-421e-aa5c-2612ae7d2d80
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: POST http://testserver/api/v1/admin/users/3e7a64d4-05b0-4b72-8b07-9efca7535ec1/deactivate "HTTP/1.1 400 Bad Request"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:250 | Admin user deactivation requested: user_id=dea6de5a-b6a3-4fd4-ac27-15e6ea2bb574 by=d268c8cf-deb9-4beb-95a7-3256af6c1e4b
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=POST path=/api/v1/admin/users/dea6de5a-b6a3-4fd4-ac27-15e6ea2bb574/deactivate status_code=409 duration_ms=1.71 client_ip=testclient request_id=f8183d67-3725-44d4-8773-bb80e0174315
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: POST http://testserver/api/v1/admin/users/dea6de5a-b6a3-4fd4-ac27-15e6ea2bb574/deactivate "HTTP/1.1 409 Conflict"
+2026-08-16 04:14:16 | INFO     | app.api.v1.admin.users | users.py:250 | Admin user deactivation requested: user_id=not-a-uuid by=9037e072-cadf-491d-a118-8103b1d8990a
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=POST path=/api/v1/admin/users/not-a-uuid/deactivate status_code=404 duration_ms=1.61 client_ip=testclient request_id=48c4cda5-50f4-4e2d-b935-30f1c8e0f027
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: POST http://testserver/api/v1/admin/users/not-a-uuid/deactivate "HTTP/1.1 404 Not Found"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/monitoring status_code=401 duration_ms=1.73 client_ip=testclient request_id=a9fa542f-cf6b-408c-9caf-26267ff1b9b3
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/monitoring "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/monitoring status_code=403 duration_ms=1.35 client_ip=testclient request_id=8554b867-293c-4500-9216-1d5d0f686dbe
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/monitoring "HTTP/1.1 403 Forbidden"
+2026-08-16 04:14:16 | INFO     | app.api.v1.monitoring | monitoring.py:79 | Monitoring status requested.
+2026-08-16 04:14:16 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=28 prediction_requests_total=0
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/monitoring status_code=200 duration_ms=1.90 client_ip=testclient request_id=870e65ea-ae50-4d1a-a4db-62cbb15e635e
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/monitoring "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.monitoring | monitoring.py:79 | Monitoring status requested.
+2026-08-16 04:14:16 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=29 prediction_requests_total=0
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/monitoring status_code=200 duration_ms=1.94 client_ip=testclient request_id=0bc9fb3c-dafe-47bd-8206-03d2369f7b54
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/monitoring "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.monitoring | monitoring.py:79 | Monitoring status requested.
+2026-08-16 04:14:16 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=30 prediction_requests_total=0
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/monitoring status_code=200 duration_ms=1.55 client_ip=testclient request_id=807aa94c-9ca0-4359-89c0-f4d6045d845e
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/monitoring "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.monitoring | monitoring.py:79 | Monitoring status requested.
+2026-08-16 04:14:16 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=unhealthy database_connected=False runtime_operational=True total_requests=31 prediction_requests_total=0
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/monitoring status_code=200 duration_ms=2.12 client_ip=testclient request_id=e6487794-5ff7-4813-b1d7-37e63772ad81
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/monitoring "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.monitoring | monitoring.py:79 | Monitoring status requested.
+2026-08-16 04:14:16 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=2 prediction_requests_total=2
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/monitoring status_code=200 duration_ms=1.59 client_ip=testclient request_id=2a3a4e7c-fce9-4dca-a099-562cdb65f93b
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/monitoring "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.history.router | router.py:385 | Prediction history detail retrieval requested: user_id=9f0c7661-6782-47dd-b56a-f8dfbc17be41 history_id=hist-0001
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:189 | Prediction history detail retrieval started: history_id=hist-0001 user_id=9f0c7661-6782-47dd-b56a-f8dfbc17be41
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:197 | Prediction history detail retrieval completed: history_id=hist-0001 user_id=9f0c7661-6782-47dd-b56a-f8dfbc17be41 found=True
+2026-08-16 04:14:16 | INFO     | app.api.v1.history.router | router.py:401 | Prediction history detail retrieval completed: user_id=9f0c7661-6782-47dd-b56a-f8dfbc17be41 history_id=hist-0001
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history/hist-0001 status_code=200 duration_ms=1.36 client_ip=testclient request_id=3523444f-b1ec-4f3e-a572-8268a339b766
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history/hist-0001 "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.history.router | router.py:385 | Prediction history detail retrieval requested: user_id=5ee67cf4-db24-4151-bb6a-97f520d8ae5e history_id=does-not-exist
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:189 | Prediction history detail retrieval started: history_id=does-not-exist user_id=5ee67cf4-db24-4151-bb6a-97f520d8ae5e
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:197 | Prediction history detail retrieval completed: history_id=does-not-exist user_id=5ee67cf4-db24-4151-bb6a-97f520d8ae5e found=False
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history/does-not-exist status_code=404 duration_ms=1.46 client_ip=testclient request_id=fd68f7dd-9cb4-4331-acb4-592b3fddd7a2
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history/does-not-exist "HTTP/1.1 404 Not Found"
+2026-08-16 04:14:16 | INFO     | app.api.v1.history.router | router.py:385 | Prediction history detail retrieval requested: user_id=e16539dc-0467-44bd-b807-07a4cceda5e2 history_id=hist-0002
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:189 | Prediction history detail retrieval started: history_id=hist-0002 user_id=e16539dc-0467-44bd-b807-07a4cceda5e2
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:197 | Prediction history detail retrieval completed: history_id=hist-0002 user_id=e16539dc-0467-44bd-b807-07a4cceda5e2 found=False
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history/hist-0002 status_code=404 duration_ms=1.46 client_ip=testclient request_id=2c3ee266-92a4-45a5-8b1e-68f0f5ffda1b
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history/hist-0002 "HTTP/1.1 404 Not Found"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history/hist-0001 status_code=401 duration_ms=2.67 client_ip=testclient request_id=c1ee744d-7270-4e88-8f75-72e4a8b59c3d
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history/hist-0001 "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:16 | INFO     | app.api.v1.history.router | router.py:297 | Prediction history retrieval requested: user_id=bf76395a-1924-4eec-ba0c-1775baee9bbb page=1 page_size=20 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:292 | Prediction history paginated retrieval started: user_id=bf76395a-1924-4eec-ba0c-1775baee9bbb page=1 page_size=20 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:313 | Prediction history paginated retrieval completed: user_id=bf76395a-1924-4eec-ba0c-1775baee9bbb record_count=0 total_records=0 total_pages=0
+2026-08-16 04:14:16 | INFO     | app.api.v1.history.router | router.py:311 | Prediction history retrieval completed: user_id=bf76395a-1924-4eec-ba0c-1775baee9bbb record_count=0 total_records=0
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history status_code=200 duration_ms=1.57 client_ip=testclient request_id=23f78d21-12d2-4833-92bb-2df8a27c9b2f
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.history.router | router.py:297 | Prediction history retrieval requested: user_id=022636ce-2757-4819-90d7-2988d68ecf0c page=2 page_size=5 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:292 | Prediction history paginated retrieval started: user_id=022636ce-2757-4819-90d7-2988d68ecf0c page=2 page_size=5 filtered=False
+2026-08-16 04:14:16 | INFO     | app.services.prediction_history_service | prediction_history_service.py:313 | Prediction history paginated retrieval completed: user_id=022636ce-2757-4819-90d7-2988d68ecf0c record_count=5 total_records=12 total_pages=3
+2026-08-16 04:14:16 | INFO     | app.api.v1.history.router | router.py:311 | Prediction history retrieval completed: user_id=022636ce-2757-4819-90d7-2988d68ecf0c record_count=5 total_records=12
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history status_code=200 duration_ms=1.87 client_ip=testclient request_id=c7230af2-7825-4881-850a-1f2d4fa9ec43
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history?page=2&page_size=5 "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history status_code=422 duration_ms=1.18 client_ip=testclient request_id=26a3e05f-accc-4b6d-8d84-55c7c73f03d7
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history?min_confidence=90&max_confidence=10 "HTTP/1.1 422 Unprocessable Entity"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history status_code=422 duration_ms=1.20 client_ip=testclient request_id=5df19544-fbeb-426c-bde5-c2b71391919e
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history?page_size=101 "HTTP/1.1 422 Unprocessable Entity"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history status_code=422 duration_ms=1.61 client_ip=testclient request_id=170e91b0-d5a3-404a-8ddd-247a90f443b8
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history?page=0 "HTTP/1.1 422 Unprocessable Entity"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/predictions/history status_code=422 duration_ms=1.52 client_ip=testclient request_id=c2ce318d-b191-46a9-aeec-16c17020ce74
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/predictions/history?start_date=2026-02-01T00%3A00%3A00%2B00%3A00&end_date=2026-01-01T00%3A00%3A00%2B00%3A00 "HTTP/1.1 422 Unprocessable Entity"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:164 | Prediction analytics requested: user_id=f2bab2d8-9086-46e6-81f3-d735c71dd8cd
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=f2bab2d8-9086-46e6-81f3-d735c71dd8cd filtered=False
+2026-08-16 04:14:16 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=f2bab2d8-9086-46e6-81f3-d735c71dd8cd analytics_id=2da314c3-d908-4ea9-a33c-1c58f09e4ee6 record_count=3
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=f2bab2d8-9086-46e6-81f3-d735c71dd8cd analytics_id=2da314c3-d908-4ea9-a33c-1c58f09e4ee6 total_predictions=3
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:168 | Prediction analytics completed: user_id=f2bab2d8-9086-46e6-81f3-d735c71dd8cd analytics_id=2da314c3-d908-4ea9-a33c-1c58f09e4ee6 total_predictions=3
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/analytics status_code=200 duration_ms=1.59 client_ip=testclient request_id=e9bb09ee-603d-4146-943c-bcc5d5ef93b6
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/analytics "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:164 | Prediction analytics requested: user_id=275abd67-eae3-431c-9af5-d56df46af030
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=275abd67-eae3-431c-9af5-d56df46af030 filtered=False
+2026-08-16 04:14:16 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:76 | Analytics built with empty history collection: user_id=275abd67-eae3-431c-9af5-d56df46af030 analytics_id=2276b275-5b28-4231-80b9-01662abc787b
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=275abd67-eae3-431c-9af5-d56df46af030 analytics_id=2276b275-5b28-4231-80b9-01662abc787b total_predictions=0
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:168 | Prediction analytics completed: user_id=275abd67-eae3-431c-9af5-d56df46af030 analytics_id=2276b275-5b28-4231-80b9-01662abc787b total_predictions=0
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/analytics status_code=200 duration_ms=1.44 client_ip=testclient request_id=be807752-da4a-471a-9fde-3eb4607477b4
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/analytics "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:164 | Prediction analytics requested: user_id=8c732d50-482b-45c8-9050-95e55aa312d8
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=8c732d50-482b-45c8-9050-95e55aa312d8 filtered=False
+2026-08-16 04:14:16 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=8c732d50-482b-45c8-9050-95e55aa312d8 analytics_id=01f46770-8862-40ca-bb34-aaa0067af2fc record_count=2
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=8c732d50-482b-45c8-9050-95e55aa312d8 analytics_id=01f46770-8862-40ca-bb34-aaa0067af2fc total_predictions=2
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:168 | Prediction analytics completed: user_id=8c732d50-482b-45c8-9050-95e55aa312d8 analytics_id=01f46770-8862-40ca-bb34-aaa0067af2fc total_predictions=2
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/analytics status_code=200 duration_ms=1.43 client_ip=testclient request_id=e2f5228b-2565-4a9e-9bce-8be68551d66d
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/analytics "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/analytics status_code=401 duration_ms=2.68 client_ip=testclient request_id=f90896e4-df06-47a4-8820-260670b97fb2
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/analytics "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:164 | Prediction analytics requested: user_id=68c8f86f-563f-45b2-8436-0d823ce03cbd
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=68c8f86f-563f-45b2-8436-0d823ce03cbd filtered=False
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/analytics status_code=413 duration_ms=1.26 client_ip=testclient request_id=aa90b675-9fe6-4416-98f4-5ef548e8831a
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/analytics "HTTP/1.1 413 Request Entity Too Large"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:228 | CSV export requested: user_id=6b238e66-d55c-4a87-bce8-4b51bc84c3ef
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=6b238e66-d55c-4a87-bce8-4b51bc84c3ef filtered=False
+2026-08-16 04:14:16 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=6b238e66-d55c-4a87-bce8-4b51bc84c3ef analytics_id=a31d867d-c224-44ec-ae42-620320cc7b84 record_count=2
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=6b238e66-d55c-4a87-bce8-4b51bc84c3ef analytics_id=a31d867d-c224-44ec-ae42-620320cc7b84 total_predictions=2
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=6b238e66-d55c-4a87-bce8-4b51bc84c3ef export_id=135c7b28-7b6a-4ab8-b39d-421fc89e1ac0 record_count=2
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=6b238e66-d55c-4a87-bce8-4b51bc84c3ef export_id=135c7b28-7b6a-4ab8-b39d-421fc89e1ac0 record_count=2
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:232 | CSV export completed: user_id=6b238e66-d55c-4a87-bce8-4b51bc84c3ef export_id=135c7b28-7b6a-4ab8-b39d-421fc89e1ac0 record_count=2
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/csv status_code=200 duration_ms=2.39 client_ip=testclient request_id=fd2a1a93-9d64-4baa-b389-a91526af49c5
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/csv "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:228 | CSV export requested: user_id=c0c8740d-df6d-4403-8848-9d43bea4a5f3
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=c0c8740d-df6d-4403-8848-9d43bea4a5f3 filtered=False
+2026-08-16 04:14:16 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:76 | Analytics built with empty history collection: user_id=c0c8740d-df6d-4403-8848-9d43bea4a5f3 analytics_id=e56f32e5-a2ff-4e64-9e36-1863f6f67421
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=c0c8740d-df6d-4403-8848-9d43bea4a5f3 analytics_id=e56f32e5-a2ff-4e64-9e36-1863f6f67421 total_predictions=0
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_validator | csv_validator.py:68 | CSV export requested with an empty history collection: user_id=c0c8740d-df6d-4403-8848-9d43bea4a5f3
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_builder | csv_builder.py:101 | CSV export built with empty history collection: user_id=c0c8740d-df6d-4403-8848-9d43bea4a5f3 export_id=703e1b18-a3e8-472c-9d83-50e6b35c7113
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=c0c8740d-df6d-4403-8848-9d43bea4a5f3 export_id=703e1b18-a3e8-472c-9d83-50e6b35c7113 record_count=0
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:232 | CSV export completed: user_id=c0c8740d-df6d-4403-8848-9d43bea4a5f3 export_id=703e1b18-a3e8-472c-9d83-50e6b35c7113 record_count=0
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/csv status_code=200 duration_ms=2.23 client_ip=testclient request_id=017ebd3f-ecea-482f-a878-9f172280ece5
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/csv "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/csv status_code=401 duration_ms=2.74 client_ip=testclient request_id=044e8513-f935-461c-971c-ef818152b0ac
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/csv "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:228 | CSV export requested: user_id=e8c343cd-cdc5-4284-ab27-14dded405ea2
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=e8c343cd-cdc5-4284-ab27-14dded405ea2 filtered=False
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/csv status_code=413 duration_ms=1.21 client_ip=testclient request_id=f19a56aa-d028-49bf-8a79-d767f117e26d
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/csv "HTTP/1.1 413 Request Entity Too Large"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:228 | CSV export requested: user_id=6a54a501-cbb3-464f-a4d7-5449f3ca0aea
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=6a54a501-cbb3-464f-a4d7-5449f3ca0aea filtered=False
+2026-08-16 04:14:16 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=6a54a501-cbb3-464f-a4d7-5449f3ca0aea analytics_id=6c19ed85-1b3c-4d65-b60b-95946a83b536 record_count=1
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=6a54a501-cbb3-464f-a4d7-5449f3ca0aea analytics_id=6c19ed85-1b3c-4d65-b60b-95946a83b536 total_predictions=1
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=6a54a501-cbb3-464f-a4d7-5449f3ca0aea export_id=189c2621-4424-4d3c-b125-344c53e4a68a record_count=1
+2026-08-16 04:14:16 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=6a54a501-cbb3-464f-a4d7-5449f3ca0aea export_id=189c2621-4424-4d3c-b125-344c53e4a68a record_count=1
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:232 | CSV export completed: user_id=6a54a501-cbb3-464f-a4d7-5449f3ca0aea export_id=189c2621-4424-4d3c-b125-344c53e4a68a record_count=1
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/csv status_code=200 duration_ms=2.05 client_ip=testclient request_id=183df34a-9c85-4e2a-88c8-bd89fe348e78
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/csv "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:291 | PDF export requested: user_id=9d28409b-1576-4a12-90c6-3b5e28d611ec
+2026-08-16 04:14:16 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=9d28409b-1576-4a12-90c6-3b5e28d611ec filtered=False page_size=a4
+2026-08-16 04:14:16 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=9d28409b-1576-4a12-90c6-3b5e28d611ec analytics_id=e3c62969-7ae7-4165-aff1-00f621704f20 record_count=2
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=9d28409b-1576-4a12-90c6-3b5e28d611ec analytics_id=e3c62969-7ae7-4165-aff1-00f621704f20 total_predictions=2
+2026-08-16 04:14:16 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=9d28409b-1576-4a12-90c6-3b5e28d611ec export_id=33a51599-ac57-4cde-a7e7-5a892889dac9 record_count=2
+2026-08-16 04:14:16 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=9d28409b-1576-4a12-90c6-3b5e28d611ec export_id=33a51599-ac57-4cde-a7e7-5a892889dac9 record_count=2
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:295 | PDF export completed: user_id=9d28409b-1576-4a12-90c6-3b5e28d611ec export_id=33a51599-ac57-4cde-a7e7-5a892889dac9 record_count=2
+2026-08-16 04:14:16 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/pdf status_code=200 duration_ms=8.79 client_ip=testclient request_id=fa870991-f7ce-478f-aa45-18e6c1393913
+2026-08-16 04:14:16 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/pdf "HTTP/1.1 200 OK"
+2026-08-16 04:14:16 | INFO     | app.api.v1.reports | reports.py:291 | PDF export requested: user_id=3eb6765f-f605-4ece-9381-791a143aaac9
+2026-08-16 04:14:16 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=3eb6765f-f605-4ece-9381-791a143aaac9 filtered=False page_size=a4
+2026-08-16 04:14:16 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:76 | Analytics built with empty history collection: user_id=3eb6765f-f605-4ece-9381-791a143aaac9 analytics_id=e771e9e2-9550-479b-a25b-798268a16589
+2026-08-16 04:14:16 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=3eb6765f-f605-4ece-9381-791a143aaac9 analytics_id=e771e9e2-9550-479b-a25b-798268a16589 total_predictions=0
+2026-08-16 04:14:16 | INFO     | app.reports.pdf.pdf_validator | pdf_validator.py:76 | PDF export requested with an empty history collection: user_id=3eb6765f-f605-4ece-9381-791a143aaac9
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=3eb6765f-f605-4ece-9381-791a143aaac9 export_id=fce95828-8399-4a56-9224-4f45db66d0e4
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=3eb6765f-f605-4ece-9381-791a143aaac9 export_id=fce95828-8399-4a56-9224-4f45db66d0e4 record_count=0
+2026-08-16 04:14:17 | INFO     | app.api.v1.reports | reports.py:295 | PDF export completed: user_id=3eb6765f-f605-4ece-9381-791a143aaac9 export_id=fce95828-8399-4a56-9224-4f45db66d0e4 record_count=0
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/pdf status_code=200 duration_ms=5.48 client_ip=testclient request_id=18dca10c-c72d-46a1-9ed1-bf0d9f1b5134
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/pdf "HTTP/1.1 200 OK"
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/pdf status_code=401 duration_ms=2.68 client_ip=testclient request_id=63bad870-ca72-40de-8d0d-ff3c066e29d4
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/pdf "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:17 | INFO     | app.api.v1.reports | reports.py:291 | PDF export requested: user_id=7b645d73-978b-4dd3-b883-e05af115239f
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=7b645d73-978b-4dd3-b883-e05af115239f filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/pdf status_code=413 duration_ms=1.22 client_ip=testclient request_id=f3afd88d-0874-459a-8e3c-a76aac09c65c
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/pdf "HTTP/1.1 413 Request Entity Too Large"
+2026-08-16 04:14:17 | INFO     | app.api.v1.reports | reports.py:291 | PDF export requested: user_id=b4ca68be-d09c-4634-89b6-57ccfa8d99d6
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=b4ca68be-d09c-4634-89b6-57ccfa8d99d6 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=b4ca68be-d09c-4634-89b6-57ccfa8d99d6 analytics_id=74188876-a4b5-481c-9c4e-4a64c8d670ad record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=b4ca68be-d09c-4634-89b6-57ccfa8d99d6 analytics_id=74188876-a4b5-481c-9c4e-4a64c8d670ad total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=b4ca68be-d09c-4634-89b6-57ccfa8d99d6 export_id=f99b154d-e5d4-44b9-94cf-cf891c941c90 record_count=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=b4ca68be-d09c-4634-89b6-57ccfa8d99d6 export_id=f99b154d-e5d4-44b9-94cf-cf891c941c90 record_count=1
+2026-08-16 04:14:17 | INFO     | app.api.v1.reports | reports.py:295 | PDF export completed: user_id=b4ca68be-d09c-4634-89b6-57ccfa8d99d6 export_id=f99b154d-e5d4-44b9-94cf-cf891c941c90 record_count=1
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/pdf status_code=200 duration_ms=5.73 client_ip=testclient request_id=5910a0ca-e768-4628-9968-b90cf8792b35
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/pdf "HTTP/1.1 200 OK"
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/analytics status_code=401 duration_ms=1.74 client_ip=testclient request_id=657a6c3a-6c7e-4341-aaa1-f062e180c6f8
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/analytics "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/csv status_code=401 duration_ms=1.57 client_ip=testclient request_id=a07bb505-f9cb-4df8-8702-3f5e58985937
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/csv "HTTP/1.1 401 Unauthorized"
+2026-08-16 04:14:17 | INFO     | app.api.v1.reports | reports.py:164 | Prediction analytics requested: user_id=cb201680-9a67-4dab-be7e-4722ce3bc0fa
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=cb201680-9a67-4dab-be7e-4722ce3bc0fa filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=cb201680-9a67-4dab-be7e-4722ce3bc0fa analytics_id=83ec84ec-d6ea-4734-8b8d-b87c3425249f record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=cb201680-9a67-4dab-be7e-4722ce3bc0fa analytics_id=83ec84ec-d6ea-4734-8b8d-b87c3425249f total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.api.v1.reports | reports.py:168 | Prediction analytics completed: user_id=cb201680-9a67-4dab-be7e-4722ce3bc0fa analytics_id=83ec84ec-d6ea-4734-8b8d-b87c3425249f total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/analytics status_code=200 duration_ms=1.41 client_ip=testclient request_id=9ff376f3-bb0b-46df-8f02-2fd42eaaf7f7
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/analytics?unexpected=value "HTTP/1.1 200 OK"
+2026-08-16 04:14:17 | INFO     | app.api.v1.reports | reports.py:228 | CSV export requested: user_id=74004950-327d-4bf0-8c26-ac0e8bf54bc1
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=74004950-327d-4bf0-8c26-ac0e8bf54bc1 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=74004950-327d-4bf0-8c26-ac0e8bf54bc1 analytics_id=bd0d395a-d213-43ee-b9be-6202d49586f1 record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=74004950-327d-4bf0-8c26-ac0e8bf54bc1 analytics_id=bd0d395a-d213-43ee-b9be-6202d49586f1 total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/reports/export/csv status_code=500 duration_ms=1.98 client_ip=testclient request_id=7756b56d-a229-4415-87de-73c6ec28101d
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/export/csv "HTTP/1.1 500 Internal Server Error"
+2026-08-16 04:14:17 | INFO     | app.api.v1.reports | reports.py:164 | Prediction analytics requested: user_id=6ffea3c5-4405-49c7-a075-724f07beede6
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=6ffea3c5-4405-49c7-a075-724f07beede6 filtered=False
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/reports/analytics "HTTP/1.1 500 Internal Server Error"
+2026-08-16 04:14:17 | INFO     | app.repositories.prediction_history_repository | prediction_history_repository.py:300 | Prediction history detail record retrieved from database: history_id=8d2a6f5e-c77e-4536-89df-31724f9910d7 user_id=14d87208-66b3-49b4-aac0-713221bbccb1
+2026-08-16 04:14:17 | INFO     | app.repositories.prediction_history_repository | prediction_history_repository.py:292 | Prediction history detail lookup found no matching record: history_id=10390573-9d4e-43fb-8c18-f5310332bb58 user_id=274a3402-5f19-441b-9e88-5c012bb717a9
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:189 | Prediction history detail retrieval started: history_id=hist-0001 user_id=user-0001
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:197 | Prediction history detail retrieval completed: history_id=hist-0001 user_id=user-0001 found=True
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:189 | Prediction history detail retrieval started: history_id=hist-0001 user_id=someone-else
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:197 | Prediction history detail retrieval completed: history_id=hist-0001 user_id=someone-else found=False
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:189 | Prediction history detail retrieval started: history_id=missing user_id=user-0001
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:197 | Prediction history detail retrieval completed: history_id=missing user_id=user-0001 found=False
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=ceacd4ce-c2c8-442a-b77a-0c9bc58adf84 request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=9c249c2b-8f17-4738-adea-714fddcd6a1f request_id=req-9999 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=64fb7a93-8b9f-4dd7-8bf3-1e3e34ee9985 request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=4f3ba1ac-aa86-4155-a5b7-2e60d6a45c74 request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=631644a6-0c55-45b8-a554-0315267a213d request_id=req-0001 status=pending (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=e0bbd20b-6085-4578-b09d-471aa7639ebc request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=77dbc8aa-c1f7-46a6-a724-dd7cc94ecc09 request_id=req-0001 status=partial_success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=1d333b23-0aea-414d-8b9a-a8828fad3cf4 request_id=req-0001 status=failed (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=d49b68da-2982-410a-995b-f6a9e6fa2175 request_id=req-0001 status=partial_success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=a1aa4511-f47a-4df6-9fb8-c486706aaf30 request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=78ce4b9f-9d8e-4de1-8063-d34a3112d227 request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=0bf728ab-fd46-4220-8759-a00f520089ff request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.repositories.prediction_history_repository | prediction_history_repository.py:412 | Prediction history count retrieved from database: user_id=a8c5d2c5-abaf-4158-bf30-b0d3dae7e0a7 total_records=7 filtered=False
+2026-08-16 04:14:17 | INFO     | app.repositories.prediction_history_repository | prediction_history_repository.py:412 | Prediction history count retrieved from database: user_id=6eae7ad1-df48-46c2-a8b7-383968a8c8c9 total_records=3 filtered=True
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:292 | Prediction history paginated retrieval started: user_id=user-0001 page=1 page_size=20 filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:313 | Prediction history paginated retrieval completed: user_id=user-0001 record_count=2 total_records=2 total_pages=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:292 | Prediction history paginated retrieval started: user_id=someone-else page=1 page_size=20 filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:313 | Prediction history paginated retrieval completed: user_id=someone-else record_count=0 total_records=0 total_pages=0
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:292 | Prediction history paginated retrieval started: user_id=user-0001 page=1 page_size=20 filtered=True
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:313 | Prediction history paginated retrieval completed: user_id=user-0001 record_count=0 total_records=0 total_pages=0
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=b33a2501-4910-4b2c-b141-db41d7ab9d4c request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=6eafbe65-29ee-4cac-8dcb-4f9feba80189 request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=2b1d90a2-a667-4ec3-96a5-d32c84a77500 request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1586 | Pipeline stage entered: history
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1511 | Prediction history persistence started: request_id=req-0001
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=59697f86-b2e8-4ba8-b310-f3f56fbd61ed request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1565 | Prediction history persisted: request_id=req-0001 history_id=59697f86-b2e8-4ba8-b310-f3f56fbd61ed status=success
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1586 | Pipeline stage entered: history
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1596 | Pipeline stage skipped: history (Prediction history persistence skipped: the save_history request option is false.)
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1586 | Pipeline stage entered: history
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1596 | Pipeline stage skipped: history (Prediction History persistence is not configured for this service instance.)
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1586 | Pipeline stage entered: history
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1511 | Prediction history persistence started: request_id=req-0001
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=5ff038da-a593-4ee8-8acb-f3d889070d27 request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1586 | Pipeline stage entered: history
+2026-08-16 04:14:17 | INFO     | app.services.prediction_service | prediction_service.py:1596 | Pipeline stage skipped: history (Prediction history persistence failed; see server logs. The prediction response is unaffected (ADR-033).)
+2026-08-16 04:14:17 | INFO     | app.repositories.prediction_history_repository | prediction_history_repository.py:361 | Prediction history list retrieved from database: user_id=887e4301-641d-4f34-a48e-83e69c92405d record_count=2 limit=10 offset=0 filtered=False
+2026-08-16 04:14:17 | INFO     | app.repositories.prediction_history_repository | prediction_history_repository.py:361 | Prediction history list retrieved from database: user_id=8c92f57b-673a-4e93-8c2e-ebcec0e31ea0 record_count=0 limit=10 offset=0 filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:236 | Prediction history list retrieval started: user_id=user-0001 limit=10 offset=0
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:247 | Prediction history list retrieval completed: user_id=user-0001 record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:236 | Prediction history list retrieval started: user_id=someone-else limit=10 offset=0
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:247 | Prediction history list retrieval completed: user_id=someone-else record_count=0
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=fc9e64b5-014e-4912-9aa0-e676c2ee816e request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.history.mapper | mapper.py:104 | Prediction history record prepared: history_id=a06396c0-c813-4fd4-92bd-95157f42bd0a request_id=req-0001 status=success (not persisted -- Phase 5.2).
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:189 | Prediction history detail retrieval started: history_id=hist-0001 user_id=user-0001
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:197 | Prediction history detail retrieval completed: history_id=hist-0001 user_id=user-0001 found=False
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:236 | Prediction history list retrieval started: user_id=user-0001 limit=10 offset=0
+2026-08-16 04:14:17 | INFO     | app.services.prediction_history_service | prediction_history_service.py:247 | Prediction history list retrieval completed: user_id=user-0001 record_count=0
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/health status_code=200 duration_ms=0.49 client_ip=testclient request_id=05b39939-e16b-45c5-9084-77b8c0cb9209
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/health "HTTP/1.1 200 OK"
+2026-08-16 04:14:17 | INFO     | app.middleware.logging | logging.py:27 | method=GET path=/api/v1/health status_code=200 duration_ms=0.61 client_ip=testclient request_id=186fe2d6-31c2-47a4-8ba3-b4d446dc2be9
+2026-08-16 04:14:17 | INFO     | httpx | _client.py:1025 | HTTP Request: GET http://testserver/api/v1/health "HTTP/1.1 200 OK"
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=None calibrated_confidence=0.0000 agreement_ratio=0.0000 successful_models=0 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=None calibrated_confidence=0.0000 agreement_ratio=0.0000 successful_models=0 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_scc calibrated_confidence=60.0000 agreement_ratio=0.5000 successful_models=2 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_scc calibrated_confidence=59.0909 agreement_ratio=0.6667 successful_models=3 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_scc calibrated_confidence=75.0000 agreement_ratio=1.0000 successful_models=2 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_n calibrated_confidence=100.0000 agreement_ratio=1.0000 successful_models=3 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_n calibrated_confidence=60.0000 agreement_ratio=0.6667 successful_models=3 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_n calibrated_confidence=55.0000 agreement_ratio=0.6667 successful_models=3 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_n calibrated_confidence=55.0000 agreement_ratio=0.6667 successful_models=3 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_n calibrated_confidence=0.0000 agreement_ratio=0.0000 successful_models=1 failed_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=lung_n calibrated_confidence=100.0000 agreement_ratio=0.0000 successful_models=0 failed_models=1.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.calibration_engine | calibration_engine.py:82 | Confidence calibration complete: winning_class=None calibrated_confidence=0.0000 agreement_ratio=0.0000 successful_models=1 failed_models=1.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.ensemble_engine | ensemble_engine.py:79 | Ensemble decision resolved via 'single_model' using 1/1 executed models: label='lung_scc' confidence=80.00% agreement=HIGH.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.ensemble_engine | ensemble_engine.py:79 | Ensemble decision resolved via 'two_model_weighted' using 2/2 executed models: label='lung_scc' confidence=85.00% agreement=HIGH.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.ensemble_engine | ensemble_engine.py:79 | Ensemble decision resolved via 'three_model_adaptive' using 3/3 executed models: label='lung_scc' confidence=85.18% agreement=HIGH.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.ensemble_engine | ensemble_engine.py:79 | Ensemble decision resolved via 'three_model_adaptive' using 3/3 executed models: label='lung_scc' confidence=35.56% agreement=LOW.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.ensemble_engine | ensemble_engine.py:79 | Ensemble decision resolved via 'two_model_weighted' using 2/3 executed models: label='lung_scc' confidence=85.00% agreement=HIGH.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.final_prediction_builder | final_prediction_builder.py:71 | Final prediction built: predicted_class=None confidence=0.0000 agreement_ratio=0.0000 participating_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.final_prediction_builder | final_prediction_builder.py:71 | Final prediction built: predicted_class=None confidence=0.0000 agreement_ratio=0.0000 participating_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.final_prediction_builder | final_prediction_builder.py:71 | Final prediction built: predicted_class=lung_scc confidence=82.5000 agreement_ratio=1.0000 participating_models=2.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.final_prediction_builder | final_prediction_builder.py:71 | Final prediction built: predicted_class=lung_n confidence=73.4567 agreement_ratio=0.0000 participating_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.final_prediction_builder | final_prediction_builder.py:71 | Final prediction built: predicted_class=lung_aca confidence=60.0000 agreement_ratio=0.6667 participating_models=3.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.final_prediction_builder | final_prediction_builder.py:71 | Final prediction built: predicted_class=lung_n confidence=55.5000 agreement_ratio=1.0000 participating_models=1.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.final_prediction_builder | final_prediction_builder.py:71 | Final prediction built: predicted_class=lung_scc confidence=91.2000 agreement_ratio=1.0000 participating_models=2.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.final_prediction_builder | final_prediction_builder.py:71 | Final prediction built: predicted_class=lung_scc confidence=91.2000 agreement_ratio=1.0000 participating_models=2.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.voting_engine | voting_engine.py:117 | Adaptive weighted voting complete: successful_models=2 failed_models=0 candidate_classes=3 execution_time_ms=0.0530.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.voting_engine | voting_engine.py:117 | Adaptive weighted voting complete: successful_models=3 failed_models=0 candidate_classes=3 execution_time_ms=0.0475.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.voting_engine | voting_engine.py:117 | Adaptive weighted voting complete: successful_models=2 failed_models=0 candidate_classes=3 execution_time_ms=0.0412.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.voting_engine | voting_engine.py:117 | Adaptive weighted voting complete: successful_models=2 failed_models=0 candidate_classes=3 execution_time_ms=0.0300.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.voting_engine | voting_engine.py:117 | Adaptive weighted voting complete: successful_models=3 failed_models=0 candidate_classes=3 execution_time_ms=0.0377.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.voting_engine | voting_engine.py:117 | Adaptive weighted voting complete: successful_models=3 failed_models=0 candidate_classes=3 execution_time_ms=0.0590.
+2026-08-16 04:14:17 | INFO     | app.ml.ensemble.voting_engine | voting_engine.py:85 | Adaptive weighted voting skipped: no successful predictions to vote on (failed_models=1).
+2026-08-16 04:14:17 | INFO     | app.ml.response.response_builder | response_builder.py:74 | Prediction response built: predicted_class=None confidence=0.0000 agreement_ratio=0.0000 participating_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.response.response_builder | response_builder.py:74 | Prediction response built: predicted_class=None confidence=0.0000 agreement_ratio=0.0000 participating_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.response.response_builder | response_builder.py:74 | Prediction response built: predicted_class=lung_scc confidence=82.5000 agreement_ratio=1.0000 participating_models=2.
+2026-08-16 04:14:17 | INFO     | app.ml.response.response_builder | response_builder.py:74 | Prediction response built: predicted_class=lung_n confidence=73.4567 agreement_ratio=0.0000 participating_models=0.
+2026-08-16 04:14:17 | INFO     | app.ml.response.response_builder | response_builder.py:74 | Prediction response built: predicted_class=lung_aca confidence=60.0000 agreement_ratio=0.6667 participating_models=3.
+2026-08-16 04:14:17 | INFO     | app.ml.response.response_builder | response_builder.py:74 | Prediction response built: predicted_class=lung_n confidence=55.5000 agreement_ratio=1.0000 participating_models=1.
+2026-08-16 04:14:17 | INFO     | app.ml.response.response_builder | response_builder.py:74 | Prediction response built: predicted_class=lung_scc confidence=91.2000 agreement_ratio=1.0000 participating_models=2.
+2026-08-16 04:14:17 | INFO     | app.ml.response.response_builder | response_builder.py:74 | Prediction response built: predicted_class=lung_scc confidence=91.2000 agreement_ratio=1.0000 participating_models=2.
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=unhealthy database_connected=False runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=degraded database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=unhealthy database_connected=True runtime_operational=False total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=degraded database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=unhealthy database_connected=False runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=unhealthy database_connected=True runtime_operational=False total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=3 prediction_requests_total=2
+2026-08-16 04:14:17 | INFO     | app.services.monitoring_service | monitoring_service.py:90 | Monitoring status generated: overall=healthy database_connected=True runtime_operational=True total_requests=0 prediction_requests_total=0
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:76 | Analytics built with empty history collection: user_id=user-0001 analytics_id=a80122bf-acd0-4cc2-9915-bea7c5ee78fb
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=3d355d28-3d43-4ce2-a722-a2e0fa934096 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=9f744cad-ecc5-4805-95f1-cee90ae5b356 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=0b7f4f26-1a10-47e6-b70e-5883dedd6692 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=a2c453e2-1b18-4088-ae0f-7b242dadfab3 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=3d4365d6-8e95-4ea4-9580-57e3fdf4addb record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=c54a3b83-c2cd-4060-95f3-bb29cb9e17c7 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=560da2c4-3d2e-4ce4-80d0-7f69d1988e3d record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=9be05878-8716-4725-8540-a0c451a1392c record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=e19b8e51-cfe6-47fd-810a-acb424d76eb6 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=070d4db4-9cbf-48a4-bb32-a74094a33d5e record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=9e8b099c-283b-49b5-8c63-71ca6c45b216 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=c0f521a3-0bd5-4906-8698-90ec232494df record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=654080cf-a6e6-4400-9705-eec4a7a9e0c5 record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=280f51db-a240-4583-bedf-9f589fd66db7 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=user-0001 analytics_id=280f51db-a240-4583-bedf-9f589fd66db7 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-nobody filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:76 | Analytics built with empty history collection: user_id=user-nobody analytics_id=c4563779-88b6-410b-bf92-255e00901fb7
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=user-nobody analytics_id=c4563779-88b6-410b-bf92-255e00901fb7 total_predictions=0
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=a24ccfdd-85ca-4e78-bf02-f8ec945cf073 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=user-0001 analytics_id=a24ccfdd-85ca-4e78-bf02-f8ec945cf073 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=c966545b-9a80-484b-9f5b-72cb9f599784 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=user-0001 analytics_id=c966545b-9a80-484b-9f5b-72cb9f599784 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=5924b807-3b70-418f-b86f-edbe8d07903b record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=user-0001 analytics_id=5924b807-3b70-418f-b86f-edbe8d07903b total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=1cf73ff1-7cf6-4820-9ea6-6350bdefe8da record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=1cf73ff1-7cf6-4820-9ea6-6350bdefe8da total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=fa92ddff-c9c2-4f97-923a-6aad51b1b5c9 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=user-0001 analytics_id=fa92ddff-c9c2-4f97-923a-6aad51b1b5c9 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=3a04be65-317e-4942-b908-05e49e902f64 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=3a04be65-317e-4942-b908-05e49e902f64 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:76 | Analytics built with empty history collection: user_id=user-0001 analytics_id=383dc547-2489-452c-9de0-ecf05162b69d
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=383dc547-2489-452c-9de0-ecf05162b69d total_predictions=0
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:101 | CSV export built with empty history collection: user_id=user-0001 export_id=44827694-c8b3-4bcb-8ae5-eb82acdaa306
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:101 | CSV export built with empty history collection: user_id=user-0001 export_id=cc408d04-1b83-4da6-b339-64fec7310a80
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:101 | CSV export built with empty history collection: user_id=user-0001 export_id=50b5029e-8bbf-4cd2-97a2-7c5aadf1913e
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:101 | CSV export built with empty history collection: user_id=user-0001 export_id=8a74a2b2-16b5-4c83-9184-d65237f7aa7c
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:101 | CSV export built with empty history collection: user_id=user-0001 export_id=27b93148-909d-41c7-a88f-8a4d8507995f
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=b37ed920-c471-4576-8dbe-7932eb2d2c17 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=ff98a0b8-66aa-4790-bd40-0561fa5ff64e record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=a0151407-31c0-4851-bdaf-12db3f8fdab7 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=674ead40-ebdb-44ad-a37d-fdcc8b526203 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=cc9a2b69-11e0-45f7-8527-e9d742285dc9 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=85381c6b-114c-4912-b11a-c0bdb7acdc5b record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=23bf432a-bf5c-4267-a240-c55cbe3f1ca3 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=7492b1bd-40de-4fd6-a367-7b952e6729a3 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=7492b1bd-40de-4fd6-a367-7b952e6729a3 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=584b68a6-da07-4552-91bc-229cd4e1c462 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-0001 export_id=584b68a6-da07-4552-91bc-229cd4e1c462 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-nobody filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:76 | Analytics built with empty history collection: user_id=user-nobody analytics_id=a071097f-b8ab-45de-83ac-c756d5dc40c7
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-nobody analytics_id=a071097f-b8ab-45de-83ac-c756d5dc40c7 total_predictions=0
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_validator | csv_validator.py:68 | CSV export requested with an empty history collection: user_id=user-nobody
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:101 | CSV export built with empty history collection: user_id=user-nobody export_id=9cac5983-81a1-468f-8dd3-f82fc954dc4a
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-nobody export_id=9cac5983-81a1-468f-8dd3-f82fc954dc4a record_count=0
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=c030f6a8-28c7-4264-bba6-4f5126f21f34 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=c030f6a8-28c7-4264-bba6-4f5126f21f34 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=95fc7371-b66a-476c-92df-f534c89fad28 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-0001 export_id=95fc7371-b66a-476c-92df-f534c89fad28 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=549702d1-ea64-4c07-a92d-ea246cc1505d record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=549702d1-ea64-4c07-a92d-ea246cc1505d total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=8121f165-e352-40c4-a101-ca6ac4fd7d7d record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-0001 export_id=8121f165-e352-40c4-a101-ca6ac4fd7d7d record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=42d4c7ab-c5cc-4878-bd53-f1c2eb9c8923 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=42d4c7ab-c5cc-4878-bd53-f1c2eb9c8923 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=ef29e2db-85e8-4642-9b3b-889dc531d63a record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-0001 export_id=ef29e2db-85e8-4642-9b3b-889dc531d63a record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=e9843662-57c3-48af-9a64-8c3e4a0b46b5 record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=e9843662-57c3-48af-9a64-8c3e4a0b46b5 total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=643c2524-837d-4f7f-948e-b6434a1f94e5 record_count=1
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=3b55ed45-837e-44d1-aa30-4b31fe0bd816 record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=3b55ed45-837e-44d1-aa30-4b31fe0bd816 total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=498a439e-4b6f-46fd-8fc1-9294bebce4c8 record_count=1
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-0001 export_id=498a439e-4b6f-46fd-8fc1-9294bebce4c8 record_count=1
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=74b8af0c-ad75-4385-b874-eb2e5e3c8bdc record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=74b8af0c-ad75-4385-b874-eb2e5e3c8bdc total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=96cca4cb-725a-4276-864a-7553906f0d54 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-0001 export_id=96cca4cb-725a-4276-864a-7553906f0d54 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=ef506057-1fa8-4841-95ec-884a7d624bde record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=user-0001 analytics_id=ef506057-1fa8-4841-95ec-884a7d624bde total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=ca989422-8970-4003-9e83-59a6c4faba05 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=ca989422-8970-4003-9e83-59a6c4faba05 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_validator | csv_validator.py:68 | CSV export requested with an empty history collection: user_id=user-0001
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=user-0001 export_id=d3db3e53-f529-4a39-be06-2a76751d595b
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=user-0001 export_id=d74759bf-aade-4338-96a2-6e44c5c0e8b3
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=user-0001 export_id=56d0f8fa-184f-45c3-85ba-a15bc4dbc571
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=user-0001 export_id=b989688e-c101-4907-9543-45c13930778a
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=user-0001 export_id=9b44819b-59a8-4785-a3ab-f60381ac8235
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=user-0001 export_id=c088ad90-fd26-4d80-99ff-ef848acd0565
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=user-0001 export_id=13b8b67e-be25-4491-b3ca-09f5d5460c37
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=f48383bd-6ad3-4473-bd3f-bf7fcd921510 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=04922ee9-cf3b-4f80-b78a-f036e0971d0e record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=30615659-cc5e-49b7-b803-1788d1ed2912 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=89b296d1-51a3-4e70-9929-a6d739c6ff4b record_count=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=59898ef9-86a8-4a7a-babc-7830b41d4396 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=59898ef9-86a8-4a7a-babc-7830b41d4396 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=61757b90-9806-4977-b728-92115aec7560 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=61757b90-9806-4977-b728-92115aec7560 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-nobody filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:76 | Analytics built with empty history collection: user_id=user-nobody analytics_id=0532c251-5ca3-405f-a645-c024457b6e71
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-nobody analytics_id=0532c251-5ca3-405f-a645-c024457b6e71 total_predictions=0
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_validator | pdf_validator.py:76 | PDF export requested with an empty history collection: user_id=user-nobody
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:126 | PDF export built with empty history collection: user_id=user-nobody export_id=f562bca1-013a-4350-8481-721da8bf8027
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-nobody export_id=f562bca1-013a-4350-8481-721da8bf8027 record_count=0
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=32846e4d-b5e4-4c26-8b27-7eb2010c4ac4 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=32846e4d-b5e4-4c26-8b27-7eb2010c4ac4 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=10be78f9-9ac7-490c-b40e-9b995d9b978d record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=10be78f9-9ac7-490c-b40e-9b995d9b978d record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=0ed80d69-1d7f-4abf-b1a5-5866e1d07237 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=0ed80d69-1d7f-4abf-b1a5-5866e1d07237 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=4ee78492-7897-4692-8f92-e9aeaf2be701 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=4ee78492-7897-4692-8f92-e9aeaf2be701 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=4ce6758f-d0c6-47c4-a53f-6472564a3a36 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=4ce6758f-d0c6-47c4-a53f-6472564a3a36 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=e6434be0-82de-4a1c-a900-ac16b938b6ab record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=e6434be0-82de-4a1c-a900-ac16b938b6ab record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=9e43f09d-27f6-4019-b359-eb0074b69a32 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=9e43f09d-27f6-4019-b359-eb0074b69a32 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=1d4b69e9-a700-4849-b66e-c600b6230aab record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=1d4b69e9-a700-4849-b66e-c600b6230aab record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=d7da8b23-68d3-4e54-9801-6a1d60b41df1 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=d7da8b23-68d3-4e54-9801-6a1d60b41df1 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=b60803a5-1246-4862-af7b-54da133433e1 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=b60803a5-1246-4862-af7b-54da133433e1 record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=ee5850c1-8018-4667-aaef-dc138faf3224 record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=ee5850c1-8018-4667-aaef-dc138faf3224 total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=ad5a0104-06f1-4a3f-bd04-827e573d045f record_count=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=a5a09d3a-0de4-4d0b-9d76-21b5855dd97b record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=a5a09d3a-0de4-4d0b-9d76-21b5855dd97b total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=c272f3a3-0e17-4650-af36-f82872e3e195 record_count=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=c272f3a3-0e17-4650-af36-f82872e3e195 record_count=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=0693c3ea-8e84-4603-a81a-aadea07968d9 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=0693c3ea-8e84-4603-a81a-aadea07968d9 total_predictions=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=7171c690-d82f-4c4a-aeea-30a57ada39aa record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=7171c690-d82f-4c4a-aeea-30a57ada39aa record_count=2
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_validator | pdf_validator.py:76 | PDF export requested with an empty history collection: user_id=user-0001
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=6aade998-5132-4ab1-abfc-45dd4ddb118b record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=6aade998-5132-4ab1-abfc-45dd4ddb118b total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:17 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=1ab08823-35b6-40b4-9435-ea2545a44ad1 record_count=1
+2026-08-16 04:14:17 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=1ab08823-35b6-40b4-9435-ea2545a44ad1 total_predictions=1
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:54 | Report built with empty history collection: user_id=user-0001 report_id=08642489-c6fc-42d3-86c4-cf482828e0aa
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:54 | Report built with empty history collection: user_id=user-0001 report_id=7aee6b37-08a0-4802-a341-b30cd85c8454
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:54 | Report built with empty history collection: user_id=user-0001 report_id=6bc7a06a-a3cb-42c0-b3a0-e3b4a6cfab79
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=7bb596d6-15e6-485c-aac7-36e22d756aa5 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=387885ef-57d0-4181-b1c9-f4162d0bc726 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=d4baae24-701e-4a87-abd1-857a3968eaff record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=08e95519-68c9-4e8c-86a2-61b472db7b36 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=26d16889-aaa4-44d2-8b62-fad3139f2a63 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=fe6a0552-5683-4ead-8e59-f960a526de6c record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=4c18c370-3e82-4a3e-ab12-88f07f7e8954 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=461ca508-dbd5-48ba-9a9b-7eca59eba209 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=bb86d625-fc11-4806-94a2-382423105941 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=58a2e399-4ff0-4c66-9ebc-b24e837c55e1 record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=d5edd387-58bd-4639-ad3c-a6aa715d520c record_count=4
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=741c9717-562a-4e9c-8347-e35dba88aacf record_count=4
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=f6adf2ed-3290-4aeb-8179-cee5f0ea9ea2 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:143 | Report generation completed: user_id=user-0001 report_id=f6adf2ed-3290-4aeb-8179-cee5f0ea9ea2 status=generated record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-nobody format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:54 | Report built with empty history collection: user_id=user-nobody report_id=bddbb968-76bb-4dcf-9e2d-ba751f0c5a18
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:143 | Report generation completed: user_id=user-nobody report_id=bddbb968-76bb-4dcf-9e2d-ba751f0c5a18 status=empty record_count=0
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=2777df49-9caf-4b9a-acee-3f8972e84a96 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:143 | Report generation completed: user_id=user-0001 report_id=2777df49-9caf-4b9a-acee-3f8972e84a96 status=generated record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=0c0e1102-9c6c-416b-a554-88b47adafe41 record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:143 | Report generation completed: user_id=user-0001 report_id=0c0e1102-9c6c-416b-a554-88b47adafe41 status=generated record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:17 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=805982ea-9084-4ec5-bdc3-7131c249e06c record_count=2
+2026-08-16 04:14:17 | INFO     | app.services.report_service | report_service.py:143 | Report generation completed: user_id=user-0001 report_id=805982ea-9084-4ec5-bdc3-7131c249e06c status=generated record_count=2
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:128 | Analytics computation started: user_id=user-0001 filtered=False
+2026-08-16 04:14:22 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=4316a6ca-4e9c-4762-b634-545b16a987c8 record_count=2
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:151 | Analytics computation completed: user_id=user-0001 analytics_id=4316a6ca-4e9c-4762-b634-545b16a987c8 total_predictions=2
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:22 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=a2817a0d-849a-4975-a2e8-2b550c05383d record_count=2
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=a2817a0d-849a-4975-a2e8-2b550c05383d total_predictions=2
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=fd254d77-06b3-4f49-87c0-83af25c9e6de record_count=2
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-0001 export_id=fd254d77-06b3-4f49-87c0-83af25c9e6de record_count=2
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:22 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=53af69d5-c272-4c21-88e0-6bd4e2fa2a5b record_count=1
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=53af69d5-c272-4c21-88e0-6bd4e2fa2a5b total_predictions=1
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=78d2b2ed-39aa-4bba-beb4-946ca70d23fe record_count=1
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:156 | CSV export started: user_id=user-0001 filtered=False
+2026-08-16 04:14:22 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=4ef94a79-e565-4df9-b28a-aa777d630c6a record_count=1
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=4ef94a79-e565-4df9-b28a-aa777d630c6a total_predictions=1
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_builder | csv_builder.py:123 | CSV export built: user_id=user-0001 export_id=103b35bd-3bb2-4b95-a5e6-12238cd0b25c record_count=1
+2026-08-16 04:14:22 | INFO     | app.reports.csv.csv_export_service | csv_export_service.py:184 | CSV export completed: user_id=user-0001 export_id=103b35bd-3bb2-4b95-a5e6-12238cd0b25c record_count=1
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:22 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=16673f9d-84af-45a3-82bc-9c08e5927c2f record_count=2
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=16673f9d-84af-45a3-82bc-9c08e5927c2f total_predictions=2
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=61b70956-0930-419a-929d-9cb4972ab98c record_count=2
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=61b70956-0930-419a-929d-9cb4972ab98c record_count=2
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:22 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=674544ef-f3b1-4290-84eb-63d86809404c record_count=1
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=674544ef-f3b1-4290-84eb-63d86809404c total_predictions=1
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=8bbe8f14-4b77-4c34-bc10-5835445b40a7 record_count=1
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:162 | PDF export started: user_id=user-0001 filtered=False page_size=a4
+2026-08-16 04:14:22 | INFO     | app.reports.analytics.analytics_builder | analytics_builder.py:94 | Analytics built: user_id=user-0001 analytics_id=5db64379-c60a-4a06-a189-a54de2cea23a record_count=1
+2026-08-16 04:14:22 | INFO     | app.services.prediction_analytics_service | prediction_analytics_service.py:201 | Analytics computation completed (from pre-fetched history): user_id=user-0001 analytics_id=5db64379-c60a-4a06-a189-a54de2cea23a total_predictions=1
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_builder | pdf_builder.py:148 | PDF export built: user_id=user-0001 export_id=4580430c-8ff8-4751-85ef-85d1f30aeb65 record_count=1
+2026-08-16 04:14:22 | INFO     | app.reports.pdf.pdf_export_service | pdf_export_service.py:193 | PDF export completed: user_id=user-0001 export_id=4580430c-8ff8-4751-85ef-85d1f30aeb65 record_count=1
+2026-08-16 04:14:22 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:22 | INFO     | app.services.report_service | report_service.py:119 | Report generation started: user_id=user-0001 format=json filtered=False
+2026-08-16 04:14:22 | INFO     | app.reports.builder | builder.py:71 | Report built: user_id=user-0001 report_id=d1a2ebb0-6205-499c-a803-b268310da2d9 record_count=2
+2026-08-16 04:14:22 | INFO     | app.services.report_service | report_service.py:143 | Report generation completed: user_id=user-0001 report_id=d1a2ebb0-6205-499c-a803-b268310da2d9 status=generated record_count=2
