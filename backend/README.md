@@ -310,6 +310,28 @@ docker build -t oncovision-backend .
 docker run -p 8000:8000 --env-file .env oncovision-backend
 ```
 
+### Run with Docker Compose (backend + local PostgreSQL)
+
+For local development/manual verification, `docker-compose.yml` runs the
+backend alongside a disposable PostgreSQL container (no other services are
+introduced -- production still targets Render + Neon PostgreSQL per
+ADR-043):
+
+```bash
+cp .env.example .env   # first time only
+docker compose up --build
+```
+
+Run migrations against the Compose-managed database once the containers are up:
+
+```bash
+docker compose exec backend python -m alembic upgrade head
+```
+
+The backend container publishes a Docker `HEALTHCHECK` against
+`GET /api/v1/health`, so `docker compose ps` / `docker ps` reflect real
+service readiness rather than just "container is running".
+
 ## API Documentation
 
 Once running, interactive API docs are available at:

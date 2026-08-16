@@ -13,6 +13,7 @@ venv/
 .venv/
 
 .env
+.env.*
 
 logs/
 storage/uploads/
@@ -32,3 +33,9 @@ htmlcov/
 
 Thumbs.db
 .DS_Store
+
+README.md
+requirements-dev.txt
+docker-compose*.yml
+Dockerfile
+.dockerignore

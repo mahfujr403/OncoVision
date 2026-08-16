@@ -8,8 +8,12 @@ should be added here first.
 
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Insecure default shipped only for local development convenience. Never
+# valid in production -- see `Settings._validate_production_secrets`.
+_INSECURE_DEFAULT_JWT_SECRET_KEY = "insecure-development-secret-key-change-me"
 
 
 class Settings(BaseSettings):
@@ -110,7 +114,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/oncovision"
 
     # JWT / authentication configuration
-    JWT_SECRET_KEY: str = "insecure-development-secret-key-change-me"
+    JWT_SECRET_KEY: str = _INSECURE_DEFAULT_JWT_SECRET_KEY
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -127,6 +131,25 @@ class Settings(BaseSettings):
                 f"LOG_LEVEL must be one of {valid_levels}, got '{value}'"
             )
         return normalized
+
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "Settings":
+        """Refuse to start with an insecure secret when `APP_ENV=production`.
+
+        The insecure default is intentionally kept as the out-of-the-box
+        development value (`.env.example` ships without one, so an
+        unconfigured dev environment still boots). It must never reach a
+        production deployment, so this only takes effect when `APP_ENV` is
+        explicitly `production` -- development and test environments are
+        unaffected.
+        """
+        if self.is_production and self.JWT_SECRET_KEY == _INSECURE_DEFAULT_JWT_SECRET_KEY:
+            raise ValueError(
+                "JWT_SECRET_KEY must be set to a strong, unique value via the "
+                "environment when APP_ENV=production. Refusing to start with "
+                "the insecure development default."
+            )
+        return self
 
     @property
     def allowed_origins_list(self) -> list[str]:
