@@ -43,8 +43,8 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-oncovision}
+    # environment:
+    #   DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-oncovision}
     ports:
       - "8000:8000"
     depends_on:
