@@ -1,20 +1,6 @@
 # ==================================================
-# OncoVision AI Backend — Docker Compose (local / dev)
+# OncoVision AI — Docker Compose (local / dev)
 # ==================================================
-# Orchestrates the backend container together with a local PostgreSQL
-# instance for development and manual verification. This is not a
-# production deployment topology -- production uses Render (backend) and
-# Neon PostgreSQL (database) directly, per ADR-043. No additional
-# infrastructure (Redis, Celery, etc.) is introduced.
-#
-# Usage:
-#   docker compose up --build
-#
-# All application secrets/config (SECRET_KEY, HF_TOKEN, etc.) are supplied
-# via the `.env` file (see .env.example) and never hardcoded here.
-# `DATABASE_URL` is the one exception: it is overridden below so the
-# backend always reaches the Compose-managed `db` service by its service
-# name, regardless of what host is configured in `.env`.
 
 services:
   db:
@@ -27,7 +13,11 @@ services:
     volumes:
       - oncovision_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-oncovision}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-oncovision}"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,8 +33,6 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
-    # environment:
-    #   DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-oncovision}
     ports:
       - "8000:8000"
     depends_on:
@@ -55,6 +43,19 @@ services:
       - oncovision_reports:/app/storage/reports
       - oncovision_models:/app/storage/models
       - oncovision_logs:/app/logs
+    networks:
+      - oncovision_net
+
+  frontend:
+    container_name: oncovision-frontend
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
     networks:
       - oncovision_net
 
