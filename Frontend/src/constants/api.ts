@@ -1,20 +1,24 @@
-// Reads VITE_API_BASE_URL as documented in the backend contract
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
+// Verified against app/api/v1/**/router.py in the uploaded backend source.
+// Do not add an endpoint here that does not exist in that source.
+
+export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1';
 
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/auth/login',
     REGISTER: '/auth/register',
+    LOGIN: '/auth/login',
+    REFRESH: '/auth/refresh',
     LOGOUT: '/auth/logout',
     LOGOUT_ALL: '/auth/logout-all',
-    REFRESH: '/auth/refresh',
     ME: '/auth/me',
+    // NOTE: forgot-password / reset-password / verify-email / change-password
+    // do NOT exist on the backend. Do not add them here — the corresponding
+    // pages are demo-only (see DemoDataBanner usage in those pages).
   },
   PREDICTIONS: {
-    BASE: '/predictions',
+    CREATE: '/predictions',
     HISTORY: '/predictions/history',
-    HISTORY_BY_ID: (id: string) => `/predictions/history/${id}`,
+    HISTORY_DETAIL: (id: string) => `/predictions/history/${id}`,
   },
   REPORTS: {
     ANALYTICS: '/reports/analytics',
@@ -23,53 +27,34 @@ export const API_ENDPOINTS = {
   },
   ADMIN: {
     USERS: '/admin/users',
-    USER_BY_ID: (id: string) => `/admin/users/${id}`,
+    USER_DETAIL: (id: string) => `/admin/users/${id}`,
     USER_ACTIVATE: (id: string) => `/admin/users/${id}/activate`,
     USER_DEACTIVATE: (id: string) => `/admin/users/${id}/deactivate`,
     HISTORY: '/admin/history',
-    HISTORY_BY_ID: (id: string) => `/admin/history/${id}`,
+    HISTORY_DETAIL: (id: string) => `/admin/history/${id}`,
     SYSTEM: '/admin/system',
   },
+  MONITORING: '/monitoring',
   SYSTEM: {
     INFO: '/system',
     MODELS: '/system/models',
     RUNTIME: '/system/runtime',
-    MODEL_STATUS: '/system/models/status',
+    MODELS_STATUS: '/system/models/status',
   },
-  MONITORING: '/monitoring',
   HEALTH: '/health',
 } as const;
 
 export const QUERY_KEYS = {
-  AUTH: {
-    ME: ['auth', 'me'] as const,
-  },
-  HISTORY: {
-    LIST: (filters?: Record<string, unknown>) =>
-      filters ? ['history', 'list', filters] : (['history', 'list'] as const),
-    DETAIL: (id: string) => ['history', 'detail', id] as const,
-  },
-  REPORTS: {
-    ANALYTICS: ['reports', 'analytics'] as const,
-  },
-  ADMIN: {
-    USERS: {
-      LIST: (params?: Record<string, unknown>) =>
-        params ? ['admin', 'users', 'list', params] : (['admin', 'users', 'list'] as const),
-      DETAIL: (id: string) => ['admin', 'users', 'detail', id] as const,
-    },
-    HISTORY: {
-      LIST: (params?: Record<string, unknown>) =>
-        params ? ['admin', 'history', 'list', params] : (['admin', 'history', 'list'] as const),
-      DETAIL: (id: string) => ['admin', 'history', 'detail', id] as const,
-    },
-    SYSTEM: ['admin', 'system'] as const,
-  },
-  SYSTEM: {
-    INFO: ['system', 'info'] as const,
-    MODELS: ['system', 'models'] as const,
-    RUNTIME: ['system', 'runtime'] as const,
-    MODEL_STATUS: ['system', 'model-status'] as const,
-  },
+  ME: ['auth', 'me'] as const,
+  PREDICTION_HISTORY: (params: unknown) => ['predictions', 'history', params] as const,
+  PREDICTION_HISTORY_DETAIL: (id: string) => ['predictions', 'history', id] as const,
+  ANALYTICS: ['reports', 'analytics'] as const,
+  ADMIN_USERS: (params: unknown) => ['admin', 'users', params] as const,
+  ADMIN_USER: (id: string) => ['admin', 'users', id] as const,
+  ADMIN_HISTORY: (params: unknown) => ['admin', 'history', params] as const,
+  ADMIN_SYSTEM: ['admin', 'system'] as const,
   MONITORING: ['monitoring'] as const,
+  SYSTEM_INFO: ['system', 'info'] as const,
+  SYSTEM_MODELS: ['system', 'models'] as const,
+  SYSTEM_MODELS_STATUS: ['system', 'models', 'status'] as const,
 } as const;

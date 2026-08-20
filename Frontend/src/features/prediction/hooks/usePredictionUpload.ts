@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { FileRejection } from 'react-dropzone';
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_SIZE_BYTES, MAX_IMAGE_SIZE_MB } from '@/constants/app';
-import type { NormalisedApiError } from '@/api/interceptors';
+import { createPrediction } from '@/api/services/predictionService';
+import type { ApiError, PredictionResponse } from '@/types';
 import type {
   ImageMeta,
   ValidationError,
@@ -9,8 +10,6 @@ import type {
   PredictionConfig,
   AnalyzeStepInfo,
 } from '../types';
-import type { PredictionResponse } from '@/types';
-import { useCreatePrediction } from './usePredictionQuery';
 
 const ACCEPTED_MIME_TYPES = Object.keys(ACCEPTED_IMAGE_TYPES) as string[];
 
@@ -19,7 +18,6 @@ function getExtension(mimeType: string): string {
     'image/jpeg': 'JPG',
     'image/png': 'PNG',
     'image/tiff': 'TIFF',
-    'image/bmp': 'BMP',
   };
   return map[mimeType] ?? mimeType.split('/')[1]?.toUpperCase() ?? '?';
 }
@@ -67,23 +65,13 @@ const INITIAL_STEPS: AnalyzeStepInfo[] = [
 ];
 
 const DEFAULT_CONFIG: PredictionConfig = {
-  confidenceThreshold: 0.75,
-  // These three are static UI labels only — not sent to the backend
-  ensembleMethod: 'Weighted Voting',
+  confidenceThreshold: 0.5, // matches the backend's own default
+  includeIndividualPredictions: true,
+  includeRuntimeStatistics: false,
+  saveHistory: true,
+  generateReport: false,
   imageSize: '— × — px',
-  modelVersion: 'v3.0.1',
 };
-
-export interface PredictionSubmitError {
-  message: string;
-  statusCode?: number;
-}
-
-function classifyError(err: unknown): PredictionSubmitError {
-  const apiErr = err as Partial<NormalisedApiError>;
-  const message = apiErr.message ?? 'An unexpected error occurred. Please try again.';
-  return { message, statusCode: apiErr.statusCode };
-}
 
 export function usePredictionUpload() {
   const [uploadState, setUploadState] = useState<UploadState>('idle');
@@ -92,11 +80,9 @@ export function usePredictionUpload() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeSteps, setAnalyzeSteps] = useState<AnalyzeStepInfo[]>(INITIAL_STEPS);
   const [config, setConfig] = useState<PredictionConfig>(DEFAULT_CONFIG);
-  const [predictionResult, setPredictionResult] = useState<PredictionResponse | null>(null);
-  const [predictionError, setPredictionError] = useState<PredictionSubmitError | null>(null);
+  const [result, setResult] = useState<PredictionResponse | null>(null);
+  const [predictionError, setPredictionError] = useState<ApiError | null>(null);
   const previewUrlRef = useRef<string | null>(null);
-
-  const mutation = useCreatePrediction();
 
   // Revoke stale object URL on unmount
   useEffect(() => {
@@ -116,6 +102,7 @@ export function usePredictionUpload() {
       return;
     }
 
+    // Revoke old preview
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
 
     const previewUrl = URL.createObjectURL(file);
@@ -144,12 +131,7 @@ export function usePredictionUpload() {
       setUploadState('idle');
       if (rejections.length > 0) {
         const first = rejections[0].errors[0];
-        const code =
-          first.code === 'file-too-large'
-            ? 'size'
-            : first.code === 'file-invalid-type'
-              ? 'type'
-              : 'unknown';
+        const code = first.code === 'file-too-large' ? 'size' : first.code === 'file-invalid-type' ? 'type' : 'unknown';
         setValidationError({ code: code as ValidationError['code'], message: first.message });
         setUploadState('error');
         return;
@@ -188,87 +170,58 @@ export function usePredictionUpload() {
     setUploadState('idle');
     setIsAnalyzing(false);
     setAnalyzeSteps(INITIAL_STEPS);
-    setPredictionResult(null);
+    setResult(null);
     setPredictionError(null);
   }, []);
 
-  const resetResult = useCallback(() => {
-    setPredictionResult(null);
-    setPredictionError(null);
-    setAnalyzeSteps(INITIAL_STEPS);
-  }, []);
-
-  const setStepStatus = (
-    id: AnalyzeStepInfo['id'],
-    status: AnalyzeStepInfo['status'],
-  ) => {
+  const updateStep = (id: AnalyzeStepInfo['id'], status: AnalyzeStepInfo['status']) => {
     setAnalyzeSteps((steps) => steps.map((s) => (s.id === id ? { ...s, status } : s)));
   };
 
+  // Real analyze flow: POST /api/v1/predictions (multipart). The step
+  // indicators are cosmetic — the backend does not stream progress — so
+  // 'upload'/'prepare' resolve immediately and 'request'/'waiting' track the
+  // actual in-flight request rather than a fixed delay.
   const analyze = useCallback(async () => {
-    if (!imageMeta || isAnalyzing || mutation.isPending) return;
-
+    if (!imageMeta || isAnalyzing) return;
     setIsAnalyzing(true);
     setAnalyzeSteps(INITIAL_STEPS);
-    setPredictionResult(null);
+    setResult(null);
     setPredictionError(null);
 
-    // Step 1 active: file about to be sent
-    setAnalyzeSteps((s) => s.map((step) => (step.id === 'upload' ? { ...step, status: 'active' } : step)));
-
-    let uploadFinished = false;
-
-    const onUploadDone = () => {
-      if (uploadFinished) return;
-      uploadFinished = true;
-      setAnalyzeSteps((s) =>
-        s.map((step) => {
-          if (step.id === 'upload') return { ...step, status: 'done' };
-          if (step.id === 'prepare') return { ...step, status: 'done' };
-          if (step.id === 'request') return { ...step, status: 'done' };
-          if (step.id === 'waiting') return { ...step, status: 'active' };
-          return step;
-        }),
-      );
-    };
+    updateStep('upload', 'done');
+    updateStep('prepare', 'done');
+    updateStep('request', 'active');
 
     try {
-      const result = await mutation.mutateAsync({
-        image: imageMeta.file,
-        options: {
-          confidence_threshold: config.confidenceThreshold,
-          include_individual_predictions: true,
-          include_runtime_statistics: true,
-          save_history: true,
-        },
-        onUploadProgress: (pct) => {
-          if (pct >= 100) onUploadDone();
-        },
+      const response = await createPrediction(imageMeta.file, {
+        confidence_threshold: config.confidenceThreshold,
+        include_individual_predictions: config.includeIndividualPredictions,
+        include_runtime_statistics: config.includeRuntimeStatistics,
+        save_history: config.saveHistory,
+        generate_report: config.generateReport,
       });
-
-      // Ensure steps finished even if onUploadProgress never fired at 100
-      onUploadDone();
-
-      setAnalyzeSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'done' as const })));
-      setPredictionResult(result);
+      updateStep('request', 'done');
+      updateStep('waiting', 'done');
+      setResult(response);
     } catch (err) {
-      onUploadDone();
-      setAnalyzeSteps((s) =>
-        s.map((step) =>
-          step.status === 'active' || step.status === 'pending'
-            ? { ...step, status: step.status === 'active' ? 'error' : step.status }
-            : step,
-        ),
-      );
-      setPredictionError(classifyError(err));
+      updateStep('request', 'error');
+      setPredictionError(err as ApiError);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [imageMeta, isAnalyzing, config, mutation]);
+  }, [imageMeta, isAnalyzing, config]);
 
   const setConfidenceThreshold = useCallback((value: number) => {
     setConfig((prev) => ({ ...prev, confidenceThreshold: value }));
   }, []);
+
+  const setConfigFlag = useCallback(
+    (key: 'includeIndividualPredictions' | 'includeRuntimeStatistics' | 'saveHistory' | 'generateReport', value: boolean) => {
+      setConfig((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   return {
     uploadState,
@@ -277,15 +230,14 @@ export function usePredictionUpload() {
     isAnalyzing,
     analyzeSteps,
     config,
-    predictionResult,
+    result,
     predictionError,
     onDrop,
     onDragEnter,
     onDragLeave,
     removeImage,
-    resetResult,
     analyze,
     setConfidenceThreshold,
-    setStepStatus,
+    setConfigFlag,
   };
 }

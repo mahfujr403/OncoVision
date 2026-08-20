@@ -1,85 +1,134 @@
+import { Activity, Users, Microscope, TrendingUp } from 'lucide-react';
 import { StatCard, Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { SectionTitle } from '@/components/ui/SectionTitle';
-import { Activity, Users, Microscope, TrendingUp } from 'lucide-react';
-import { CANCER_TYPE_LABELS, CANCER_TYPE_COLORS } from '@/constants/app';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { useAnalytics } from '@/hooks/queries/useAnalytics';
+import { useAdminUsers } from '@/hooks/queries/useAdminUsers';
+import { useMonitoring } from '@/hooks/queries/useMonitoring';
+import { getClassLabelColor } from '@/constants/app';
 
-const CLASS_DIST = [
-  { label: 'lung_aca', count: 3241, pct: 0.32 },
-  { label: 'colon_aca', count: 2890, pct: 0.29 },
-  { label: 'lung_scc', count: 1876, pct: 0.19 },
-  { label: 'lung_benign', count: 1102, pct: 0.11 },
-  { label: 'colon_benign', count: 891, pct: 0.09 },
-];
-
-const DAILY_PREDICTIONS = [
-  { day: 'Mon', count: 142 },
-  { day: 'Tue', count: 198 },
-  { day: 'Wed', count: 167 },
-  { day: 'Thu', count: 214 },
-  { day: 'Fri', count: 189 },
-  { day: 'Sat', count: 78 },
-  { day: 'Sun', count: 52 },
-];
-
-const MAX_COUNT = Math.max(...DAILY_PREDICTIONS.map((d) => d.count));
-
+// NOTE: GET /api/v1/reports/analytics is not scoped per-user, so this
+// admin view is built on the same underlying data as the user-facing
+// Reports page — the value-add here is combining it with admin-only
+// context (total registered users, live model runtime) in one place. The
+// previous version of this page had a fabricated "Predictions This Week"
+// daily bar chart; the backend has no per-day breakdown endpoint, so that
+// chart has been removed rather than faked.
 export default function AdminAnalyticsPage() {
+  const analytics = useAnalytics();
+  const users = useAdminUsers({ page: 1, page_size: 1 });
+  const monitoring = useMonitoring();
+
+  const isLoading = analytics.isLoading || users.isLoading || monitoring.isLoading;
+  const isError = analytics.isError || users.isError || monitoring.isError;
+
   return (
     <div className="space-y-5">
       <SectionTitle title="Analytics" description="Platform-wide usage and prediction statistics" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Total Users" value="142" delta="12 this month" deltaPositive icon={<Users className="h-4 w-4" />} />
-        <StatCard label="Total Predictions" value="9,986" delta="8.4% this week" deltaPositive icon={<Microscope className="h-4 w-4" />} />
-        <StatCard label="Avg. Confidence" value="93.4%" delta="0.8% vs prev. month" deltaPositive icon={<TrendingUp className="h-4 w-4" />} />
-        <StatCard label="Active Models" value="6/6" icon={<Activity className="h-4 w-4" />} />
-      </div>
+      {isError ? (
+        <ErrorState
+          message="Couldn't load analytics."
+          onRetry={() => {
+            analytics.refetch();
+            users.refetch();
+            monitoring.refetch();
+          }}
+        />
+      ) : isLoading || !analytics.data ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-6 w-14" />
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard
+              label="Total Users"
+              value={users.data ? String(users.data.pagination.total_records) : '—'}
+              icon={<Users className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Total Predictions"
+              value={analytics.data.total_predictions.toLocaleString()}
+              icon={<Microscope className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Avg. Confidence"
+              value={`${analytics.data.average_confidence.toFixed(1)}%`}
+              icon={<TrendingUp className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Active Models"
+              value={
+                monitoring.data
+                  ? `${monitoring.data.runtime.loaded_model_count}/${monitoring.data.runtime.total_model_count}`
+                  : '—'
+              }
+              icon={<Activity className="h-4 w-4" />}
+            />
+          </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Weekly predictions bar chart (manual) */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Predictions This Week</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end gap-2 h-32">
-              {DAILY_PREDICTIONS.map((d) => (
-                <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-muted-foreground font-mono">{d.count}</span>
-                  <div
-                    className="w-full rounded-t bg-primary/80 hover:bg-primary transition-colors"
-                    style={{ height: `${(d.count / MAX_COUNT) * 100}%` }}
-                  />
-                  <span className="text-[10px] text-muted-foreground">{d.day}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Predictions This Period</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-3 gap-3 text-center">
+                <PeriodStat label="Today" value={analytics.data.predictions_today} />
+                <PeriodStat label="This Week" value={analytics.data.predictions_this_week} />
+                <PeriodStat label="This Month" value={analytics.data.predictions_this_month} />
+              </CardContent>
+            </Card>
 
-        {/* Class distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Classification Distribution</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {CLASS_DIST.map((c) => (
-              <div key={c.label} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium">{CANCER_TYPE_LABELS[c.label]}</span>
-                  <span className="font-mono text-muted-foreground">{c.count.toLocaleString()} ({(c.pct * 100).toFixed(0)}%)</span>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${c.pct * 100}%`, backgroundColor: CANCER_TYPE_COLORS[c.label] }}
-                  />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Classification Distribution</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {Object.keys(analytics.data.class_distribution).length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No predictions yet.</p>
+                ) : (
+                  Object.entries(analytics.data.class_distribution).map(([label, count]) => {
+                    const total = analytics.data!.total_predictions || 1;
+                    const pct = (count / total) * 100;
+                    return (
+                      <div key={label} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium">{label}</span>
+                          <span className="font-mono text-muted-foreground">
+                            {count.toLocaleString()} ({pct.toFixed(0)}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, backgroundColor: getClassLabelColor(label) }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PeriodStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <p className="text-lg font-bold font-display">{value}</p>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
   );
 }

@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/Badge';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 import { formatDateTime } from '@/utils/formatters';
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner';
 
 const TABS = [
   { id: 'general', label: 'General', icon: <UserCog className="h-3.5 w-3.5" /> },
@@ -26,7 +27,13 @@ type TabId = (typeof TABS)[number]['id'];
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('general');
   const { theme, setTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, logoutAll } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOutAllDevices = async () => {
+    await logoutAll();
+    navigate(ROUTES.LOGIN, { replace: true });
+  };
 
   // Notification states
   const [emailNotifs, setEmailNotifs] = useState(true);
@@ -35,10 +42,15 @@ export default function SettingsPage() {
   const [weeklyDigest, setWeeklyDigest] = useState(true);
   const [highConfidenceOnly, setHighConfidenceOnly] = useState(false);
 
+  // NOTE: only "Last active" below is real (from the authenticated user's
+  // last_login). "Current device", "IP address", and "Session expires" have
+  // no backend source — verified against app/schemas/user.py and
+  // app/api/v1/auth.py, which return/track none of that — so they're
+  // presented as illustrative via the demo banner in the Session tab below.
   const sessionData = [
     { label: 'Current device', value: 'Chrome on macOS' },
     { label: 'IP address', value: '10.0.0.12' },
-    { label: 'Last active', value: formatDateTime(user?.last_login ?? new Date().toISOString()) },
+    { label: 'Last active', value: user?.last_login ? formatDateTime(user.last_login) : 'Unknown' },
     { label: 'Session expires', value: 'In 14 days (remember me)' },
   ];
 
@@ -182,6 +194,7 @@ export default function SettingsPage() {
 
         {/* Notifications */}
         <Tabs.Content value="notifications" className="space-y-4">
+          <DemoDataBanner feature="notification preferences" />
           <Card>
             <CardHeader>
               <CardTitle>Email Notifications</CardTitle>
@@ -297,6 +310,10 @@ export default function SettingsPage() {
               <CardDescription>Details about your active login session</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                Only "Last active" below is real (from your account's last login). Device, IP, and
+                expiry aren't tracked by the backend today.
+              </div>
               {sessionData.map((s) => (
                 <div key={s.label} className="flex items-center justify-between gap-4 py-1">
                   <span className="text-xs text-muted-foreground">{s.label}</span>
@@ -314,7 +331,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-3">
               <ToggleSetting
                 label="Remember this device"
-                description="Stay signed in for 30 days on this browser"
+                description="Demo only — the backend has no per-device remember-me setting"
                 checked={true}
                 onCheckedChange={() => {}}
               />
@@ -322,8 +339,17 @@ export default function SettingsPage() {
                 <Button variant="outline" size="sm" onClick={() => { logout(); }}>
                   Sign out this session
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-2 text-destructive hover:text-destructive"
+                  onClick={handleSignOutAllDevices}
+                >
+                  Sign out of all devices
+                </Button>
                 <p className="text-xs text-muted-foreground">
-                  Active sessions on other devices can't be revoked yet (coming soon).
+                  "Sign out of all devices" revokes every refresh token on your account
+                  (POST /auth/logout-all) — this one is real.
                 </p>
               </div>
             </CardContent>

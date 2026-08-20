@@ -3,9 +3,13 @@ import { SectionTitle } from '@/components/ui/SectionTitle';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner';
 import { formatRelativeTime, formatPercent } from '@/utils/formatters';
 import { CANCER_TYPE_LABELS } from '@/constants/app';
 
+// DEMO DATA — no favorites/starring endpoint exists. `save_history` on the
+// prediction request only controls whether a prediction is written to
+// Prediction History; it has nothing to do with favoriting.
 const FAVORITES = [
   { id: 'p3', image: 'teaching_case_aca_1.tiff', label: 'lung_aca', confidence: 0.989, createdAt: new Date(Date.now() - 86400000).toISOString() },
   { id: 'p9', image: 'benchmark_colon_001.jpg', label: 'colon_benign', confidence: 0.978, createdAt: new Date(Date.now() - 86400000 * 3).toISOString() },
@@ -19,6 +23,8 @@ export default function FavoritesPage() {
         title="Favorites"
         description="Starred predictions for easy access"
       />
+
+      <DemoDataBanner feature="favorites" />
 
       {FAVORITES.length === 0 ? (
         <Card>

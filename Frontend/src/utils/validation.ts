@@ -2,41 +2,40 @@ import { z } from 'zod';
 
 export const emailSchema = z.string().email('Invalid email address');
 
-// Matches backend RegisterRequest.validate_password_strength:
-// min 8, requires uppercase, lowercase, digit, special character
 export const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
-  .max(128, 'Password must be at most 128 characters')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+  .regex(/[0-9]/, 'Password must contain at least one number');
 
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, 'Password is required'),
 });
 
-// Matches backend RegisterRequest: full_name, email, password, confirm_password
-// No role selector — backend assigns 'user' role on registration
+// Matches app/schemas/auth.py RegisterRequest exactly: full_name, email,
+// password, confirm_password. The backend has no role or institution field
+// at registration — every new account is created with role="user".
 export const registerSchema = z
   .object({
-    full_name: z
-      .string()
-      .min(2, 'Full name must be at least 2 characters')
-      .max(255, 'Full name must be at most 255 characters'),
+    name: z.string().min(2, 'Name must be at least 2 characters'),
     email: emailSchema,
     password: passwordSchema,
-    confirm_password: z.string(),
+    confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.confirm_password, {
+  .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
-    path: ['confirm_password'],
+    path: ['confirmPassword'],
   });
 
 export const forgotPasswordSchema = z.object({
   email: emailSchema,
+});
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(2),
+  institution: z.string().optional(),
+  specialty: z.string().optional(),
 });
 
 export const resetPasswordSchema = z
@@ -60,8 +59,14 @@ export const changePasswordSchema = z
     path: ['confirmPassword'],
   });
 
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'Verification token is required'),
+});
+
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+export type UpdateProfileFormData = z.infer<typeof updateProfileSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+export type VerifyEmailFormData = z.infer<typeof verifyEmailSchema>;

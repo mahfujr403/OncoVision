@@ -44,9 +44,17 @@ export interface ValidationError {
   message: string;
 }
 
+// Real, backend-accepted prediction options (verified against
+// app/api/v1/predictions/schemas.py). `ensembleMethod` and `modelVersion`
+// were removed — the backend has no such request fields; ensemble strategy
+// and model versions are entirely server-controlled (ADR-006, ADR-009) and
+// are never something the client selects.
 export interface PredictionConfig {
   confidenceThreshold: number;
-  ensembleMethod: string;
+  includeIndividualPredictions: boolean;
+  includeRuntimeStatistics: boolean;
+  saveHistory: boolean;
+  /** Accepted by the backend for contract stability — NOT yet acted on. */
+  generateReport: boolean;
   imageSize: string;
-  modelVersion: string;
 }

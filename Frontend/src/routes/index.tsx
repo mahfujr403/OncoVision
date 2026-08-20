@@ -21,7 +21,6 @@ const VerifyEmailPage = lazy(() => import('@/pages/auth/VerifyEmailPage'));
 const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
 const PredictPage = lazy(() => import('@/pages/dashboard/PredictPage'));
 const HistoryPage = lazy(() => import('@/pages/dashboard/HistoryPage'));
-const HistoryDetailPage = lazy(() => import('@/pages/dashboard/HistoryDetailPage'));
 const ReportsPage = lazy(() => import('@/pages/dashboard/ReportsPage'));
 const SavedCasesPage = lazy(() => import('@/pages/dashboard/SavedCasesPage'));
 const FavoritesPage = lazy(() => import('@/pages/dashboard/FavoritesPage'));
@@ -75,7 +74,6 @@ export function AppRoutes() {
             <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
             <Route path={ROUTES.PREDICT} element={<PredictPage />} />
             <Route path={ROUTES.HISTORY} element={<HistoryPage />} />
-            <Route path={ROUTES.HISTORY_DETAIL} element={<HistoryDetailPage />} />
             <Route path={ROUTES.REPORTS} element={<ReportsPage />} />
             <Route path={ROUTES.SAVED_CASES} element={<SavedCasesPage />} />
             <Route path={ROUTES.FAVORITES} element={<FavoritesPage />} />
@@ -84,7 +82,10 @@ export function AppRoutes() {
             <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
             <Route path={ROUTES.CHANGE_PASSWORD} element={<ChangePasswordPage />} />
 
-            {/* Comparison + Benchmark — accessible to all authenticated users (backend endpoints not yet implemented) */}
+            {/* Comparison and Benchmark are demo-only pages (see
+                DemoDataBanner within them) but open to any authenticated
+                user — the backend has no restricted role to gate them
+                behind. */}
             <Route path={ROUTES.COMPARISON} element={<ComparisonPage />} />
             <Route path={ROUTES.BENCHMARK} element={<BenchmarkPage />} />
 

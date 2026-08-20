@@ -1,20 +1,20 @@
 import { createContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import type { User, UserRole } from '@/types';
-import { setTokens, clearTokens, getAccessToken, getRefreshToken } from '@/api';
+import type { User, AuthTokens, UserRole } from '@/types';
+import { getAccessToken, clearTokens } from '@/api';
 import { authService } from '@/features/auth/services/authService';
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   role: UserRole | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
 
 interface AuthContextValue extends AuthState {
-  login: (user: User, accessToken: string, refreshToken: string) => void;
-  logout: () => void;
-  refreshSession: () => Promise<void>;
+  /** Called by LoginPage after authService.login() has already stored tokens. */
+  login: (tokens: AuthTokens, user: User) => void;
+  logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
   updateUser: (user: Partial<User>) => void;
 }
 
@@ -27,93 +27,75 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, setState] = useState<AuthState>({
     user: null,
-    token: null,
     role: null,
     isAuthenticated: false,
     isLoading: true,
   });
 
-  // Restore session on mount via GET /auth/me using the persisted access token
+  // Real session restoration: an access token surviving in localStorage is
+  // not proof of a valid session by itself, so we confirm it against the
+  // backend via GET /auth/me. The axios interceptor will transparently use
+  // the refresh token if the access token has expired.
   useEffect(() => {
-    const storedToken = getAccessToken();
-    if (!storedToken) {
-      setState((s) => ({ ...s, isLoading: false }));
-      return;
+    let cancelled = false;
+
+    async function restore() {
+      const token = getAccessToken();
+      if (!token) {
+        setState((s) => ({ ...s, isLoading: false }));
+        return;
+      }
+      try {
+        const user = await authService.getMe();
+        if (!cancelled) {
+          setState({ user, role: user.role, isAuthenticated: true, isLoading: false });
+        }
+      } catch {
+        if (!cancelled) {
+          clearTokens();
+          setState({ user: null, role: null, isAuthenticated: false, isLoading: false });
+        }
+      }
     }
 
-    authService
-      .getMe()
-      .then((user) => {
-        setState({
-          user,
-          token: storedToken,
-          role: user.role,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      })
-      .catch(() => {
-        // Token invalid or expired — clear everything
-        clearTokens();
-        setState({
-          user: null,
-          token: null,
-          role: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
-      });
+    restore();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const login = useCallback(
-    (user: User, accessToken: string, refreshToken: string) => {
-      setTokens(accessToken, refreshToken);
-      setState({
-        user,
-        token: accessToken,
-        role: user.role,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-    },
-    [],
-  );
-
-  const logout = useCallback(() => {
-    clearTokens();
-    setState({
-      user: null,
-      token: null,
-      role: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+  const login = useCallback((_tokens: AuthTokens, user: User) => {
+    // Tokens are already persisted by authService.login(); this just syncs
+    // React state so the UI reacts immediately.
+    setState({ user, role: user.role, isAuthenticated: true, isLoading: false });
   }, []);
 
-  const refreshSession = useCallback(async () => {
-    const storedRefresh = getRefreshToken();
-    if (!storedRefresh) {
-      logout();
-      return;
-    }
+  const logout = useCallback(async () => {
     try {
-      const tokens = await authService.refresh(storedRefresh);
-      setTokens(tokens.access_token, tokens.refresh_token);
-      setState((s) => ({ ...s, token: tokens.access_token }));
-    } catch {
-      logout();
+      await authService.logout();
+    } finally {
+      setState({ user: null, role: null, isAuthenticated: false, isLoading: false });
     }
-  }, [logout]);
+  }, []);
 
+  const logoutAll = useCallback(async () => {
+    try {
+      await authService.logoutAll();
+    } finally {
+      setState({ user: null, role: null, isAuthenticated: false, isLoading: false });
+    }
+  }, []);
+
+  // NOTE: there is no PATCH /auth/me (or any profile-update endpoint) on the
+  // backend today. This only updates local React state for optimistic UI —
+  // it does NOT persist anything. ProfilePage must show a "not saved to
+  // server" notice wherever it calls this. See DemoDataBanner usage there.
   const updateUser = useCallback((partial: Partial<User>) => {
-    setState((prev) => {
-      if (!prev.user) return prev;
-      return { ...prev, user: { ...prev.user, ...partial } };
-    });
+    setState((prev) => (prev.user ? { ...prev, user: { ...prev.user, ...partial } } : prev));
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, refreshSession, updateUser }}>
+    <AuthContext.Provider value={{ ...state, login, logout, logoutAll, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

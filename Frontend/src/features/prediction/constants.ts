@@ -1,4 +1,13 @@
-import type { WorkflowStep } from './types';
+import type { ModelInfo, WorkflowStep } from './types';
+
+export const ENSEMBLE_MODELS: ModelInfo[] = [
+  { id: 'm1', name: 'ResNet50', version: 'v3.0.1', architecture: 'CNN', active: true },
+  { id: 'm2', name: 'DenseNet121', version: 'v1.0.3', architecture: 'CNN', active: true },
+  { id: 'm3', name: 'EfficientNetB4', version: 'v2.1.0', architecture: 'CNN', active: true },
+  { id: 'm4', name: 'MobileNetV3', version: 'v1.1.0', architecture: 'CNN', active: true },
+  { id: 'm5', name: 'VGG16', version: 'v1.0.0', architecture: 'CNN', active: true },
+  { id: 'm6', name: 'ViT-B16', version: 'v1.2.0', architecture: 'Transformer', active: true },
+];
 
 export const WORKFLOW_STEPS: WorkflowStep[] = [
   {
@@ -10,7 +19,7 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   {
     step: 2,
     label: 'AI Processing',
-    description: 'Each available model runs inference in turn, producing an independent classification.',
+    description: 'Six ensemble models run in parallel for independent classification.',
     icon: 'cpu',
   },
   {
@@ -21,8 +30,8 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
   },
   {
     step: 4,
-    label: 'Result & Report',
-    description: 'Prediction result is saved to history. Structured report export is planned for a future release.',
+    label: 'Generate Report',
+    description: 'A structured clinical report is produced and available for download.',
     icon: 'file-text',
   },
 ];
@@ -36,7 +45,7 @@ export const SUPPORTED_FORMATS = [
 
 export const IMAGE_REQUIREMENTS = [
   { label: 'Recommended resolution', value: '≥ 224 × 224 px' },
-  { label: 'Maximum file size', value: '10 MB' },
+  { label: 'Maximum file size', value: '50 MB' },
   { label: 'Color mode', value: 'RGB (H&E stained)' },
   { label: 'Magnification', value: '10× – 40× preferred' },
 ] as const;

@@ -2,10 +2,13 @@ import { GitCompare } from 'lucide-react';
 import { SectionTitle } from '@/components/ui/SectionTitle';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner';
 import { Button } from '@/components/ui/Button';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 
+// DEMO DATA — the backend has no comparison/multi-case-selection workflow;
+// each prediction is fetched individually via GET /predictions/history/{id}.
 export default function ComparisonPage() {
   return (
     <div className="space-y-5">
@@ -18,6 +21,8 @@ export default function ComparisonPage() {
           </Button>
         }
       />
+
+      <DemoDataBanner feature="case comparison" />
 
       <div className="grid md:grid-cols-2 gap-4 min-h-[400px]">
         {[1, 2].map((slot) => (

@@ -2,8 +2,14 @@ import { SectionTitle } from '@/components/ui/SectionTitle';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { MetricCard } from '@/components/ui/Card';
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner';
 import { formatPercent, formatInferenceTime } from '@/utils/formatters';
 
+// DEMO DATA — the backend has no benchmarking/offline-evaluation endpoint.
+// The real model manifest (see AdminModelsPage, GET /system/models) has
+// only 3 models — MobileNetV2, DenseNet121, and an EfficientNetV2B0+ResNet50
+// fusion — and carries no accuracy/precision/recall/F1/AUC fields at all.
+// Everything below is illustrative only.
 const BENCHMARK_DATA = [
   { model: 'ViT-B16', accuracy: 0.991, precision: 0.989, recall: 0.993, f1: 0.991, auc: 0.999, ms: 820 },
   { model: 'EfficientNetB4', accuracy: 0.989, precision: 0.987, recall: 0.991, f1: 0.989, auc: 0.998, ms: 640 },
@@ -20,6 +26,8 @@ export default function BenchmarkPage() {
         title="Model Benchmark"
         description="Performance metrics across the LC25000 histopathology dataset"
       />
+
+      <DemoDataBanner feature="model benchmarking" />
 
       {/* Summary metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

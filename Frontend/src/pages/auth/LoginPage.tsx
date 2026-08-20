@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,18 +8,18 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ROUTES } from '@/constants/routes';
 import { loginSchema, type LoginFormData } from '@/utils/validation';
-import { AuthErrorAlert, usePasswordToggle, useLogin } from '@/features/auth';
+import { authService, AuthErrorAlert, usePasswordToggle } from '@/features/auth';
 import { useAuth } from '@/hooks/useAuth';
+import type { ApiError } from '@/types';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const loginMutation = useLogin();
+  const [serverError, setServerError] = useState('');
   const { visible, toggle, inputType } = usePasswordToggle();
 
-  const from =
-    (location.state as { from?: Location })?.from?.pathname ?? ROUTES.DASHBOARD;
+  const from = (location.state as { from?: Location })?.from?.pathname ?? ROUTES.DASHBOARD;
 
   const {
     register,
@@ -30,30 +31,26 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    setServerError('');
     try {
-      const result = await loginMutation.mutateAsync({
+      const { user, tokens } = await authService.login({
         email: data.email,
         password: data.password,
       });
-      login(result.user, result.access_token, result.refresh_token);
-      toast.success(`Welcome back, ${result.user.full_name.split(' ')[0]}!`);
+      login(tokens, user);
+      toast.success(`Welcome back, ${user.full_name.split(' ')[0]}!`);
       navigate(from, { replace: true });
-    } catch {
-      // error surfaced via loginMutation.error below
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setServerError(apiErr.message ?? 'Sign in failed. Please try again.');
     }
   };
-
-  const isPending = isSubmitting || loginMutation.isPending;
-  const serverError =
-    loginMutation.error?.message ?? null;
 
   return (
     <div className="space-y-5">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold font-display">Sign in</h1>
-        <p className="text-sm text-muted-foreground">
-          Access your OncoVision AI workspace
-        </p>
+        <p className="text-sm text-muted-foreground">Access your OncoVision AI workspace</p>
       </div>
 
       {serverError && <AuthErrorAlert message={serverError} />}
@@ -87,11 +84,7 @@ export default function LoginPage() {
               aria-label={visible ? 'Hide password' : 'Show password'}
               className="focus:outline-none focus:ring-1 focus:ring-ring rounded"
             >
-              {visible ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <Eye className="h-3.5 w-3.5" />
-              )}
+              {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             </button>
           }
           error={errors.password?.message}
@@ -99,7 +92,7 @@ export default function LoginPage() {
           {...register('password')}
         />
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-end">
           <Link
             to={ROUTES.FORGOT_PASSWORD}
             className="text-xs text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-ring rounded"
@@ -108,13 +101,8 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <Button
-          type="submit"
-          className="w-full"
-          loading={isPending}
-          disabled={isPending}
-        >
-          {isPending ? 'Signing in…' : 'Sign in'}
+        <Button type="submit" className="w-full" loading={isSubmitting} disabled={isSubmitting}>
+          {isSubmitting ? 'Signing in...' : 'Sign in'}
         </Button>
       </form>
 

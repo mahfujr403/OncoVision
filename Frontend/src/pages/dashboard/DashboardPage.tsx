@@ -1,33 +1,29 @@
-import {
-  Microscope, CheckCircle2, Activity, TrendingUp,
-  ArrowRight, Brain, Zap,
-} from 'lucide-react';
+import { Microscope, CheckCircle2, Activity, TrendingUp, ArrowRight, Brain } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { StatCard, Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SectionTitle } from '@/components/ui/SectionTitle';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ROUTES } from '@/constants/routes';
 import { useAuth } from '@/hooks/useAuth';
-import { formatRelativeTime, formatPercent } from '@/utils/formatters';
+import { useAnalytics } from '@/hooks/queries/useAnalytics';
+import { usePredictionHistory } from '@/hooks/queries/usePredictionHistory';
+import { useMonitoring } from '@/hooks/queries/useMonitoring';
+import { formatRelativeTime } from '@/utils/formatters';
 
-const RECENT_PREDICTIONS = [
-  { id: 'p1', image: 'slide_001.tiff', label: 'Lung Adenocarcinoma', confidence: 0.973, status: 'completed', createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
-  { id: 'p2', image: 'colon_biopsy_04.jpg', label: 'Colon Benign', confidence: 0.891, status: 'completed', createdAt: new Date(Date.now() - 1000 * 60 * 80).toISOString() },
-  { id: 'p3', image: 'lung_sq_case7.png', label: 'Lung Squamous Cell Carcinoma', confidence: 0.944, status: 'completed', createdAt: new Date(Date.now() - 1000 * 60 * 240).toISOString() },
-  { id: 'p4', image: 'h_e_stain_28.tiff', label: 'Colon Adenocarcinoma', confidence: 0.812, status: 'completed', createdAt: new Date(Date.now() - 1000 * 60 * 480).toISOString() },
-];
-
-const MODEL_STATS = [
-  { name: 'ResNet50', accuracy: 0.974, status: 'active' },
-  { name: 'EfficientNetB4', accuracy: 0.989, status: 'active' },
-  { name: 'DenseNet121', accuracy: 0.981, status: 'active' },
-  { name: 'ViT-B16', accuracy: 0.991, status: 'active' },
-];
-
+// NOTE: every number and list on this page previously came from hardcoded
+// mock arrays. It's now built entirely on GET /reports/analytics,
+// GET /predictions/history, and GET /monitoring — verified against the
+// backend source. "Model Status" shows real per-model availability from
+// the AI runtime rather than fabricated accuracy percentages, since the
+// backend does not track offline accuracy per model.
 export default function DashboardPage() {
   const { user } = useAuth();
+  const analytics = useAnalytics();
+  const recent = usePredictionHistory({ page: 1, page_size: 4 });
+  const monitoring = useMonitoring();
 
   return (
     <div className="space-y-6">
@@ -56,33 +52,37 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ staggerChildren: 0.05 }}
       >
-        <StatCard
-          label="Total Predictions"
-          value="1,248"
-          delta="12% this week"
-          deltaPositive
-          icon={<Microscope className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Completed Today"
-          value="34"
-          delta="8 pending"
-          icon={<CheckCircle2 className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Avg. Confidence"
-          value="93.7%"
-          delta="1.2% vs last month"
-          deltaPositive
-          icon={<TrendingUp className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Avg. Inference"
-          value="0.74s"
-          delta="4ms faster"
-          deltaPositive
-          icon={<Zap className="h-4 w-4" />}
-        />
+        {analytics.isLoading || !analytics.data ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-6 w-14" />
+            </Card>
+          ))
+        ) : (
+          <>
+            <StatCard
+              label="Total Predictions"
+              value={analytics.data.total_predictions.toLocaleString()}
+              icon={<Microscope className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Completed Today"
+              value={String(analytics.data.predictions_today)}
+              icon={<CheckCircle2 className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Avg. Confidence"
+              value={`${analytics.data.average_confidence.toFixed(1)}%`}
+              icon={<TrendingUp className="h-4 w-4" />}
+            />
+            <StatCard
+              label="Success Rate"
+              value={`${analytics.data.success_rate.toFixed(1)}%`}
+              icon={<Activity className="h-4 w-4" />}
+            />
+          </>
+        )}
       </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-4">
@@ -101,28 +101,50 @@ export default function DashboardPage() {
           />
 
           <Card padding="none">
-            <div className="divide-y divide-border">
-              {RECENT_PREDICTIONS.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors group">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                    <Microscope className="h-4 w-4 text-primary" />
+            {recent.isLoading ? (
+              <div className="divide-y divide-border">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3">
+                    <Skeleton className="h-9 w-9 rounded-md" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-2.5 w-24" />
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{p.image}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{p.label}</p>
-                  </div>
-                  <div className="shrink-0 text-right space-y-0.5">
-                    <Badge
-                      variant={p.confidence > 0.9 ? 'success' : p.confidence > 0.75 ? 'warning' : 'destructive'}
-                      className="text-[10px]"
-                    >
-                      {formatPercent(p.confidence)}
-                    </Badge>
-                    <p className="text-[10px] text-muted-foreground">{formatRelativeTime(p.createdAt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : !recent.data || recent.data.items.length === 0 ? (
+              <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+                No predictions yet — run your first analysis to see it here.
+              </p>
+            ) : (
+              <div className="divide-y divide-border">
+                {recent.data.items.map((p) => (
+                  <Link
+                    to={`${ROUTES.HISTORY}/${p.history_id}`}
+                    key={p.history_id}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors group"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                      <Microscope className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{p.image_filename}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{p.predicted_class ?? '—'}</p>
+                    </div>
+                    <div className="shrink-0 text-right space-y-0.5">
+                      <Badge
+                        variant={p.confidence > 90 ? 'success' : p.confidence > 75 ? 'warning' : 'destructive'}
+                        className="text-[10px]"
+                      >
+                        {p.confidence.toFixed(1)}%
+                      </Badge>
+                      <p className="text-[10px] text-muted-foreground">{formatRelativeTime(p.created_at)}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
@@ -130,37 +152,40 @@ export default function DashboardPage() {
         <div className="space-y-3">
           <SectionTitle
             title="Model Status"
-            description="Active ensemble models"
+            description="Live AI runtime state"
             action={
               <Button variant="ghost" size="xs" asChild>
-                <Link to={ROUTES.BENCHMARK}>
-                  Benchmark <ArrowRight className="h-3 w-3" />
+                <Link to={ROUTES.ADMIN_SYSTEM_HEALTH}>
+                  Details <ArrowRight className="h-3 w-3" />
                 </Link>
               </Button>
             }
           />
 
           <Card className="space-y-3">
-            <div className="flex items-center gap-2 pb-2 border-b border-border">
-              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs text-muted-foreground">All systems operational</span>
-            </div>
-            {MODEL_STATS.map((m) => (
-              <div key={m.name} className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-medium">{m.name}</span>
-                  <Badge variant="success" dot className="text-[10px]">
-                    {formatPercent(m.accuracy)}
-                  </Badge>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+            {monitoring.isLoading || !monitoring.data ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <>
+                <div className="flex items-center gap-2 pb-2 border-b border-border">
                   <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${m.accuracy * 100}%` }}
+                    className={`h-2 w-2 rounded-full ${monitoring.data.runtime.is_operational ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}
                   />
+                  <span className="text-xs text-muted-foreground">
+                    {monitoring.data.runtime.loaded_model_count}/{monitoring.data.runtime.total_model_count} models
+                    loaded
+                  </span>
                 </div>
-              </div>
-            ))}
+                {monitoring.data.runtime.models.map((m) => (
+                  <div key={m.model_id} className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-medium truncate">{m.display_name}</span>
+                    <Badge variant={m.is_available ? 'success' : 'destructive'} dot className="text-[10px] capitalize">
+                      {m.state}
+                    </Badge>
+                  </div>
+                ))}
+              </>
+            )}
           </Card>
 
           {/* Quick actions */}

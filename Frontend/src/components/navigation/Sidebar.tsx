@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Microscope, History,
+  LayoutDashboard, Microscope, History, GitCompare, BarChart3,
   FileText, Bookmark, Heart, Bell, User, Settings,
   Users, Cpu, Activity, ScrollText, ChevronRight,
   Stethoscope, ChevronLeft, Zap, KeyRound,
@@ -8,7 +8,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/constants/routes';
-import { isAdmin } from '@/utils/permissions';
+import { isAdmin, hasPermission } from '@/utils/permissions';
 import { Avatar } from '@/components/ui/Avatar';
 import { APP_NAME } from '@/constants/app';
 import { ROLE_LABELS } from '@/constants/roles';
@@ -36,10 +36,21 @@ function buildNavGroups(role: ReturnType<typeof useAuth>['role']): NavGroup[] {
     },
   ];
 
-  // All authenticated users see Reports; Comparison/Benchmark are placeholder pages
-  const analysisItems: NavItem[] = [
-    { label: 'Reports', icon: <FileText className="h-4 w-4" />, to: ROUTES.REPORTS },
-  ];
+  const analysisItems: NavItem[] = [];
+  // Comparison/Benchmark are demo-only pages, but every authenticated user
+  // can see them (no restricted role exists on the real backend) — see
+  // utils/permissions.ts.
+  if (hasPermission(role ?? undefined, 'comparison:view')) {
+    analysisItems.push(
+      { label: 'Comparison', icon: <GitCompare className="h-4 w-4" />, to: ROUTES.COMPARISON },
+      { label: 'Benchmark', icon: <BarChart3 className="h-4 w-4" />, to: ROUTES.BENCHMARK },
+    );
+  }
+  if (hasPermission(role ?? undefined, 'reports:view')) {
+    analysisItems.push(
+      { label: 'Reports', icon: <FileText className="h-4 w-4" />, to: ROUTES.REPORTS },
+    );
+  }
   if (analysisItems.length > 0) {
     groups.push({ label: 'Analysis', items: analysisItems });
   }

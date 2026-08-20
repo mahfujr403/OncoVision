@@ -12,8 +12,6 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ROUTES } from '@/constants/routes';
 import { ROLE_LABELS } from '@/constants/roles';
-import { getRefreshToken } from '@/api';
-import { authService } from '@/features/auth/services/authService';
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -26,15 +24,10 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const handleLogout = async () => {
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      try {
-        await authService.logout(refreshToken);
-      } catch {
-        // Best-effort — clear locally regardless
-      }
-    }
-    logout();
+    // AuthContext's logout() already calls authService.logout() and clears
+    // state — calling authService.logout() again here would just be a
+    // redundant, wasted request.
+    await logout();
     navigate(ROUTES.LOGIN, { replace: true });
   };
 

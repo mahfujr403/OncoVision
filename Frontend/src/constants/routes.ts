@@ -9,7 +9,6 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   PREDICT: '/dashboard/predict',
   HISTORY: '/dashboard/history',
-  HISTORY_DETAIL: '/dashboard/history/:historyId',
   COMPARISON: '/dashboard/comparison',
   BENCHMARK: '/dashboard/benchmark',
   REPORTS: '/dashboard/reports',

@@ -3,9 +3,11 @@ import { SectionTitle } from '@/components/ui/SectionTitle';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/Badge';
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner';
 import { formatDate, formatPercent } from '@/utils/formatters';
 import { CANCER_TYPE_LABELS } from '@/constants/app';
 
+// DEMO DATA — no saved-cases endpoint exists on the backend.
 const SAVED = [
   { id: 'p7', image: 'rare_scc_case.tiff', label: 'lung_scc', confidence: 0.921, savedAt: new Date(Date.now() - 86400000 * 2).toISOString(), note: 'Unusual morphology — discuss in MDT' },
   { id: 'p12', image: 'colon_aca_grade3.png', label: 'colon_aca', confidence: 0.964, savedAt: new Date(Date.now() - 86400000 * 5).toISOString(), note: 'High-grade adenocarcinoma, confirm staining' },
@@ -18,6 +20,8 @@ export default function SavedCasesPage() {
         title="Saved Cases"
         description="Pinned predictions for follow-up or reference"
       />
+
+      <DemoDataBanner feature="saved cases" />
 
       {SAVED.length === 0 ? (
         <Card>

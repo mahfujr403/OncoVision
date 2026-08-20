@@ -1,19 +1,10 @@
-// Real backend auth service — all calls go through the shared axiosInstance.
-// The mock localStorage simulation has been removed.
-import { axiosInstance } from '@/api';
+import { axiosInstance, unwrap, setTokens, clearTokens, getRefreshToken } from '@/api';
 import { API_ENDPOINTS } from '@/constants/api';
-import type {
-  ApiResponse,
-  User,
-  LoginResponseData,
-  RegisterResponseData,
-  RefreshResponseData,
-} from '@/types';
+import type { ApiEnvelope, AuthTokens, User } from '@/types';
 
-export interface LoginPayload {
-  email: string;
-  password: string;
-}
+// Real backend contract — verified against app/schemas/auth.py and
+// app/api/v1/auth.py. Do not add fields (e.g. role selection at
+// registration): the backend always creates new accounts with role="user".
 
 export interface RegisterPayload {
   full_name: string;
@@ -22,45 +13,56 @@ export interface RegisterPayload {
   confirm_password: string;
 }
 
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+interface LoginResponseData extends AuthTokens {
+  user: User;
+}
+
+async function register(payload: RegisterPayload): Promise<User> {
+  const response = await axiosInstance.post<ApiEnvelope<User>>(API_ENDPOINTS.AUTH.REGISTER, payload);
+  return unwrap(response.data);
+}
+
+async function login(payload: LoginPayload): Promise<{ user: User; tokens: AuthTokens }> {
+  const response = await axiosInstance.post<ApiEnvelope<LoginResponseData>>(API_ENDPOINTS.AUTH.LOGIN, payload);
+  const data = unwrap(response.data);
+  const { user, ...tokens } = data;
+  setTokens(tokens.access_token, tokens.refresh_token);
+  return { user, tokens };
+}
+
+async function getMe(): Promise<User> {
+  const response = await axiosInstance.get<ApiEnvelope<User>>(API_ENDPOINTS.AUTH.ME);
+  return unwrap(response.data);
+}
+
+async function logout(): Promise<void> {
+  const refreshToken = getRefreshToken();
+  try {
+    if (refreshToken) {
+      await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT, { refresh_token: refreshToken });
+    }
+  } finally {
+    clearTokens();
+  }
+}
+
+async function logoutAll(): Promise<void> {
+  try {
+    await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT_ALL);
+  } finally {
+    clearTokens();
+  }
+}
+
 export const authService = {
-  async login(payload: LoginPayload): Promise<LoginResponseData> {
-    const res = await axiosInstance.post<ApiResponse<LoginResponseData>>(
-      API_ENDPOINTS.AUTH.LOGIN,
-      payload,
-    );
-    return res.data.data!;
-  },
-
-  async register(payload: RegisterPayload): Promise<RegisterResponseData> {
-    const res = await axiosInstance.post<ApiResponse<RegisterResponseData>>(
-      API_ENDPOINTS.AUTH.REGISTER,
-      payload,
-    );
-    return res.data.data!;
-  },
-
-  async getMe(): Promise<User> {
-    const res = await axiosInstance.get<ApiResponse<{ user: User }>>(
-      API_ENDPOINTS.AUTH.ME,
-    );
-    return res.data.data!.user;
-  },
-
-  async refresh(refreshToken: string): Promise<RefreshResponseData> {
-    const res = await axiosInstance.post<ApiResponse<RefreshResponseData>>(
-      API_ENDPOINTS.AUTH.REFRESH,
-      { refresh_token: refreshToken },
-    );
-    return res.data.data!;
-  },
-
-  async logout(refreshToken: string): Promise<void> {
-    await axiosInstance.post<ApiResponse<null>>(API_ENDPOINTS.AUTH.LOGOUT, {
-      refresh_token: refreshToken,
-    });
-  },
-
-  async logoutAll(): Promise<void> {
-    await axiosInstance.post<ApiResponse<null>>(API_ENDPOINTS.AUTH.LOGOUT_ALL);
-  },
+  register,
+  login,
+  getMe,
+  logout,
+  logoutAll,
 };

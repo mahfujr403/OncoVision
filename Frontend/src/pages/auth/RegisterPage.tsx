@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,17 +8,14 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ROUTES } from '@/constants/routes';
 import { registerSchema, type RegisterFormData } from '@/utils/validation';
-import { AuthErrorAlert, PasswordStrength, usePasswordToggle, useRegister } from '@/features/auth';
+import { authService, AuthErrorAlert, PasswordStrength, usePasswordToggle } from '@/features/auth';
+import type { ApiError } from '@/types';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const registerMutation = useRegister();
+  const [serverError, setServerError] = useState('');
   const { visible: showPwd, toggle: togglePwd, inputType: pwdType } = usePasswordToggle();
-  const {
-    visible: showConfirm,
-    toggle: toggleConfirm,
-    inputType: confirmType,
-  } = usePasswordToggle();
+  const { visible: showConfirm, toggle: toggleConfirm, inputType: confirmType } = usePasswordToggle();
 
   const {
     register,
@@ -31,29 +29,30 @@ export default function RegisterPage() {
   const password = watch('password') ?? '';
 
   const onSubmit = async (data: RegisterFormData) => {
+    setServerError('');
     try {
-      await registerMutation.mutateAsync({
-        full_name: data.full_name,
+      // New accounts are always created with role="user" by the backend —
+      // there is no role field to send here.
+      await authService.register({
+        full_name: data.name,
         email: data.email,
         password: data.password,
-        confirm_password: data.confirm_password,
+        confirm_password: data.confirmPassword,
       });
       toast.success('Account created! Please sign in.', { duration: 4000 });
       navigate(ROUTES.LOGIN);
-    } catch {
-      // error surfaced via registerMutation.error below
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setServerError(apiErr.message ?? 'Registration failed. Please try again.');
     }
   };
-
-  const isPending = isSubmitting || registerMutation.isPending;
-  const serverError = registerMutation.error?.message ?? null;
 
   return (
     <div className="space-y-5">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold font-display">Create account</h1>
         <p className="text-sm text-muted-foreground">
-          Join the OncoVision AI platform
+          Join the OncoVision AI platform. New accounts are created with standard user access.
         </p>
       </div>
 
@@ -69,10 +68,10 @@ export default function RegisterPage() {
           label="Full name"
           placeholder="Dr. Jane Smith"
           startAdornment={<User className="h-3.5 w-3.5" />}
-          error={errors.full_name?.message}
+          error={errors.name?.message}
           autoComplete="name"
           autoFocus
-          {...register('full_name')}
+          {...register('name')}
         />
 
         <Input
@@ -89,7 +88,7 @@ export default function RegisterPage() {
           <Input
             label="Password"
             type={pwdType}
-            placeholder="Min. 8 chars with uppercase, number, special char"
+            placeholder="Min. 8 chars, uppercase, number"
             startAdornment={<Lock className="h-3.5 w-3.5" />}
             endAdornment={
               <button
@@ -97,11 +96,7 @@ export default function RegisterPage() {
                 onClick={togglePwd}
                 aria-label={showPwd ? 'Hide password' : 'Show password'}
               >
-                {showPwd ? (
-                  <EyeOff className="h-3.5 w-3.5" />
-                ) : (
-                  <Eye className="h-3.5 w-3.5" />
-                )}
+                {showPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </button>
             }
             error={errors.password?.message}
@@ -122,25 +117,21 @@ export default function RegisterPage() {
               onClick={toggleConfirm}
               aria-label={showConfirm ? 'Hide password' : 'Show password'}
             >
-              {showConfirm ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <Eye className="h-3.5 w-3.5" />
-              )}
+              {showConfirm ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             </button>
           }
-          error={errors.confirm_password?.message}
+          error={errors.confirmPassword?.message}
           autoComplete="new-password"
-          {...register('confirm_password')}
+          {...register('confirmPassword')}
         />
 
         <Button
           type="submit"
           className="w-full mt-1"
-          loading={isPending}
-          disabled={isPending}
+          loading={isSubmitting}
+          disabled={isSubmitting}
         >
-          {isPending ? 'Creating account…' : 'Create account'}
+          {isSubmitting ? 'Creating account...' : 'Create account'}
         </Button>
       </form>
 

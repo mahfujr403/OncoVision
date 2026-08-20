@@ -3,10 +3,12 @@ import { SectionTitle } from '@/components/ui/SectionTitle';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner';
 import { formatRelativeTime } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
 import type { NotificationLevel } from '@/types';
 
+// DEMO DATA — the backend has no /notifications endpoint.
 const NOTIFICATIONS = [
   { id: 'n1', title: 'Prediction completed', message: 'slide_case_048.tiff classified as Lung Adenocarcinoma (97.3% confidence).', level: 'success' as NotificationLevel, isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
   { id: 'n2', title: 'Model updated', message: 'EfficientNetB4 v2.1 is now active. Accuracy improved by 0.3%.', level: 'info' as NotificationLevel, isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
@@ -35,6 +37,8 @@ export default function NotificationsPage() {
           ) : undefined
         }
       />
+
+      <DemoDataBanner feature="notifications" />
 
       {NOTIFICATIONS.length === 0 ? (
         <Card>

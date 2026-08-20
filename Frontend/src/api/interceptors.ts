@@ -1,13 +1,8 @@
-import type {
-  AxiosInstance,
-  InternalAxiosRequestConfig,
-  AxiosResponse,
-  AxiosError,
-} from 'axios';
-import type { ApiResponse, RefreshResponseData } from '@/types';
-import { API_ENDPOINTS } from '@/constants/api';
+import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios from 'axios';
+import type { ApiEnvelope, ApiError } from '@/types';
+import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api';
 
-// ── Token storage ─────────────────────────────────────────────────────────────
 const ACCESS_TOKEN_KEY = 'oncovision_access_token';
 const REFRESH_TOKEN_KEY = 'oncovision_refresh_token';
 
@@ -29,44 +24,55 @@ export function clearTokens(): void {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
-// ── Normalised error shape ────────────────────────────────────────────────────
-export interface NormalisedApiError {
-  message: string;
-  statusCode?: number;
-  errors?: unknown;
-}
+// A bare axios client (no interceptors) used only for the refresh call
+// itself, so refreshing never recurses through the 401 handler below.
+const refreshClient = axios.create({ baseURL: API_BASE_URL, timeout: 15_000 });
 
-// ── Refresh queue — prevents duplicate concurrent refresh calls ───────────────
+// --- Single-flight refresh + pending-request queue --------------------------
+// Prevents concurrent 401s from firing multiple /auth/refresh calls and
+// queues requests that arrive while a refresh is already in progress, per
+// project rule: "no duplicate refresh requests, queue requests during
+// refresh, avoid infinite refresh loops."
 let isRefreshing = false;
-let pendingQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (err: unknown) => void;
-}> = [];
+let refreshWaiters: Array<(token: string | null) => void> = [];
 
-function processPendingQueue(error: unknown, token: string | null) {
-  pendingQueue.forEach(({ resolve, reject }) => {
-    if (token) resolve(token);
-    else reject(error);
+function onRefreshed(token: string | null): void {
+  refreshWaiters.forEach((resolve) => resolve(token));
+  refreshWaiters = [];
+}
+
+function waitForRefresh(): Promise<string | null> {
+  return new Promise((resolve) => {
+    refreshWaiters.push(resolve);
   });
-  pendingQueue = [];
 }
 
-function normaliseAxiosError(
-  error: AxiosError<ApiResponse<null>>,
-): NormalisedApiError {
-  return {
-    message:
-      error.response?.data?.message ??
-      error.message ??
-      'An unexpected error occurred.',
-    statusCode: error.response?.status,
-    errors: error.response?.data?.errors ?? null,
-  };
+async function performRefresh(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const response = await refreshClient.post<ApiEnvelope<{ access_token: string; refresh_token: string }>>(
+      API_ENDPOINTS.AUTH.REFRESH,
+      { refresh_token: refreshToken },
+    );
+    const data = response.data.data;
+    if (!data) return null;
+    setTokens(data.access_token, data.refresh_token);
+    return data.access_token;
+  } catch {
+    return null;
+  }
 }
 
-// ── Interceptor setup ─────────────────────────────────────────────────────────
+function redirectToLogin(): void {
+  clearTokens();
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+}
+
 export function setupInterceptors(instance: AxiosInstance): void {
-  // Attach Bearer token to every outgoing request
   instance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
       const token = getAccessToken();
@@ -78,75 +84,60 @@ export function setupInterceptors(instance: AxiosInstance): void {
     (error: AxiosError) => Promise.reject(error),
   );
 
-  // On 401: attempt a single token refresh; queue any concurrent 401 requests
   instance.interceptors.response.use(
     (response: AxiosResponse) => response,
-    async (error: AxiosError<ApiResponse<null>>) => {
-      const originalRequest = error.config as InternalAxiosRequestConfig & {
-        _retry?: boolean;
-      };
+    async (error: AxiosError<ApiEnvelope<unknown>>) => {
+      const originalRequest = error.config as
+        | (InternalAxiosRequestConfig & { _retry?: boolean })
+        | undefined;
 
-      const isRefreshEndpoint = originalRequest?.url?.includes(
-        API_ENDPOINTS.AUTH.REFRESH,
-      );
+      const isAuthEndpoint =
+        originalRequest?.url?.includes(API_ENDPOINTS.AUTH.LOGIN) ||
+        originalRequest?.url?.includes(API_ENDPOINTS.AUTH.REFRESH) ||
+        originalRequest?.url?.includes(API_ENDPOINTS.AUTH.REGISTER);
 
-      if (
-        error.response?.status === 401 &&
-        !originalRequest._retry &&
-        !isRefreshEndpoint
-      ) {
+      if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
         originalRequest._retry = true;
 
         if (isRefreshing) {
-          // Queue request — it will retry once refresh completes
-          return new Promise<AxiosResponse>((resolve, reject) => {
-            pendingQueue.push({
-              resolve: (token) => {
-                if (originalRequest.headers) {
-                  originalRequest.headers.Authorization = `Bearer ${token}`;
-                }
-                resolve(instance(originalRequest));
-              },
-              reject,
-            });
-          });
+          // A refresh is already in flight — wait for it instead of firing another.
+          const token = await waitForRefresh();
+          if (!token) return Promise.reject(buildApiError(error));
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return instance(originalRequest);
         }
 
         isRefreshing = true;
-        const storedRefresh = getRefreshToken();
+        const newToken = await performRefresh();
+        isRefreshing = false;
+        onRefreshed(newToken);
 
-        if (!storedRefresh) {
-          isRefreshing = false;
-          clearTokens();
-          window.location.href = '/login';
-          return Promise.reject(normaliseAxiosError(error));
+        if (!newToken) {
+          redirectToLogin();
+          return Promise.reject(buildApiError(error));
         }
 
-        try {
-          const res = await instance.post<ApiResponse<RefreshResponseData>>(
-            API_ENDPOINTS.AUTH.REFRESH,
-            { refresh_token: storedRefresh },
-          );
-
-          const tokens = res.data.data!;
-          setTokens(tokens.access_token, tokens.refresh_token);
-          isRefreshing = false;
-          processPendingQueue(null, tokens.access_token);
-
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${tokens.access_token}`;
-          }
-          return instance(originalRequest);
-        } catch (refreshErr) {
-          isRefreshing = false;
-          processPendingQueue(refreshErr, null);
-          clearTokens();
-          window.location.href = '/login';
-          return Promise.reject(refreshErr);
-        }
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return instance(originalRequest);
       }
 
-      return Promise.reject(normaliseAxiosError(error));
+      if (error.response?.status === 401 && isAuthEndpoint) {
+        // A 401 on login/refresh/register itself means the session truly
+        // failed — clean up rather than looping.
+        clearTokens();
+      }
+
+      return Promise.reject(buildApiError(error));
     },
   );
+}
+
+function buildApiError(error: AxiosError<ApiEnvelope<unknown>>): ApiError {
+  const envelope = error.response?.data;
+  return {
+    message: envelope?.message ?? error.message ?? 'An unexpected error occurred.',
+    statusCode: error.response?.status,
+    requestId: envelope?.request_id,
+    errors: envelope?.errors ?? null,
+  };
 }

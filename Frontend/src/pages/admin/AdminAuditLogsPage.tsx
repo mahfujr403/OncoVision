@@ -3,9 +3,12 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { SearchBox } from '@/components/ui/SearchBox';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner';
 import { useSearch } from '@/hooks/useSearch';
 import { formatDateTime } from '@/utils/formatters';
 
+// DEMO DATA — the backend has no audit-log endpoint. Nothing shown here is
+// actually being recorded.
 const AUDIT_LOGS = [
   { id: 'al001', user: 'dr.chen@memorial.org', action: 'LOGIN', resource: 'auth', status: 'success', ip: '10.0.0.12', timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
   { id: 'al002', user: 'dr.chen@memorial.org', action: 'CREATE_PREDICTION', resource: 'predictions/p1248', status: 'success', ip: '10.0.0.12', timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
@@ -28,14 +31,10 @@ export default function AdminAuditLogsPage() {
     <div className="space-y-5">
       <SectionTitle
         title="Audit Logs"
-        description="All platform actions are recorded for compliance"
-        action={
-          <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-emerald-400">Recording</span>
-          </div>
-        }
+        description="Illustrative only — see the demo notice below"
       />
+
+      <DemoDataBanner feature="audit logging" />
 
       <SearchBox value={query} onChange={handleSearch} placeholder="Search by user or action..." className="max-w-sm" />
 
