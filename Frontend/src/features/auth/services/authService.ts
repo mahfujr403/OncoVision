@@ -36,8 +36,13 @@ async function login(payload: LoginPayload): Promise<{ user: User; tokens: AuthT
 }
 
 async function getMe(): Promise<User> {
-  const response = await axiosInstance.get<ApiEnvelope<User>>(API_ENDPOINTS.AUTH.ME);
-  return unwrap(response.data);
+  // NOTE: unlike POST /auth/login (which returns a flat { user, access_token, ... }
+  // envelope, matching LoginResponseData), GET /auth/me nests the user one level
+  // deeper as { user: {...} } with no sibling fields — verified against
+  // app/api/v1/auth.py's get_me() handler. Do not flatten this contract away by
+  // changing the backend; the two endpoints are intentionally shaped differently.
+  const response = await axiosInstance.get<ApiEnvelope<{ user: User }>>(API_ENDPOINTS.AUTH.ME);
+  return unwrap(response.data).user;
 }
 
 async function logout(): Promise<void> {
