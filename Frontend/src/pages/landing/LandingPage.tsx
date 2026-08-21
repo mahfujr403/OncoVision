@@ -12,7 +12,7 @@ const FEATURES = [
   { icon: <Brain className="h-5 w-5" />, title: 'Ensemble AI', description: 'Three deep learning architectures combined via weighted voting.' },
   { icon: <Microscope className="h-5 w-5" />, title: 'Histopathology', description: 'Specialized for lung and colon cancer tissue analysis.' },
   { icon: <BarChart3 className="h-5 w-5" />, title: 'Analytics', description: 'Real prediction statistics — class distribution, confidence, and success rate.' },
-  { icon: <Shield className="h-5 w-5" />, title: 'Under Active Development', description: 'A research-oriented platform — not a clinically validated diagnostic tool.' },
+  { icon: <Shield className="h-5 w-5" />, title: 'Research & Educational Use', description: 'Not clinically approved. Predictions may be inaccurate and must not be used for medical diagnosis.' },
   { icon: <Zap className="h-5 w-5" />, title: 'Fast Inference', description: 'Predictions with full confidence and model-agreement scoring.' },
   { icon: <GitCompare className="h-5 w-5" />, title: 'Prediction History', description: 'Every analysis saved with exportable CSV/PDF records.' },
 ];
@@ -22,7 +22,11 @@ const FEATURES = [
 const MODELS = ['MobileNetV2', 'DenseNet121', 'EfficientNetV2B0 + ResNet50 Fusion'];
 
 const WORKFLOW_STEPS = [
-  { step: '01', title: 'Upload Slide', description: 'Drag and drop H&E stained histopathology images in JPEG, PNG, or TIFF format.' },
+  { 
+    step: '01',
+    title: 'Upload Image',
+    description: 'Drag and drop H&E stained histopathology images in JPEG or PNG format.' 
+  },
   {
     step: '02',
     title: 'AI-Assisted Analysis',
@@ -62,7 +66,7 @@ export default function LandingPage() {
           >
             <motion.div variants={fadein}>
               <Badge variant="info" dot>
-                Ensemble Deep Learning · Under Active Development
+                Ensemble Deep Learning · Research & Educational Use
               </Badge>
             </motion.div>
 
@@ -92,10 +96,10 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.div variants={fadein} className="flex flex-wrap gap-4 pt-2">
-              {[{ v: '3', l: 'Models' }, { v: '5', l: 'Cancer Types' }, { v: 'JPEG · PNG · TIFF', l: 'Formats' }].map((s) => (
+              {[{ v: 'Three', l: 'Models' }, { v: 'Five', l: 'Cancer Types' }, { v: 'JPEG · PNG ', l: 'Formats' }].map((s) => (
                 <div key={s.l} className="flex items-center gap-2">
                   <span className="font-mono font-bold text-primary text-lg">{s.v}</span>
-                  <span className="text-xs text-muted-foreground">{s.l}</span>
+                  <span className="text-lg font-bold text-muted-foreground">{s.l}</span>
                 </div>
               ))}
             </motion.div>
