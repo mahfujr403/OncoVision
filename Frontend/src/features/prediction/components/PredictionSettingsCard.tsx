@@ -146,20 +146,19 @@ export function PredictionSettingsCard({
           disabledNote="Coming soon"
         />
 
-        {config.imageSize !== '— × — px' && (
-          <>
-            <hr className="border-border/50" />
-            <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <FlaskConical className="h-3 w-3" />
-                Image dimensions
-              </span>
-              <span className="rounded-md border border-border/50 bg-secondary/60 px-2.5 py-1 font-mono text-xs">
-                {config.imageSize}
-              </span>
-            </div>
-          </>
-        )}
+        <hr className="border-border/50" />
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <FlaskConical className="h-3 w-3" />
+            Model input size
+          </span>
+          <span className="rounded-md border border-border/50 bg-secondary/60 px-2.5 py-1 font-mono text-xs">
+            {config.imageSize}
+          </span>
+        </div>
+        <p className="text-[11px] leading-snug text-muted-foreground -mt-1">
+          Every image is resized to this before inference, regardless of the dimensions you upload.
+        </p>
       </div>
     </motion.div>
   );

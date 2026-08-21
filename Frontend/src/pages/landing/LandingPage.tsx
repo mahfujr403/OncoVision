@@ -9,21 +9,32 @@ import { Badge } from '@/components/ui/Badge';
 import { ROUTES } from '@/constants/routes';
 
 const FEATURES = [
-  { icon: <Brain className="h-5 w-5" />, title: 'Ensemble AI', description: 'Six deep learning architectures combined for superior accuracy.' },
+  { icon: <Brain className="h-5 w-5" />, title: 'Ensemble AI', description: 'Three deep learning architectures combined via weighted voting.' },
   { icon: <Microscope className="h-5 w-5" />, title: 'Histopathology', description: 'Specialized for lung and colon cancer tissue analysis.' },
-  { icon: <BarChart3 className="h-5 w-5" />, title: 'Benchmarking', description: 'Real-time model performance metrics and comparison tools.' },
-  { icon: <Shield className="h-5 w-5" />, title: 'Clinical Grade', description: 'Validated against 50,000+ pathology samples.' },
-  { icon: <Zap className="h-5 w-5" />, title: 'Fast Inference', description: 'Sub-second predictions with full confidence scoring.' },
-  { icon: <GitCompare className="h-5 w-5" />, title: 'Case Comparison', description: 'Side-by-side analysis across multiple predictions.' },
+  { icon: <BarChart3 className="h-5 w-5" />, title: 'Analytics', description: 'Real prediction statistics — class distribution, confidence, and success rate.' },
+  { icon: <Shield className="h-5 w-5" />, title: 'Under Active Development', description: 'A research-oriented platform — not a clinically validated diagnostic tool.' },
+  { icon: <Zap className="h-5 w-5" />, title: 'Fast Inference', description: 'Predictions with full confidence and model-agreement scoring.' },
+  { icon: <GitCompare className="h-5 w-5" />, title: 'Prediction History', description: 'Every analysis saved with exportable CSV/PDF records.' },
 ];
 
-const MODELS = ['ResNet50', 'EfficientNetB4', 'VGG16', 'DenseNet121', 'InceptionV3', 'ViT-B16'];
+// Real 3-model ensemble, verified against app/ml/manifest/models.json —
+// not the 6 fabricated architectures previously listed here.
+const MODELS = ['MobileNetV2', 'DenseNet121', 'EfficientNetV2B0 + ResNet50 Fusion'];
 
 const WORKFLOW_STEPS = [
   { step: '01', title: 'Upload Slide', description: 'Drag and drop H&E stained histopathology images in JPEG, PNG, or TIFF format.' },
-  { step: '02', title: 'AI Analysis', description: 'Six ensemble models run in parallel, each computing class probabilities independently.' },
-  { step: '03', title: 'Ensemble Decision', description: 'Weighted voting produces a final classification with calibrated confidence score.' },
-  { step: '04', title: 'Clinical Report', description: 'Download a structured report with model explanations and confidence breakdown.' },
+  {
+    step: '02',
+    title: 'AI-Assisted Analysis',
+    description:
+      'Each available model analyzes the image independently and contributes to a weighted ensemble prediction, computed entirely server-side.',
+  },
+  {
+    step: '03',
+    title: 'Review Results',
+    description:
+      'View the predicted class, model confidence, and model agreement in your Prediction History, or export your data as CSV or PDF.',
+  },
 ];
 
 const fadein = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
@@ -51,7 +62,7 @@ export default function LandingPage() {
           >
             <motion.div variants={fadein}>
               <Badge variant="info" dot>
-                Ensemble Deep Learning · Clinical AI Platform
+                Ensemble Deep Learning · Under Active Development
               </Badge>
             </motion.div>
 
@@ -64,8 +75,9 @@ export default function LandingPage() {
             </motion.h1>
 
             <motion.p variants={fadein} className="text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-              OncoVision AI combines six state-of-the-art deep learning models in an ensemble
-              to classify lung and colon cancer from histopathology images with 99.1% accuracy.
+              OncoVision AI combines three deep learning models in a weighted ensemble to
+              classify lung and colon cancer from histopathology images — with per-model
+              confidence and agreement scoring on every prediction.
             </motion.p>
 
             <motion.div variants={fadein} className="flex flex-wrap items-center gap-3">
@@ -80,7 +92,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.div variants={fadein} className="flex flex-wrap gap-4 pt-2">
-              {[{ v: '99.1%', l: 'Accuracy' }, { v: '6', l: 'Models' }, { v: '<0.8s', l: 'Inference' }, { v: '5', l: 'Cancer Types' }].map((s) => (
+              {[{ v: '3', l: 'Models' }, { v: '5', l: 'Cancer Types' }, { v: 'JPEG · PNG · TIFF', l: 'Formats' }].map((s) => (
                 <div key={s.l} className="flex items-center gap-2">
                   <span className="font-mono font-bold text-primary text-lg">{s.v}</span>
                   <span className="text-xs text-muted-foreground">{s.l}</span>
@@ -96,9 +108,10 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12 space-y-2">
             <Badge variant="secondary">Platform Features</Badge>
-            <h2 className="text-3xl font-bold font-display">Built for Clinical Precision</h2>
+            <h2 className="text-3xl font-bold font-display">Built for Research Precision</h2>
             <p className="text-muted-foreground text-sm max-w-lg mx-auto">
-              Every feature is designed around the needs of oncologists, pathologists, and researchers.
+              A research-oriented AI platform for exploring histopathology classification —
+              not a diagnostic or clinically validated tool.
             </p>
           </div>
 
@@ -130,10 +143,10 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12 space-y-2">
             <Badge variant="secondary">How it Works</Badge>
-            <h2 className="text-3xl font-bold font-display">Four Steps to Classification</h2>
+            <h2 className="text-3xl font-bold font-display">Three Steps to Classification</h2>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-3 gap-6">
             {WORKFLOW_STEPS.map((s, i) => (
               <motion.div
                 key={s.step}
@@ -162,7 +175,7 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12 space-y-2">
             <Badge variant="secondary">Technology</Badge>
-            <h2 className="text-3xl font-bold font-display">Six Models, One Decision</h2>
+            <h2 className="text-3xl font-bold font-display">Three Models, One Decision</h2>
             <p className="text-sm text-muted-foreground max-w-lg mx-auto">
               Ensemble learning combines independent predictions for robust, trustworthy classification.
             </p>

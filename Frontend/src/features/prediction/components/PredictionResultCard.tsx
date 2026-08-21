@@ -14,6 +14,7 @@ interface PredictionResultCardProps {
 }
 
 export function PredictionResultCard({ result, error, onReset, className }: PredictionResultCardProps) {
+
   if (!result && !error) return null;
 
   if (error) {
@@ -47,7 +48,18 @@ export function PredictionResultCard({ result, error, onReset, className }: Pred
 
   const { status, result: outcome, individual_predictions, runtime_statistics, metadata } = result;
 
-  if (status === 'failed' || !outcome) {
+  // IMPORTANT: verified directly against app/api/v1/predictions/router.py —
+  // in the CURRENT backend code, PredictionStatus.SUCCESS and .FAILED are
+  // never actually constructed anywhere in this response path. Only
+  // PARTIAL_SUCCESS (≥1 model executed) or PENDING (engine stage skipped)
+  // are ever returned today, regardless of how many models succeeded or
+  // whether a full ensemble decision was reached. So `status` alone is NOT
+  // a reliable signal of whether this is a "good" or "degraded" result —
+  // that has to come from the actual data: whether `result` exists and how
+  // many models succeeded/failed within it.
+  const hasResult = Boolean(outcome) && outcome!.participating_models > 0;
+
+  if (status === 'failed' || !hasResult) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -60,7 +72,11 @@ export function PredictionResultCard({ result, error, onReset, className }: Pred
           </div>
           <div className="space-y-1">
             <h3 className="text-sm font-semibold">No prediction available</h3>
-            <p className="text-sm text-muted-foreground">{result.message}</p>
+            <p className="text-sm text-muted-foreground">
+              {status === 'pending'
+                ? "The prediction pipeline hasn't finished running for this request."
+                : result.message}
+            </p>
           </div>
         </div>
         <Button size="sm" variant="outline" onClick={onReset} className="mt-4 gap-1.5">
@@ -71,8 +87,12 @@ export function PredictionResultCard({ result, error, onReset, className }: Pred
     );
   }
 
-  const isPartial = status === 'partial_success';
-  const labelColor = getClassLabelColor(outcome.prediction);
+  // Real, meaningful partial-ness: some models that were part of this
+  // request's run didn't produce a usable result. This is informational,
+  // not alarming — the agreement/confidence figures above are still fully
+  // valid for however many models did succeed.
+  const hasFailedModels = outcome!.failed_models.length > 0;
+  const labelColor = getClassLabelColor(outcome!.prediction);
 
   return (
     <motion.div
@@ -80,12 +100,13 @@ export function PredictionResultCard({ result, error, onReset, className }: Pred
       animate={{ opacity: 1, y: 0 }}
       className={cn('space-y-4', className)}
     >
-      {isPartial && (
+      {hasFailedModels && (
         <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="text-xs text-amber-800 dark:text-amber-300">
-            Partial result — only one model completed. No ensemble agreement is available for this
-            prediction.
+            {outcome!.failed_models.length} model{outcome!.failed_models.length > 1 ? 's' : ''} failed to
+            produce a result. The figures below reflect the {outcome!.successful_models.length} model
+            {outcome!.successful_models.length > 1 ? 's' : ''} that did succeed.
           </p>
         </div>
       )}
@@ -98,27 +119,23 @@ export function PredictionResultCard({ result, error, onReset, className }: Pred
         </div>
         <div className="mt-2 flex flex-wrap items-baseline gap-3">
           <span className="text-2xl font-bold font-display" style={{ color: labelColor }}>
-            {outcome.prediction}
+            {outcome!.prediction}
           </span>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Metric label="Model Confidence" value={`${outcome.confidence.toFixed(1)}%`} />
-          <Metric
-            label="Model Agreement"
-            value={isPartial ? '—' : `${Math.round(outcome.agreement_ratio * 100)}%`}
-            muted={isPartial}
-          />
-          <Metric label="Participating Models" value={String(outcome.participating_models)} />
+          <Metric label="Model Confidence" value={`${outcome!.confidence}%`} />
+          <Metric label="Model Agreement" value={formatAgreement(outcome!.agreement_ratio)} />
+          <Metric label="Participating Models" value={String(outcome!.participating_models)} />
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {outcome.successful_models.map((m) => (
+          {outcome!.successful_models.map((m) => (
             <Badge key={m} variant="success">
               {m}
             </Badge>
           ))}
-          {outcome.failed_models.map((m) => (
+          {outcome!.failed_models.map((m) => (
             <Badge key={m} variant="destructive">
               {m} failed
             </Badge>
@@ -209,4 +226,16 @@ function Metric({ label, value, small = false, muted = false }: { label: string;
 
 function fmtMs(value: number | null): string {
   return value === null ? '—' : `${value} ms`;
+}
+
+// Defensive against the value ever coming back null/undefined/NaN — shows
+// a readable "N/A" instead of silently rendering blank or "NaN%". There is
+// no longer a status-based special case here: verified against the real
+// backend, agreement_ratio is a fully valid, meaningful number whenever
+// `result` is present, regardless of whether status is partial_success.
+function formatAgreement(agreementRatio: number | null | undefined): string {
+  if (agreementRatio === null || agreementRatio === undefined || Number.isNaN(agreementRatio)) {
+    return 'N/A';
+  }
+  return `${Math.round(agreementRatio * 100)}%`;
 }

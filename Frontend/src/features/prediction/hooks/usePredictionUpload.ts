@@ -65,12 +65,12 @@ const INITIAL_STEPS: AnalyzeStepInfo[] = [
 ];
 
 const DEFAULT_CONFIG: PredictionConfig = {
-  confidenceThreshold: 0.5, // matches the backend's own default
+  confidenceThreshold: 0.99, // per-project default; backend's own default is 0.5 but this is only a flagging threshold, never sent as anything but an explicit value the user can still adjust
   includeIndividualPredictions: true,
-  includeRuntimeStatistics: false,
+  includeRuntimeStatistics: true,
   saveHistory: true,
   generateReport: false,
-  imageSize: '— × — px',
+  imageSize: '224 × 224 px', // real model input size for every model in the current manifest
 };
 
 export function usePredictionUpload() {
@@ -120,10 +120,12 @@ export function usePredictionUpload() {
       ext: getExtension(file.type),
     });
     setUploadState('ready');
-    setConfig((prev) => ({
-      ...prev,
-      imageSize: width && height ? `${width} × ${height} px` : '— × — px',
-    }));
+    // NOTE: config.imageSize intentionally does NOT track the uploaded
+    // file's raw pixel dimensions (those are shown separately from
+    // imageMeta.width/height, e.g. in the image preview). This field
+    // represents the AI runtime's fixed model input size — 224x224 for
+    // every model in the current manifest (verified in
+    // app/ml/manifest/models.json) — which never changes per upload.
   }, []);
 
   const onDrop = useCallback(
