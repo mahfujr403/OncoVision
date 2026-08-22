@@ -81,9 +81,9 @@ class AdminHistoryItemSchema(BaseModel):
     """A single prediction history record exposed to administrators.
 
     Extends the shape of `app.api.v1.history.responses.PredictionHistoryItemSchema`
-    with `user_id` -- the one field ordinary, self-service history retrieval
-    never needs to expose (a user always already knows their own
-    records), but administrative oversight does (ADR-036).
+    with `user_id` and `user_email` -- fields ordinary, self-service
+    history retrieval never needs to expose (a user always already knows
+    their own records), but administrative oversight does (ADR-036).
     """
 
     history_id: str = Field(description="Unique identifier of this history record.")
@@ -91,6 +91,10 @@ class AdminHistoryItemSchema(BaseModel):
         description="Identifier of the original prediction request this record describes."
     )
     user_id: str = Field(description="Identifier of the user who owns this history record.")
+    user_email: str = Field(
+        description="Email address of the user who owns this history record. "
+        "\"Unknown\" when the owning user record could not be resolved."
+    )
     status: PredictionHistoryStatus = Field(
         description="Outcome of the prediction pipeline run this record describes."
     )

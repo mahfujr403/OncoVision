@@ -596,14 +596,18 @@ def get_admin_user_service(
 
 def get_admin_history_service(
     history_service: PredictionHistoryService = Depends(get_prediction_history_service),
+    user_repository: UserRepository = Depends(get_user_repository),
 ) -> AdminHistoryService:
     """Provide a request-scoped `AdminHistoryService` wired with its dependencies (Phase 7.4).
 
     Not cached: depends transitively on the request-scoped `AsyncSession`
-    through `get_prediction_history_service`. Reuses `PredictionHistoryService`
-    directly -- no separate admin history repository exists (ADR-036).
+    through `get_prediction_history_service` and `get_user_repository`.
+    Reuses `PredictionHistoryService` directly -- no separate admin
+    history repository exists (ADR-036). `user_repository` is used only
+    to resolve a history record owner's email address for the admin
+    history views; it never mutates a `User` record.
     """
-    return AdminHistoryService(history_service=history_service)
+    return AdminHistoryService(history_service=history_service, user_repository=user_repository)
 
 
 def get_admin_analytics_service(

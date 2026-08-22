@@ -68,6 +68,9 @@ class FakeUserRepository:
     async def get_by_id(self, user_id: uuid.UUID) -> User | None:
         return self._users.get(user_id)
 
+    async def get_by_ids(self, user_ids: list[uuid.UUID]) -> list[User]:
+        return [self._users[uid] for uid in user_ids if uid in self._users]
+
     async def list_users(self, limit: int, offset: int) -> list[User]:
         ordered = sorted(self._users.values(), key=lambda u: u.created_at, reverse=True)
         return ordered[offset : offset + limit]

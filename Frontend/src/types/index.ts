@@ -248,11 +248,13 @@ export interface AdminSystemStatus {
 }
 
 /** `app.schemas.admin.AdminHistoryItemSchema` — same shape as the
- *  user-scoped `PredictionHistoryItemSchema` plus `user_id`, the one
- *  field administrative oversight needs but self-service retrieval
- *  never exposes. */
+ *  user-scoped `PredictionHistoryItemSchema` plus `user_id` and
+ *  `user_email`, the fields administrative oversight needs but
+ *  self-service retrieval never exposes. `user_email` is `"Unknown"`
+ *  when the owning user record couldn't be resolved. */
 export interface AdminHistoryItem extends PredictionHistoryItem {
   user_id: string;
+  user_email: string;
 }
 
 /** `app.schemas.admin.AdminHistoryDetailResponseSchema` — extends

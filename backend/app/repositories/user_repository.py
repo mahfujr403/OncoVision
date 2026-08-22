@@ -38,6 +38,20 @@ class UserRepository:
         result = await self._session.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
+    async def get_by_ids(self, user_ids: list[uuid.UUID]) -> list[User]:
+        """Return every user matching `user_ids` (Phase 7.4 extension, ADR-036).
+
+        Used by `AdminHistoryService` to batch-resolve owner emails for a
+        page of prediction history records without one query per record.
+        Returns an empty list when `user_ids` is empty -- no query is
+        issued in that case.
+        """
+        if not user_ids:
+            return []
+
+        result = await self._session.execute(select(User).where(User.id.in_(user_ids)))
+        return list(result.scalars().all())
+
     async def create(self, user: User) -> User:
         """Persist a new `User` and return it with database-generated fields loaded."""
         self._session.add(user)

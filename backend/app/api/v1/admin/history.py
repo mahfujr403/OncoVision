@@ -51,12 +51,14 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/history", tags=[TAG_ADMIN])
 
 
-def _build_admin_history_item(history: PredictionHistory) -> AdminHistoryItemSchema:
+def _build_admin_history_item(history: PredictionHistory, user_email: str) -> AdminHistoryItemSchema:
     """Project a `PredictionHistory` domain object onto the Admin API contract.
 
     Mirrors `app.api.v1.history.router._build_history_item()`, extended
-    with `user_id` -- the field administrative oversight needs but
-    self-service retrieval does not (ADR-036).
+    with `user_id` and `user_email` -- fields administrative oversight
+    needs but self-service retrieval does not (ADR-036). `user_email` is
+    resolved separately (`AdminHistoryService.get_user_email(s)`) since
+    `PredictionHistory` itself only carries the owning `user_id`.
     """
     individual_predictions = [
         PredictionHistoryModelEntrySchema(
@@ -72,6 +74,7 @@ def _build_admin_history_item(history: PredictionHistory) -> AdminHistoryItemSch
         history_id=history.history_id,
         request_id=history.request_id,
         user_id=history.user_id,
+        user_email=user_email,
         status=history.status,
         created_at=history.created_at,
         image_filename=history.metadata.image_filename,
@@ -85,9 +88,11 @@ def _build_admin_history_item(history: PredictionHistory) -> AdminHistoryItemSch
     )
 
 
-def _build_admin_history_detail(history: PredictionHistory) -> AdminHistoryDetailResponseSchema:
+def _build_admin_history_detail(
+    history: PredictionHistory, user_email: str
+) -> AdminHistoryDetailResponseSchema:
     """Project a `PredictionHistory` domain object onto the Admin detail contract."""
-    base = _build_admin_history_item(history)
+    base = _build_admin_history_item(history, user_email=user_email)
 
     return AdminHistoryDetailResponseSchema(
         **base.model_dump(),
@@ -193,7 +198,15 @@ async def list_history(
         page_request=page_request, filters=filters, user_id=user_id
     )
 
-    items = [_build_admin_history_item(record) for record in page_result.items]
+    email_by_user_id = await admin_history_service.get_user_emails(
+        [record.user_id for record in page_result.items]
+    )
+    items = [
+        _build_admin_history_item(
+            record, user_email=email_by_user_id.get(record.user_id, "Unknown")
+        )
+        for record in page_result.items
+    ]
     response_data = AdminHistoryListResponseSchema(
         items=items,
         count=len(items),
@@ -252,7 +265,8 @@ async def get_history_detail(
         logger.warning("Admin history detail lookup failed: history_id=%s not_found=True", history_id)
         raise PredictionHistoryNotFoundError()
 
-    response_data = _build_admin_history_detail(history)
+    user_email = await admin_history_service.get_user_email(history.user_id)
+    response_data = _build_admin_history_detail(history, user_email=user_email)
 
     return success_response(
         data=response_data.model_dump(mode="json"),

@@ -1234,7 +1234,12 @@ class PredictionService:
                `CalibratedEnsembleResult`.
             3. `FinalPredictionBuilder.build()` (Phase 4.7.4, ADR-027)
                turns that `CalibratedEnsembleResult` into the
-               `FinalPredictionResult` this step returns.
+               `FinalPredictionResult` this step returns. The completed
+               PREDICTION_ENGINE stage's `IndividualPrediction` list is
+               also passed through here so `build()` can apply its
+               unknown-input guard (predicted class reported as
+               `"unknown"` when the combined confidence is below 92% or
+               any individual model's own confidence is below 80%).
 
         This step is purely internal bookkeeping: it never formats an API
         response, never touches the RESPONSE/HISTORY/REPORT placeholder
@@ -1297,7 +1302,10 @@ class PredictionService:
         try:
             voting_result = self._voting_engine.calculate_votes(prediction_engine_result)
             calibrated_result = self._calibration_engine.calibrate(voting_result)
-            final_result = self._final_prediction_builder.build(calibrated_result)
+            final_result = self._final_prediction_builder.build(
+                calibrated_result,
+                individual_predictions=getattr(prediction_engine_result, "predictions", None),
+            )
         except (
             InvalidEnsembleInputError,
             EnsembleConfigurationError,
