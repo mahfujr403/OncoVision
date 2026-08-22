@@ -38,6 +38,7 @@ from app.reports.csv.csv_validator import CSVValidator
 from app.reports.pdf.pdf_builder import PDFBuilder
 from app.reports.pdf.pdf_validator import PDFValidator
 from app.reports.validator import ReportValidator
+from app.services.admin_analytics_service import AdminAnalyticsService
 from app.services.admin_history_service import AdminHistoryService
 from app.services.admin_system_service import AdminSystemService
 from app.services.admin_user_service import AdminUserService
@@ -603,6 +604,20 @@ def get_admin_history_service(
     directly -- no separate admin history repository exists (ADR-036).
     """
     return AdminHistoryService(history_service=history_service)
+
+
+def get_admin_analytics_service(
+    analytics_service: PredictionAnalyticsService = Depends(get_prediction_analytics_service),
+) -> AdminAnalyticsService:
+    """Provide a request-scoped `AdminAnalyticsService` wired with its dependencies (Phase 7.7).
+
+    Not cached: depends transitively on the request-scoped `AsyncSession`
+    through `get_prediction_analytics_service`. Reuses
+    `PredictionAnalyticsService` directly -- no separate admin analytics
+    repository exists (ADR-036 extension), mirroring
+    `get_admin_history_service`.
+    """
+    return AdminAnalyticsService(analytics_service=analytics_service)
 
 
 @lru_cache

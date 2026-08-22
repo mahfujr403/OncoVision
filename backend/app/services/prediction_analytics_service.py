@@ -157,6 +157,82 @@ class PredictionAnalyticsService:
 
         return result
 
+    async def compute_admin_analytics(
+        self,
+        user_id: str | None = None,
+        filters: PredictionHistoryFilter | None = None,
+    ) -> PredictionAnalyticsResult:
+        """Compute a `PredictionAnalyticsResult` across every user, or one user (Phase 7.7, ADR-036 extension).
+
+        Mirrors `compute_analytics()` exactly, except history is sourced
+        from `PredictionHistoryRepository.list_all()`/`count_all()`
+        (Phase 7.4, ADR-036) rather than the user-scoped
+        `list_by_user()`/`count_by_user()`. Reuses the same
+        `AnalyticsBuilder`/`AnalyticsValidator` this class already
+        depends on -- no aggregation logic is duplicated. Callers are
+        responsible for ensuring only an authorized administrator can
+        reach this method (enforced once, at the router/dependency
+        boundary via `require_admin`), matching the same convention
+        `PredictionHistoryService.list_history_admin()` already
+        establishes for cross-user oversight.
+
+        Args:
+            user_id: When supplied, narrows the computation to a single
+                user's history (still via the unscoped `list_all()`/
+                `count_all()` path, since ownership is not being
+                enforced here -- this is an administrative view). `None`
+                (the default) aggregates across every user.
+            filters: Optional `PredictionHistoryFilter` narrowing which
+                prediction history records are included, exactly as
+                `compute_analytics()` already supports.
+
+        Returns:
+            An immutable `PredictionAnalyticsResult`.
+            `PredictionAnalyticsResult.empty()` (via `AnalyticsBuilder`)
+            when no matching prediction history records exist.
+
+        Raises:
+            AnalyticsExportLimitExceededError: If the matching prediction
+                history exceeds `Settings.REPORT_EXPORT_MAX_ROWS`
+                (mirrors `compute_analytics()`).
+            AnalyticsGenerationError: If `AnalyticsBuilder.build()` raises
+                an unexpected error while aggregating analytics.
+        """
+        label = user_id or "all-users"
+
+        logger.info(
+            "Admin analytics computation started: user_id=%s filtered=%s",
+            label,
+            filters is not None and not filters.is_empty,
+        )
+
+        max_rows = settings.REPORT_EXPORT_MAX_ROWS
+        total_records = await self._history_repository.count_all(
+            filters=filters, user_id=user_id
+        )
+        self._validator.validate_export_limit(
+            user_id=label, total_records=total_records, max_rows=max_rows
+        )
+
+        history: list[PredictionHistory] = await self._history_repository.list_all(
+            limit=max_rows,
+            offset=0,
+            filters=filters,
+            user_id=user_id,
+        )
+
+        result = self._build_analytics_safely(user_id=label, history=history)
+
+        logger.info(
+            "Admin analytics computation completed: user_id=%s analytics_id=%s "
+            "total_predictions=%d",
+            label,
+            result.analytics_id,
+            result.total_predictions,
+        )
+
+        return result
+
     async def compute_analytics_from_history(
         self,
         user_id: str,

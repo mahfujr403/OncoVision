@@ -7,6 +7,7 @@ import type {
   AdminUserListResponse,
   ApiEnvelope,
   HistoryQueryParams,
+  PredictionAnalytics,
   User,
 } from '@/types';
 
@@ -68,5 +69,18 @@ export async function fetchAdminHistoryDetail(historyId: string): Promise<AdminH
 /** GET /api/v1/admin/system — verified against app/schemas/admin.py AdminSystemStatusSchema. */
 export async function fetchAdminSystemStatus(): Promise<AdminSystemStatus> {
   const response = await axiosInstance.get<ApiEnvelope<AdminSystemStatus>>(API_ENDPOINTS.ADMIN.SYSTEM);
+  return unwrap(response.data);
+}
+
+/**
+ * GET /api/v1/admin/analytics — verified against app/api/v1/admin/analytics.py.
+ * Same response shape as GET /reports/analytics (PredictionAnalyticsResponseSchema
+ * is reused as-is on the backend), but aggregated across every user by default,
+ * or narrowed to one user (including an admin's own history) via `userId`.
+ */
+export async function fetchAdminAnalytics(userId?: string): Promise<PredictionAnalytics> {
+  const response = await axiosInstance.get<ApiEnvelope<PredictionAnalytics>>(API_ENDPOINTS.ADMIN.ANALYTICS, {
+    params: userId ? { user_id: userId } : undefined,
+  });
   return unwrap(response.data);
 }

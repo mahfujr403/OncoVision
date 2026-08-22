@@ -9,19 +9,33 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { ROUTES } from '@/constants/routes';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/queries/useAnalytics';
+import { useAdminAnalytics } from '@/hooks/queries/useAdminHistory';
 import { usePredictionHistory } from '@/hooks/queries/usePredictionHistory';
 import { useMonitoring } from '@/hooks/queries/useMonitoring';
 import { formatRelativeTime } from '@/utils/formatters';
 
 // NOTE: every number and list on this page previously came from hardcoded
-// mock arrays. It's now built entirely on GET /reports/analytics,
-// GET /predictions/history, and GET /monitoring — verified against the
-// backend source. "Model Status" shows real per-model availability from
-// the AI runtime rather than fabricated accuracy percentages, since the
-// backend does not track offline accuracy per model.
+// mock arrays. It's now built entirely on GET /reports/analytics (or, for
+// admins, GET /admin/analytics — see below), GET /predictions/history, and
+// GET /monitoring — verified against the backend source. "Model Status"
+// shows real per-model availability from the AI runtime rather than
+// fabricated accuracy percentages, since the backend does not track
+// offline accuracy per model.
 export default function DashboardPage() {
   const { user } = useAuth();
-  const analytics = useAnalytics();
+  const isAdmin = user?.role === 'admin';
+
+  // Regular users only ever see their own stats (GET /reports/analytics is
+  // scoped to current_user.id server-side). Admins see stats aggregated
+  // across every user, including other admins and themselves (GET
+  // /admin/analytics with no user_id — verified against
+  // app/api/v1/admin/analytics.py, which applies no role filter). Both
+  // hooks are always called (Rules of Hooks); `enabled` decides which one
+  // actually fires its request.
+  const selfAnalytics = useAnalytics({ enabled: !isAdmin });
+  const adminAnalytics = useAdminAnalytics(undefined, { enabled: isAdmin });
+  const analytics = isAdmin ? adminAnalytics : selfAnalytics;
+
   const recent = usePredictionHistory({ page: 1, page_size: 4 });
   const monitoring = useMonitoring();
 
@@ -46,6 +60,16 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          {isAdmin ? 'Platform-wide Stats' : 'Your Stats'}
+        </p>
+        {isAdmin && (
+          <Badge variant="info" className="text-[10px]">
+            All users, including admins
+          </Badge>
+        )}
+      </div>
       <motion.div
         className="grid grid-cols-2 lg:grid-cols-4 gap-3"
         initial={{ opacity: 0, y: 12 }}
