@@ -83,7 +83,7 @@ export default function ReportsPage() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard label="Total Predictions" value={data.total_predictions.toLocaleString()} />
             <StatCard label="Success Rate" value={`${data.success_rate.toFixed(1)}%`} />
-            <StatCard label="Avg. Confidence" value={`${data.average_confidence.toFixed(1)}%`} />
+            <StatCard label="Avg. Confidence" value={`${data.average_confidence}%`} />
             <StatCard label="Avg. Agreement" value={`${Math.round(data.average_agreement_ratio * 100)}%`} />
           </div>
 

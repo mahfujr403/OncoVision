@@ -3,20 +3,23 @@ import { StatCard, Card, CardHeader, CardTitle, CardContent } from '@/components
 import { SectionTitle } from '@/components/ui/SectionTitle';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { useAnalytics } from '@/hooks/queries/useAnalytics';
+import { useAdminAnalytics } from '@/hooks/queries/useAdminHistory';
 import { useAdminUsers } from '@/hooks/queries/useAdminUsers';
 import { useMonitoring } from '@/hooks/queries/useMonitoring';
 import { getClassLabelColor } from '@/constants/app';
 
-// NOTE: GET /api/v1/reports/analytics is not scoped per-user, so this
-// admin view is built on the same underlying data as the user-facing
-// Reports page — the value-add here is combining it with admin-only
-// context (total registered users, live model runtime) in one place. The
-// previous version of this page had a fabricated "Predictions This Week"
-// daily bar chart; the backend has no per-day breakdown endpoint, so that
-// chart has been removed rather than faked.
+// NOTE: this page is admin-only, so it must show platform-wide data --
+// every user's predictions, not just the logged-in admin's own history.
+// GET /api/v1/reports/analytics is scoped to `current_user.id` (see
+// app/api/v1/reports.py), so using it here would silently show only the
+// admin's own predictions. GET /api/v1/admin/analytics (via
+// useAdminAnalytics) is the admin-only, cross-user equivalent -- same
+// response shape, aggregated across every user by default. The previous
+// version of this page had a fabricated "Predictions This Week" daily bar
+// chart; the backend has no per-day breakdown endpoint, so that chart has
+// been removed rather than faked.
 export default function AdminAnalyticsPage() {
-  const analytics = useAnalytics();
+  const analytics = useAdminAnalytics();
   const users = useAdminUsers({ page: 1, page_size: 1 });
   const monitoring = useMonitoring();
 
@@ -60,7 +63,7 @@ export default function AdminAnalyticsPage() {
             />
             <StatCard
               label="Avg. Confidence"
-              value={`${analytics.data.average_confidence.toFixed(1)}%`}
+              value={`${analytics.data.average_confidence}%`}
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <StatCard

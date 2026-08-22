@@ -158,7 +158,7 @@ export function PredictionResultCard({ result, error, onReset, className }: Pred
               >
                 <span className="font-medium">{m.model_name}</span>
                 <span className="text-muted-foreground">{m.prediction}</span>
-                <span className="font-mono text-xs">{m.confidence.toFixed(1)}%</span>
+                <span className="font-mono text-xs">{m.confidence}%</span>
                 <span className="font-mono text-xs text-muted-foreground">{m.inference_time_ms} ms</span>
               </div>
             ))}

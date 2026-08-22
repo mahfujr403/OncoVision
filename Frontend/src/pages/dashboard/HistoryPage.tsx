@@ -203,7 +203,7 @@ function HistoryRow({ item }: { item: PredictionHistoryItem }) {
           variant={item.confidence > 90 ? 'success' : item.confidence > 75 ? 'warning' : 'destructive'}
           className="font-mono text-[10px]"
         >
-          {item.confidence.toFixed(1)}%
+          {item.confidence}%
         </Badge>
       </TableCell>
       <TableCell>

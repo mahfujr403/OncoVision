@@ -97,7 +97,7 @@ export default function DashboardPage() {
             />
             <StatCard
               label="Avg. Confidence"
-              value={`${analytics.data.average_confidence.toFixed(1)}%`}
+              value={`${analytics.data.average_confidence}%`}
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <StatCard
@@ -161,7 +161,7 @@ export default function DashboardPage() {
                         variant={p.confidence > 90 ? 'success' : p.confidence > 75 ? 'warning' : 'destructive'}
                         className="text-[10px]"
                       >
-                        {p.confidence.toFixed(1)}%
+                        {p.confidence}%
                       </Badge>
                       <p className="text-[10px] text-muted-foreground">{formatRelativeTime(p.created_at)}</p>
                     </div>
