@@ -82,12 +82,18 @@ export function usePredictionUpload() {
   const [config, setConfig] = useState<PredictionConfig>(DEFAULT_CONFIG);
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [predictionError, setPredictionError] = useState<ApiError | null>(null);
+  // 0 = not analyzing, 1 = "AI Processing" active, 2 = "Ensemble Decision" active.
+  // Purely cosmetic sequencing for the workflow sidebar — the backend
+  // returns one response with no progress stream, so we stage it locally.
+  const [analysisStage, setAnalysisStage] = useState(0);
   const previewUrlRef = useRef<string | null>(null);
+  const stageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Revoke stale object URL on unmount
   useEffect(() => {
     return () => {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      if (stageTimerRef.current) clearTimeout(stageTimerRef.current);
     };
   }, []);
 
@@ -174,6 +180,8 @@ export function usePredictionUpload() {
     setAnalyzeSteps(INITIAL_STEPS);
     setResult(null);
     setPredictionError(null);
+    setAnalysisStage(0);
+    if (stageTimerRef.current) clearTimeout(stageTimerRef.current);
   }, []);
 
   const updateStep = (id: AnalyzeStepInfo['id'], status: AnalyzeStepInfo['status']) => {
@@ -195,6 +203,14 @@ export function usePredictionUpload() {
     updateStep('prepare', 'done');
     updateStep('request', 'active');
 
+    // Stage the sidebar workflow forward: "AI Processing" lights up first,
+    // then "Ensemble Decision" ~1.1s later if the request is still in
+    // flight. If the response comes back sooner, `analysisStage` is simply
+    // superseded by the 'complete' status once `result` is set.
+    setAnalysisStage(1);
+    if (stageTimerRef.current) clearTimeout(stageTimerRef.current);
+    stageTimerRef.current = setTimeout(() => setAnalysisStage(2), 1100);
+
     try {
       const response = await createPrediction(imageMeta.file, {
         confidence_threshold: config.confidenceThreshold,
@@ -211,6 +227,8 @@ export function usePredictionUpload() {
       setPredictionError(err as ApiError);
     } finally {
       setIsAnalyzing(false);
+      if (stageTimerRef.current) clearTimeout(stageTimerRef.current);
+      setAnalysisStage(0);
     }
   }, [imageMeta, isAnalyzing, config]);
 
@@ -231,6 +249,7 @@ export function usePredictionUpload() {
     validationError,
     isAnalyzing,
     analyzeSteps,
+    analysisStage,
     config,
     result,
     predictionError,

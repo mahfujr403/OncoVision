@@ -20,6 +20,7 @@ export default function PredictPage() {
     validationError,
     isAnalyzing,
     analyzeSteps,
+    analysisStage,
     config,
     result,
     predictionError,
@@ -32,11 +33,15 @@ export default function PredictPage() {
     setConfigFlag,
   } = usePredictionUpload();
 
-  const workspaceStatus = isAnalyzing
-    ? 'processing'
-    : imageMeta
-      ? 'uploading'
-      : 'idle';
+  const workspaceStatus = predictionError
+    ? 'error'
+    : result
+      ? 'complete'
+      : isAnalyzing
+        ? 'processing'
+        : imageMeta
+          ? 'uploading'
+          : 'idle';
 
   return (
     <motion.div
@@ -110,7 +115,7 @@ export default function PredictPage() {
 
         {/* RIGHT — sticky sidebar */}
         <aside className="lg:sticky lg:top-6 lg:self-start space-y-4">
-          <PredictionWorkflowCard status={workspaceStatus} />
+          <PredictionWorkflowCard status={workspaceStatus} analysisStage={analysisStage} />
           <PredictionInfoCard />
         </aside>
       </div>

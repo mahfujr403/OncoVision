@@ -14,26 +14,39 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 function stepStatusFromWorkspace(
   step: number,
   workspaceStatus: WorkspaceStatus,
+  analysisStage: number,
 ): 'done' | 'active' | 'pending' {
-  const stepMap: Record<WorkspaceStatus, number> = {
-    idle: 0,
-    uploading: 1,
-    processing: 2,
-    complete: 4,
-    error: 0,
-  };
-  const current = stepMap[workspaceStatus];
-  if (current >= step) return 'done';
-  if (current === step - 1) return 'active';
+  if (workspaceStatus === 'complete') return 'done';
+  if (workspaceStatus === 'error' || workspaceStatus === 'idle') return 'pending';
+
+  if (workspaceStatus === 'uploading') {
+    // Image selected but analysis not yet started.
+    if (step === 1) return 'done';
+    return 'pending';
+  }
+
+  // workspaceStatus === 'processing': step 1 (upload) is always done by
+  // this point. Steps 2 and 3 progress one at a time via analysisStage,
+  // which is staged locally in usePredictionUpload while the request is
+  // in flight (the backend has no progress stream to drive this off of).
+  if (step === 1) return 'done';
+  if (step === 2) return analysisStage >= 2 ? 'done' : 'active';
+  if (step === 3) return analysisStage >= 2 ? 'active' : 'pending';
   return 'pending';
 }
 
 interface PredictionWorkflowCardProps {
   status?: WorkspaceStatus;
+  /** 0 = not analyzing, 1 = "AI Processing" active, 2 = "Ensemble Decision" active. */
+  analysisStage?: number;
   className?: string;
 }
 
-export function PredictionWorkflowCard({ status = 'idle', className }: PredictionWorkflowCardProps) {
+export function PredictionWorkflowCard({
+  status = 'idle',
+  analysisStage = 0,
+  className,
+}: PredictionWorkflowCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -45,7 +58,7 @@ export function PredictionWorkflowCard({ status = 'idle', className }: Predictio
 
       <ol className="relative space-y-0" aria-label="Analysis workflow steps">
         {WORKFLOW_STEPS.map((wf, idx) => {
-          const stepStatus = stepStatusFromWorkspace(wf.step, status);
+          const stepStatus = stepStatusFromWorkspace(wf.step, status, analysisStage);
           const isLast = idx === WORKFLOW_STEPS.length - 1;
 
           return (
