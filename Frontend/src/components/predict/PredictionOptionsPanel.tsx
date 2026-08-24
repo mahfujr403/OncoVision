@@ -104,7 +104,7 @@ export function PredictionOptionsPanel({ options, onChange, disabled }: Predicti
           }
         />
 
-        <OptionRow
+        {/* <OptionRow
           label={
             <span className="inline-flex items-center gap-2">
               Generate report
@@ -120,7 +120,7 @@ export function PredictionOptionsPanel({ options, onChange, disabled }: Predicti
               label="Generate report (not yet implemented)"
             />
           }
-        />
+        /> */}
       </div>
 
       <div className="flex items-start gap-2 mt-4 pt-4 border-t border-border">
