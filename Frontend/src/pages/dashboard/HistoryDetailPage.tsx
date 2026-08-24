@@ -119,7 +119,7 @@ export default function HistoryDetailPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Confidence', value: record.status === 'failed' ? '—' : `${record.confidence.toFixed(1)}%` },
+                { label: 'Confidence', value: record.status === 'failed' ? '—' : `${record.confidence}%` },
                 {
                   label: 'Agreement',
                   value: record.status === 'success' ? `${Math.round(record.agreement_ratio * 100)}%` : '—',
@@ -176,7 +176,7 @@ export default function HistoryDetailPage() {
                     <TableRow key={p.model_name}>
                       <TableCell className="font-mono text-xs">{p.model_name}</TableCell>
                       <TableCell>{formatClassLabel(p.prediction)}</TableCell>
-                      <TableCell>{p.confidence.toFixed(1)}%</TableCell>
+                      <TableCell>{p.confidence}%</TableCell>
                       <TableCell className="text-muted-foreground font-mono text-xs">
                         {formatInferenceTime(p.inference_time_ms)}
                       </TableCell>
