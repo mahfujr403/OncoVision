@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { FileRejection } from 'react-dropzone';
+import { toast } from 'sonner';
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_SIZE_BYTES, MAX_IMAGE_SIZE_MB } from '@/constants/app';
 import { createPrediction } from '@/api/services/predictionService';
+import { exportPredictionReportPdf } from '@/api/services/reportsService';
 import type { ApiError, PredictionResponse } from '@/types';
 import type {
   ImageMeta,
@@ -88,6 +90,9 @@ export function usePredictionUpload() {
   const [analysisStage, setAnalysisStage] = useState(0);
   const previewUrlRef = useRef<string | null>(null);
   const stageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Attach this to the wrapper around <UploadProgress> / <PredictionResultCard>
+  // so `analyze()` can scroll it into view as soon as analysis starts.
+  const progressSectionRef = useRef<HTMLDivElement | null>(null);
 
   // Revoke stale object URL on unmount
   useEffect(() => {
@@ -188,6 +193,23 @@ export function usePredictionUpload() {
     setAnalyzeSteps((steps) => steps.map((s) => (s.id === id ? { ...s, status } : s)));
   };
 
+  // Scrolls the Analysis Progress / AI Prediction section into view. Uses a
+  // *double* requestAnimationFrame instead of a single one: the first rAF
+  // only guarantees "before next paint", which can still fire before React
+  // has committed the DOM changes from the state updates that triggered it
+  // (e.g. the progress panel expanding in, or the result card mounting) —
+  // the second rAF runs one full frame later, once layout has actually
+  // settled, so scrollIntoView measures the real (post-update) position
+  // instead of a stale one. `main` (the app's scroll container) is
+  // `overflow-y-auto`, not the window, but scrollIntoView finds it fine.
+  const scrollToProgressSection = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        progressSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }, []);
+
   // Real analyze flow: POST /api/v1/predictions (multipart). The step
   // indicators are cosmetic — the backend does not stream progress — so
   // 'upload'/'prepare' resolve immediately and 'request'/'waiting' track the
@@ -202,6 +224,11 @@ export function usePredictionUpload() {
     updateStep('upload', 'done');
     updateStep('prepare', 'done');
     updateStep('request', 'active');
+
+    // Bring the Analysis Progress / AI Prediction section into view as soon
+    // as analysis kicks off, so the user doesn't have to scroll manually to
+    // watch the progress.
+    scrollToProgressSection();
 
     // Stage the sidebar workflow forward: "AI Processing" lights up first,
     // then "Ensemble Decision" ~1.1s later if the request is still in
@@ -222,6 +249,18 @@ export function usePredictionUpload() {
       updateStep('request', 'done');
       updateStep('waiting', 'done');
       setResult(response);
+
+      // "Generate report" downloads a PDF of the user's *complete*
+      // prediction history (GET /api/v1/reports/export/pdf) once this
+      // analysis lands — the same live, working export the Reports page
+      // uses — not a report scoped to just this one image.
+      if (config.generateReport) {
+        exportPredictionReportPdf()
+          .then(() => toast.success('Prediction history report downloaded.'))
+          .catch((err: unknown) =>
+            toast.error((err as ApiError).message ?? 'Failed to download the history report.'),
+          );
+      }
     } catch (err) {
       updateStep('request', 'error');
       setPredictionError(err as ApiError);
@@ -229,8 +268,12 @@ export function usePredictionUpload() {
       setIsAnalyzing(false);
       if (stageTimerRef.current) clearTimeout(stageTimerRef.current);
       setAnalysisStage(0);
+      // The progress panel just collapsed and the result/error card just
+      // mounted below the button, shifting layout — re-settle the scroll
+      // position so the AI Prediction card (or the error) is in view too.
+      scrollToProgressSection();
     }
-  }, [imageMeta, isAnalyzing, config]);
+  }, [imageMeta, isAnalyzing, config, scrollToProgressSection]);
 
   const setConfidenceThreshold = useCallback((value: number) => {
     setConfig((prev) => ({ ...prev, confidenceThreshold: value }));
@@ -260,5 +303,6 @@ export function usePredictionUpload() {
     analyze,
     setConfidenceThreshold,
     setConfigFlag,
+    progressSectionRef,
   };
 }

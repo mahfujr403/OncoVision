@@ -138,12 +138,10 @@ export function PredictionSettingsCard({
         />
 
         <ToggleRow
-          label="Generate report"
-          description="Accepted by the API today, but report generation isn't implemented on this endpoint yet."
+          label="Generate history report"
+          description="Downloads a PDF report of your complete prediction history right after this analysis finishes."
           checked={config.generateReport}
           onChange={(v) => onFlagChange('generateReport', v)}
-          disabled
-          disabledNote="Coming soon"
         />
 
         <hr className="border-border/50" />

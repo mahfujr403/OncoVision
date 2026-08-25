@@ -31,6 +31,7 @@ export default function PredictPage() {
     analyze,
     setConfidenceThreshold,
     setConfigFlag,
+    progressSectionRef,
   } = usePredictionUpload();
 
   const workspaceStatus = predictionError
@@ -99,18 +100,21 @@ export default function PredictPage() {
             onFlagChange={setConfigFlag}
           />
 
-          {/* Progress (shown while analyzing) */}
-          <UploadProgress steps={analyzeSteps} visible={isAnalyzing} />
+          {/* Scroll target: brings Analysis Progress + AI Prediction into view as soon as analyze() starts */}
+          <div ref={progressSectionRef} className="space-y-5 scroll-mt-6">
+            {/* Progress (shown while analyzing) */}
+            <UploadProgress steps={analyzeSteps} visible={isAnalyzing} />
 
-          {/* Analyze */}
-          <AnalyzeButton
-            disabled={!imageMeta || uploadState === 'error'}
-            isAnalyzing={isAnalyzing}
-            onClick={analyze}
-          />
+            {/* Analyze */}
+            <AnalyzeButton
+              disabled={!imageMeta || uploadState === 'error'}
+              isAnalyzing={isAnalyzing}
+              onClick={analyze}
+            />
 
-          {/* Real prediction result / error */}
-          <PredictionResultCard result={result} error={predictionError} onReset={removeImage} />
+            {/* Real prediction result / error */}
+            <PredictionResultCard result={result} error={predictionError} onReset={removeImage} />
+          </div>
         </div>
 
         {/* RIGHT — sticky sidebar */}
