@@ -25,7 +25,7 @@ const WORKFLOW_STEPS = [
   { 
     step: '01',
     title: 'Upload Image',
-    description: 'Drag and drop H&E stained histopathology images in JPEG or PNG format.' 
+    description: 'Drag and drop H&E stained histopathology images in JPEG, PNG, or TIFF format.' 
   },
   {
     step: '02',
@@ -96,7 +96,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.div variants={fadein} className="flex flex-wrap gap-4 pt-2">
-              {[{ v: 'Three', l: 'Models' }, { v: 'Five', l: 'Cancer Types' }, { v: 'JPEG · PNG ', l: 'Formats' }].map((s) => (
+              {[{ v: 'Three', l: 'Models' }, { v: 'Five', l: 'Cancer Types' }, { v: 'JPEG · PNG · TIFF', l: 'Formats' }].map((s) => (
                 <div key={s.l} className="flex items-center gap-2">
                   <span className="font-mono font-bold text-primary text-lg">{s.v}</span>
                   <span className="text-lg font-bold text-muted-foreground">{s.l}</span>

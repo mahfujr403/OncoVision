@@ -29,7 +29,7 @@ function validateFile(file: File): string | null {
   const hasValidMime = file.type === '' || (ACCEPTED_IMAGE_MIME_TYPES as readonly string[]).includes(file.type);
 
   if (!hasValidExtension || !hasValidMime) {
-    return 'Unsupported file type. Allowed types: JPEG, PNG.';
+    return 'Unsupported file type. Allowed types: JPEG, PNG, TIFF.';
   }
   if (file.size > MAX_UPLOAD_SIZE_BYTES) {
     return 'The uploaded file exceeds the maximum allowed size of 10 MB.';
@@ -152,7 +152,7 @@ export function UploadZone({ file, onFileSelected, onClear, disabled }: UploadZo
           Drag and drop an image, or click to browse
         </p>
         <p className="text-xs text-muted-foreground mt-1.5 font-mono">
-          Supported: JPEG, PNG · Max 10 MB
+          Supported: JPEG, PNG, TIFF · Max 10 MB
         </p>
         <input
           ref={inputRef}

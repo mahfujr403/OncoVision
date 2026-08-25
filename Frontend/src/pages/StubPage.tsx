@@ -27,7 +27,7 @@ const PAGE_META: Record<
     icon: <ScanLine className="w-6 h-6" />,
     title: 'Prediction Workspace',
     description:
-      'Upload a histopathology image to run AI-assisted classification. Supports JPG and PNG formats.',
+      'Upload a histopathology image to run AI-assisted classification. Supports JPG, PNG, and TIFF formats.',
 
   },
   history: {
