@@ -33,14 +33,14 @@ export function AuthLayout() {
             <span className="text-primary">Classification</span>
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-            Ensemble deep learning models deliver clinical-grade accuracy for lung and colon cancer histopathology analysis.
+            A three-model deep learning ensemble analyzes lung and colon cancer histopathology images, with per-model confidence and agreement scoring on every prediction.
           </p>
 
           <div className="grid grid-cols-3 gap-3 pt-2">
             {[
-              { label: 'Accuracy', value: '99.1%' },
-              { label: 'Models', value: '6+' },
-              { label: 'Cases', value: '50K+' },
+              { label: 'Models', value: 'Three' },
+              { label: 'Technology', value: 'Ensemble' },
+              { label: 'Classes', value: 'Five' },
             ].map((stat) => (
               <div key={stat.label} className="rounded-lg border border-border bg-secondary/30 p-3">
                 <p className="text-xl font-bold font-mono text-primary">{stat.value}</p>
@@ -51,7 +51,7 @@ export function AuthLayout() {
         </div>
 
         <p className="text-[10px] text-muted-foreground relative z-10">
-          © 2024 {APP_NAME}. For research and clinical use only.
+          © 2024 {APP_NAME}. For research and educational use only — not clinically approved.
         </p>
       </div>
 
