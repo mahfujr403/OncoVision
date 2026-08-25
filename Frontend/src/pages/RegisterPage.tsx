@@ -91,7 +91,7 @@ export function RegisterPage({ onRegister, onGoToLogin, theme, onToggleTheme }: 
             <Input
               label="Full name"
               type="text"
-              placeholder="Dr. Alex Chen"
+              placeholder="Mahfujur Rahman"
               value={fullName}
               onChange={(e) => { setFullName(e.target.value); clearError('fullName'); }}
               error={errors.fullName}
@@ -101,7 +101,7 @@ export function RegisterPage({ onRegister, onGoToLogin, theme, onToggleTheme }: 
             <Input
               label="Email address"
               type="email"
-              placeholder="you@institution.edu"
+              placeholder="mahfujr403@oncovision.ai"
               value={email}
               onChange={(e) => { setEmail(e.target.value); clearError('email'); }}
               error={errors.email}

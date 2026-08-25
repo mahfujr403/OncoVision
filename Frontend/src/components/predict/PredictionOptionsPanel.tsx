@@ -103,24 +103,6 @@ export function PredictionOptionsPanel({ options, onChange, disabled }: Predicti
             />
           }
         />
-
-        {/* <OptionRow
-          label={
-            <span className="inline-flex items-center gap-2">
-              Generate report
-              <Badge variant="outline">Coming soon</Badge>
-            </span>
-          }
-          description="Accepted by the API today, but report generation isn't implemented on the backend yet — enabling this has no effect."
-          control={
-            <Toggle
-              checked={options.generate_report}
-              onChange={(v) => set('generate_report', v)}
-              disabled
-              label="Generate report (not yet implemented)"
-            />
-          }
-        /> */}
       </div>
 
       <div className="flex items-start gap-2 mt-4 pt-4 border-t border-border">

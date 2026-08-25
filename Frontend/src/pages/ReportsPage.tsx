@@ -50,9 +50,6 @@ export function ReportsPage() {
             </p>
           </div>
         </div>
-        <Badge variant="warning" dot className="shrink-0 hidden sm:inline-flex">
-          Simulated data — analytics schema unverified, see notes
-        </Badge>
       </div>
 
       {Boolean(error) && (
@@ -88,12 +85,6 @@ export function ReportsPage() {
           <ExportPanel />
         </>
       )}
-
-      <div className="sm:hidden">
-        <Badge variant="warning" dot>
-          Simulated data — analytics schema unverified
-        </Badge>
-      </div>
     </div>
   );
 }

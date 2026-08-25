@@ -99,7 +99,7 @@ export function LoginPage({ onLogin, onGoToRegister, theme, onToggleTheme }: Log
             <Input
               label="Email address"
               type="email"
-              placeholder="you@example.com"
+              placeholder="mahfujr403@oncovision.ai"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
               error={errors.email}

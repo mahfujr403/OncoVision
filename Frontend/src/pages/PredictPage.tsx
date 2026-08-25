@@ -55,9 +55,6 @@ export function PredictPage() {
             Upload a histopathology image to run AI-assisted classification.
           </p>
         </div>
-        <Badge variant="warning" dot className="shrink-0 hidden sm:inline-flex">
-          Simulated response — real backend integration in Phase 5
-        </Badge>
       </div>
 
       {showForm && (
@@ -80,11 +77,6 @@ export function PredictPage() {
 
       {state === 'error' && <PredictionErrorView error={error} onRetry={reset} />}
 
-      <div className="sm:hidden">
-        <Badge variant="warning" dot>
-          Simulated response — real backend integration in Phase 5
-        </Badge>
-      </div>
     </div>
   );
 }

@@ -27,22 +27,21 @@ const PAGE_META: Record<
     icon: <ScanLine className="w-6 h-6" />,
     title: 'Prediction Workspace',
     description:
-      'Upload a histopathology image to run AI-assisted classification. Supports JPG, PNG, and TIFF formats.',
-    phase: 'Phase 4',
+      'Upload a histopathology image to run AI-assisted classification. Supports JPG and PNG formats.',
+
   },
   history: {
     icon: <History className="w-6 h-6" />,
     title: 'Prediction History',
     description:
       'Browse and search your prediction records with pagination, filtering, and detail views.',
-    phase: 'Phase 7',
   },
   reports: {
     icon: <BarChart3 className="w-6 h-6" />,
     title: 'Reports',
     description:
       'View prediction reports, download exports, and access detailed analysis summaries.',
-    phase: 'Phase 8',
+
   },
   profile: {
     icon: <User className="w-6 h-6" />,
@@ -59,28 +58,27 @@ const PAGE_META: Record<
     title: 'User Management',
     description:
       'View and manage registered users, assign roles, and review access levels.',
-    phase: 'Phase 9',
+
   },
   'admin-history': {
     icon: <ClipboardList className="w-6 h-6" />,
     title: 'All Prediction History',
     description:
       'Admin view of all prediction records across all users with filtering and export.',
-    phase: 'Phase 9',
+
   },
   'admin-system': {
     icon: <Server className="w-6 h-6" />,
     title: 'System',
     description:
       'Inspect model loading status, backend health, and system configuration.',
-    phase: 'Phase 9',
+
   },
   'admin-monitoring': {
     icon: <Activity className="w-6 h-6" />,
     title: 'Monitoring',
     description:
       'Real-time system health, API performance, model availability, and prediction activity.',
-    phase: 'Phase 10',
   },
 };
 
