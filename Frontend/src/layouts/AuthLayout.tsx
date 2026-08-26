@@ -1,6 +1,7 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Stethoscope } from 'lucide-react';
 import { APP_NAME } from '@/constants/app';
+import { Footer } from '@/components/layout/Footer';
 
 export function AuthLayout() {
   return (
@@ -51,7 +52,7 @@ export function AuthLayout() {
         </div>
 
         <p className="text-[10px] text-muted-foreground relative z-10">
-          © 2024 {APP_NAME}. For research and educational use only — not clinically approved.
+          © 2026 {APP_NAME}. For research and educational use only — not clinically approved.
         </p>
       </div>
 
@@ -70,5 +71,6 @@ export function AuthLayout() {
         </div>
       </div>
     </div>
+  
   );
 }

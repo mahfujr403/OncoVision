@@ -3,6 +3,7 @@ import { Stethoscope } from 'lucide-react';
 import { APP_NAME } from '@/constants/app';
 import { ROUTES } from '@/constants/routes';
 import { Button } from '@/components/ui/Button';
+import { Footer } from '@/components/layout/Footer';
 
 export function LandingLayout() {
   return (
@@ -35,11 +36,7 @@ export function LandingLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-border py-8 px-6 text-center">
-        <p className="text-xs text-muted-foreground">
-          © 2024 {APP_NAME}. Built for clinical research and oncological practice.
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }

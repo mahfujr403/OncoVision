@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { Sidebar } from '@/components/navigation/Sidebar';
 import { Navbar } from '@/components/navigation/Navbar';
 import { Breadcrumb } from '@/components/navigation/Breadcrumb';
+import { Footer } from '@/components/layout/Footer';
 
 export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false);
