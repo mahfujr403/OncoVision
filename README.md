@@ -4,9 +4,7 @@ Enterprise-oriented AI-assisted histopathology image analysis platform for
 **Lung & Colon Cancer** classification — a React 19 + TypeScript frontend
 backed by a FastAPI + PostgreSQL + TensorFlow backend.
 
-> **Status: under active development.** All planned backend subsystems
-> (auth, AI inference, history, reporting, admin, monitoring) are complete;
-> frontend integration and end-to-end testing are ongoing. This is a
+> **Status: under active development.**  This is a
 > decision-support / research-oriented project — **not a diagnostic
 > device**, not clinically validated, not production-deployed.
 
