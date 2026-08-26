@@ -4,6 +4,8 @@ Enterprise-grade AI Medical Imaging Platform backend for Lung & Colon Cancer His
 
 > **Current status: Phase 10 — Production Polish & Final Backend Hardening.** All planned backend subsystems are implemented: authentication, AI model infrastructure, the prediction pipeline, prediction history, reporting, administration, and monitoring. The project remains **UNDER DEVELOPMENT** and is not a production-deployed system; Phase 10 is a hardening/consistency pass ahead of frontend integration and end-to-end testing.
 
+📄 See also: [Project README](../README.md) · [Frontend README](../Frontend/README.md)
+
 ---
 
 ## Table of Contents
@@ -112,7 +114,7 @@ Key architectural rules enforced throughout the codebase (see the project's Arch
 ## Folder Structure
 
 ```
-Backend/
+backend/
 ├── app/
 │   ├── main.py                        # FastAPI application entry point
 │   ├── core/
@@ -357,7 +359,7 @@ The Monitoring layer aggregates application health, database connectivity, AI Ru
 ### Setup
 
 ```bash
-cd Backend
+cd backend
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -422,21 +424,25 @@ Migrations live under `alembic/versions/` as a single linear chain (no branching
 ### Build & run directly
 
 ```bash
+cd backend
 docker build -t oncovision-backend .
 docker run -p 8000:8000 --env-file .env oncovision-backend
 ```
 
-The image is a multi-stage build (compiler toolchain stays in the builder stage only), runs as a non-root user, and ships no `--reload` flag. A container `HEALTHCHECK` polls `GET /api/v1/health`.
+The image is a multi-stage build (compiler toolchain stays in the builder stage only), runs as a non-root user (`appuser`), and ships no `--reload` flag. A container `HEALTHCHECK` polls `GET /api/v1/health` every 30s (60s start period, 3 retries). Named volumes/bind mounts should back `storage/uploads`, `storage/reports`, and `storage/models` so downloaded model weights and generated artifacts survive container restarts.
 
 ### Docker Compose (backend + local PostgreSQL)
 
-For local development/manual verification, `docker-compose.yml` (at the repository root) runs the backend alongside a disposable PostgreSQL container. No additional infrastructure (Redis, Celery, etc.) is introduced — production targets Render (backend) + Neon PostgreSQL (database) directly.
+For local development/manual verification, `docker-compose.yml` (at the repository root) runs the backend alongside a disposable PostgreSQL container (`db`, `postgres:16-alpine`, healthchecked so the backend only starts once the database is ready). No additional infrastructure (Redis, Celery, etc.) is introduced — production targets Render (backend) + Neon PostgreSQL (database) directly. This is also how to run the **full stack** (backend + frontend + db) together — see the [root README](../README.md#docker-recommended) for the one-command version.
 
 ```bash
-cp Backend/.env.example Backend/.env   # first time only
-docker compose up --build
+# from the repository root
+cp backend/.env.example backend/.env   # first time only — fill in JWT_SECRET_KEY etc.
+docker compose up --build backend db
 docker compose exec backend python -m alembic upgrade head
 ```
+
+The backend container is reachable at `http://localhost:8000` (`/docs` for Swagger UI). Model weights, uploads, reports, and logs persist in named volumes (`oncovision_models`, `oncovision_uploads`, `oncovision_reports`, `oncovision_logs`) defined in `docker-compose.yml`, so they survive `docker compose down` (but not `docker compose down -v`).
 
 ## Testing
 
