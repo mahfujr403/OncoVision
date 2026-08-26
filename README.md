@@ -52,15 +52,15 @@ EfficientNetV2B0+ResNet50 fusion model). It supports:
 
 ```
 ┌─────────────────────────┐        HTTPS/JSON        ┌──────────────────────────────┐
-│   Frontend (React SPA)   │ ───────────────────────► │   Backend (FastAPI, /api/v1) │
-│   served by Nginx        │ ◄─────────────────────── │                               │
-└─────────────────────────┘                           └───────────────┬───────────────┘
-                                                                        │
-                                              ┌─────────────────────────┼─────────────────────────┐
-                                              ▼                         ▼                         ▼
-                                        PostgreSQL              AI Runtime Manager          Storage volumes
+│   Frontend (React SPA)  │ ───────────────────────► │   Backend (FastAPI, /api/v1) │
+│   served by Nginx       │ ◄─────────────────────── │                              │
+└─────────────────────────┘                          └───────────────┬──────────────┘
+                                                                     │
+                                           ┌─────────────────────────┼─────────────────────────┐
+                                           ▼                         ▼                         ▼
+                                       PostgreSQL              AI Runtime Manager          Storage volumes
                                      (users, history)      (TensorFlow model instances,   (uploads, reports,
-                                                             Hugging Face Hub–backed)        cached model weights)
+                                                            Hugging Face Hub–backed)        cached model weights)
 ```
 
 See the [Backend README](./backend/README.md#architecture) for the full
