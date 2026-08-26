@@ -1,235 +1,203 @@
-# OncoVision AI — Frontend
+# OncoVision AI
 
 Enterprise-oriented AI-assisted histopathology image analysis platform for
-Lung & Colon Cancer classification. React 19 + TypeScript frontend, built
-against a real FastAPI backend.
+**Lung & Colon Cancer** classification — a React 19 + TypeScript frontend
+backed by a FastAPI + PostgreSQL + TensorFlow backend.
 
-> **Status: under active development.** Not clinically validated, not a
-> diagnostic tool, not production-ready. See [Backend integration
-> status](#backend-integration-status) below for exactly what is and isn't
-> wired to real data.
+> **Status: under active development.** All planned backend subsystems
+> (auth, AI inference, history, reporting, admin, monitoring) are complete;
+> frontend integration and end-to-end testing are ongoing. This is a
+> decision-support / research-oriented project — **not a diagnostic
+> device**, not clinically validated, not production-deployed.
 
-📄 See also: [Project README](../README.md) · [Backend README](../backend/README.md)
+📄 Component docs: **[Frontend README](./Frontend/README.md)** · **[Backend README](./backend/README.md)**
 
 ---
 
 ## Table of contents
 
+- [Overview](#overview)
+- [Architecture](#architecture)
 - [Tech stack](#tech-stack)
-- [Getting started](#getting-started)
-- [Project structure](#project-structure)
-- [Docker](#docker)
-- [Backend integration status](#backend-integration-status)
-- [Adding a new backend-integrated feature](#adding-a-new-backend-integrated-feature)
-- [Medical / UX copy discipline](#medical--ux-copy-discipline)
+- [Repository layout](#repository-layout)
+- [Quickstart](#quickstart)
+- [Docker (recommended)](#docker-recommended)
+- [Running each service manually](#running-each-service-manually)
+- [Environment variables](#environment-variables)
+- [API documentation](#api-documentation)
+- [Testing](#testing)
+- [Disclaimer](#disclaimer)
 
 ---
+
+## Overview
+
+OncoVision AI lets a user upload a histopathology image and get an
+AI-assisted prediction across lung and colon tissue classes, backed by an
+adaptive ensemble of TensorFlow models (MobileNetV2, DenseNet121, and an
+EfficientNetV2B0+ResNet50 fusion model). It supports:
+
+- JWT-based authentication with `user` / `admin` roles
+- Multi-model ensemble prediction with confidence calibration and
+  agreement scoring
+- Immutable, user-scoped prediction history with pagination and filtering
+- Analytics, CSV export, and PDF report generation
+- Administration (user management, cross-user history/system oversight)
+- Runtime, database, and application monitoring
+- A React dashboard wired against the real backend for every feature above
+  (demo-only pages are clearly labeled where no backend endpoint exists yet
+  — see the [Frontend README](./Frontend/README.md#backend-integration-status))
+
+## Architecture
+
+```
+┌─────────────────────────┐        HTTPS/JSON        ┌──────────────────────────────┐
+│   Frontend (React SPA)   │ ───────────────────────► │   Backend (FastAPI, /api/v1) │
+│   served by Nginx        │ ◄─────────────────────── │                               │
+└─────────────────────────┘                           └───────────────┬───────────────┘
+                                                                        │
+                                              ┌─────────────────────────┼─────────────────────────┐
+                                              ▼                         ▼                         ▼
+                                        PostgreSQL              AI Runtime Manager          Storage volumes
+                                     (users, history)      (TensorFlow model instances,   (uploads, reports,
+                                                             Hugging Face Hub–backed)        cached model weights)
+```
+
+See the [Backend README](./backend/README.md#architecture) for the full
+layered architecture (routers → services → repositories, and the isolated
+ML subsystem) and the [Frontend README](./Frontend/README.md#project-structure)
+for the frontend's folder structure.
 
 ## Tech stack
 
-- React 19, TypeScript, Vite
-- Tailwind CSS, shadcn/ui (Radix primitives), Framer Motion
-- TanStack Query (server state), Axios (HTTP)
-- React Router
-- React Hook Form + Zod
-- Lucide React, Sonner (toasts), React Dropzone
-
-No Redux, no additional state-management library.
-
----
-
-## Getting started
-
-### Prerequisites
-
-- Node.js 18+
-- The OncoVision AI backend running locally (FastAPI, default
-  `http://localhost:8000`) — this frontend has no standalone/offline mode
-  for real data; pages backed by the backend will show error/empty states
-  without it.
-
-### Install & run
-
-```bash
-npm install
-echo "VITE_API_URL=http://localhost:8000/api/v1" > .env   # no .env.example is checked in yet — create .env directly
-npm run dev
-```
-
-The dev server runs on `0.0.0.0:5173` (see `vite.config.ts`; `npm run preview` serves the production build on `0.0.0.0:4173`).
-
-### Environment variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_API_URL` | `http://localhost:8000/api/v1` | Base URL for all backend API calls |
-
-### Scripts
-
-| Command | Purpose |
+| Layer | Stack |
 |---|---|
-| `npm run dev` | Start the Vite dev server |
-| `npm run build` | Production build |
-| `npm run preview` | Preview a production build locally |
-| `npm run format` | Format source with oxfmt |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui (Radix), TanStack Query, Axios, React Router, React Hook Form + Zod |
+| Backend | Python 3.10, FastAPI, Pydantic, SQLAlchemy (async) + Alembic, PyJWT, TensorFlow/Keras 2.10, ReportLab |
+| Database | PostgreSQL (Neon in production; `postgres:16-alpine` locally) |
+| Model storage | Hugging Face Hub (checksum-verified downloads, on-disk cache) |
+| Infra | Docker / Docker Compose, Nginx (frontend static serving), Render (backend deploy target) |
 
----
-
-## Project structure
+## Repository layout
 
 ```
-src/
-├── api/               # Axios instance, interceptors, envelope unwrap helper,
-│                       # api/services/* (one file per backend resource)
-├── components/         # Shared UI primitives (shadcn-style) + navigation
-├── constants/          # api.ts (endpoint map), app.ts, roles.ts, routes.ts
-├── contexts/            # AuthContext (real session state)
-├── features/            # Feature-scoped code — auth/, prediction/
-├── hooks/               # useAuth, usePagination, useSearch, queries/*
-├── layouts/              # AuthLayout, LandingLayout, DashboardLayout, etc.
-├── pages/                # Route-level page components (auth/, dashboard/, admin/, landing/)
-├── providers/            # App-wide providers (QueryClient, Theme, Auth)
-├── routes/               # Route table + guards (ProtectedRoute, AdminRoute, PublicRoute)
-├── types/                # index.ts — real backend-contract types + demo-only types
-└── utils/                # formatters, validation schemas, permissions
+OncoVision/
+├── Frontend/            # React 19 + TypeScript SPA — see Frontend/README.md
+├── backend/              # FastAPI + PostgreSQL + TensorFlow API — see backend/README.md
+├── docker-compose.yml    # Full-stack local orchestration (db + backend + frontend)
+└── README.md             # You are here
 ```
 
-Feature-specific UI lives inside its feature folder (`features/auth`,
-`features/prediction`); avoid dumping feature logic into generic
-`components/`.
+> Note the casing: the frontend directory is `Frontend/` (capital F), the
+> backend directory is `backend/` (lowercase) — match it exactly on
+> case-sensitive filesystems (Linux/Docker) and in `docker-compose.yml`.
 
----
+## Quickstart
 
-## Docker
+The fastest way to get the whole stack running locally is Docker Compose —
+see [below](#docker-recommended). To run each service by hand instead (e.g.
+for frontend-only UI work, or backend development without rebuilding a
+container each time), see [Running each service
+manually](#running-each-service-manually).
 
-The frontend ships a multi-stage `Dockerfile`: a `node:20-alpine` stage runs
-`npm ci && npm run build`, and only the resulting static `dist/` output is
-copied into a lean `nginx:alpine` runtime stage (`nginx.conf` handles gzip,
-long-lived caching for hashed assets, and the SPA fallback to `index.html`
-so client-side routing survives a hard refresh).
+## Docker (recommended)
 
-### Build & run directly
+**Prerequisites:** Docker and Docker Compose.
 
 ```bash
-cd Frontend
-docker build -t oncovision-frontend .
-docker run -p 3000:80 oncovision-frontend
-```
+# 1. Configure the backend environment
+cp backend/.env.example backend/.env
+# then edit backend/.env — at minimum set a real JWT_SECRET_KEY;
+# DATABASE_URL already matches the docker-compose `db` service by default
 
-The app is served at `http://localhost:3000`. Because `VITE_API_URL` is
-baked in at **build time** (Vite inlines `import.meta.env.*` into the
-bundle), point it at the backend URL the container will actually reach
-before building:
-
-```bash
-docker build --build-arg VITE_API_URL=http://localhost:8000/api/v1 -t oncovision-frontend .
-```
-
-> The current `Dockerfile` doesn't declare that `ARG`/`ENV` yet — add
-> `ARG VITE_API_URL` and `ENV VITE_API_URL=$VITE_API_URL` before the
-> `RUN npm run build` line if you need a non-default API URL baked into a
-> standalone image build.
-
-### Docker Compose (full stack)
-
-For local development, run this alongside the backend and database via the
-`docker-compose.yml` at the **repository root** — see the [root
-README](../README.md#docker-recommended) for the one-command version:
-
-```bash
-# from the repository root
+# 2. Build and start everything (PostgreSQL + backend + frontend)
 docker compose up --build
+
+# 3. Run database migrations (first run only, in a second terminal)
+docker compose exec backend python -m alembic upgrade head
 ```
 
-This builds the frontend image, serves it on `http://localhost:3000`
-(mapped to container port 80), and starts it only after the `backend`
-service is up (`depends_on`). The compose frontend service doesn't
-currently pass a `VITE_API_URL` build arg, so it uses the Vite default
-baked into the image — override it as shown above if the backend isn't
-reachable at `http://localhost:8000` from wherever the browser is running.
+| Service | URL | Notes |
+|---|---|---|
+| Frontend | http://localhost:3000 | Nginx-served static build |
+| Backend API | http://localhost:8000 | Swagger UI at `/docs`, ReDoc at `/redoc` |
+| PostgreSQL | `localhost:5432` | Ephemeral container, persisted via the `oncovision_pgdata` volume |
 
----
+What `docker-compose.yml` sets up:
 
-## Backend integration status
+- **`db`** — `postgres:16-alpine`, with a healthcheck the `backend` service
+  waits on before starting.
+- **`backend`** — built from `backend/Dockerfile` (multi-stage, non-root
+  runtime user, container healthcheck against `GET /api/v1/health`),
+  reading config from `backend/.env`. Model weights, uploads, reports, and
+  logs persist in named volumes so they survive `docker compose down`
+  (but not `docker compose down -v`).
+- **`frontend`** — built from `Frontend/Dockerfile` (Node build stage →
+  static `dist/` served by `nginx:alpine`), started only after `backend`
+  is up, exposed on host port `3000` (container port `80`).
 
-Every API call in this codebase is verified against the actual backend
-source (routers, Pydantic schemas, the model manifest) rather than
-assumed. `src/types/index.ts` documents the exact backend schema each type
-mirrors. Two tiers:
+To stop everything: `docker compose down` (add `-v` to also delete the
+named volumes — this wipes the local database and cached model weights).
 
-### ✅ Real — wired to live backend endpoints
+To rebuild a single service after code changes: `docker compose up --build backend` (or `frontend`).
 
-| Feature | Endpoint(s) |
-|---|---|
-| Register / Login / Session restore / Logout / Logout-all | `POST /auth/register`, `/login`, `GET /auth/me`, `POST /auth/logout(-all)` |
-| Predict | `POST /predictions` (multipart) |
-| Prediction History (list + detail) | `GET /predictions/history[/​{id}]` |
-| Reports & Analytics (+ CSV/PDF export) | `GET /reports/analytics`, `/reports/export/csv`, `/reports/export/pdf` |
-| Admin — Users (list, activate, deactivate) | `GET /admin/users`, `POST /admin/users/{id}/activate|deactivate` |
-| Admin — System Health | `GET /monitoring`, `GET /admin/system` |
-| Admin — Analytics | `GET /reports/analytics` + `GET /admin/users` + `GET /monitoring` (combined) |
-| Admin — Model Registry | `GET /system/models` |
+For component-specific Docker details (build args, healthchecks, image
+internals), see the [Backend Docker section](./backend/README.md#docker)
+and [Frontend Docker section](./Frontend/README.md#docker).
 
-Token refresh uses a single-flight + request-queue pattern (no duplicate
-`/auth/refresh` calls, no infinite loop; session is cleared and the user is
-redirected to `/login` if refresh fails).
+## Running each service manually
 
-### 🧪 Demo only — no backend endpoint exists yet
+For day-to-day development, running each service natively (with hot
+reload) is usually faster than rebuilding containers. Full details,
+including environment variables and scripts, are in each component's
+README:
 
-These pages are **kept in the app and clearly labeled**, not deleted —
-each renders a `<DemoDataBanner />` explaining exactly what's missing.
-Do not treat their content as real.
+- **Backend** — Python 3.10+, a PostgreSQL instance (Docker's `db` service
+  works fine), `pip install -r requirements.txt`, `uvicorn app.main:app
+  --reload`. See the [Backend README](./backend/README.md#running-locally).
+- **Frontend** — Node.js 18+, `npm install`, `npm run dev` (expects the
+  backend reachable at `http://localhost:8000` by default). See the
+  [Frontend README](./Frontend/README.md#getting-started).
 
-- Benchmark, Comparison, Favorites, Notifications, Saved Cases
-- Admin Audit Logs
-- Forgot Password, Reset Password, Verify Email, Change Password (the
-  backend has no password-reset, email-verification, or
-  profile/password-update endpoints today — forms explain this rather than
-  faking success)
-- Profile editing (viewing is real via `GET /auth/me`; there is no
-  profile-update endpoint to save to)
+## Environment variables
 
-If you add the corresponding backend endpoint later, replace the relevant
-service in `src/api/services/` and remove the `<DemoDataBanner />` from
-that page — the UI shell is already there.
+Each service owns its own configuration:
 
-### Known backend constraints reflected in the UI
+- **Backend** — see `backend/.env.example` and the [full table in the
+  Backend README](./backend/README.md#environment-variables) (database URL,
+  JWT secret, storage paths, upload limits, Hugging Face token, etc.).
+- **Frontend** — a single `VITE_API_URL` (see the [Frontend
+  README](./Frontend/README.md#environment-variables)); note it's baked in
+  at **build time**, not read at container runtime.
+- **`docker-compose.yml`** additionally reads `POSTGRES_USER` /
+  `POSTGRES_PASSWORD` / `POSTGRES_DB` (from `backend/.env`, with
+  `postgres`/`postgres`/`oncovision` defaults) to configure the local `db`
+  service.
 
-- Roles are **only** `admin` / `user` (see `src/constants/roles.ts`) — no
-  researcher/doctor/viewer tier exists.
-- `GET /admin/users` supports only `page`/`page_size` — no server-side
-  search or filter, so Admin Users filters client-side on the loaded page.
-- Upload accepts **JPEG, PNG, TIFF only, max 10 MB** (`src/constants/app.ts`).
-- `confidence_threshold` on `POST /predictions` only flags results for
-  review — it never changes model output.
-- `generate_report` is accepted by `POST /predictions` for contract
-  stability but not yet acted on by the backend; the UI marks it "Coming
-  soon" rather than pretending it works.
-- The real model manifest has exactly 3 models (MobileNetV2, DenseNet121,
-  EfficientNetV2B0+ResNet50 fusion) and 5 class labels — see
-  `KNOWN_CLASS_LABELS` in `src/constants/app.ts`.
+## API documentation
 
----
+Once the backend is running, interactive docs are available at:
 
-## Adding a new backend-integrated feature
+- Swagger UI — `http://localhost:8000/docs`
+- ReDoc — `http://localhost:8000/redoc`
+- OpenAPI schema — `http://localhost:8000/openapi.json`
 
-Follow the existing pattern rather than starting from UI assumptions:
+## Testing
 
-1. Read the actual backend router + Pydantic schema for the endpoint.
-2. Add/extend the matching type in `src/types/index.ts`.
-3. Add a service function in `src/api/services/`.
-4. Add a TanStack Query hook in `src/hooks/queries/`.
-5. Build the page/component, reusing existing UI primitives
-   (`components/ui/*`) and loading/empty/error patterns.
-6. If the feature only partially exists on the backend, keep the rest
-   visible behind `<DemoDataBanner feature="..." />` instead of removing
-   it.
+```bash
+cd backend
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest tests -v
+```
 
----
+See the [Backend README](./backend/README.md#testing) for how the test
+suite is organized. The frontend does not currently have an automated test
+suite configured.
 
-## Medical / UX copy discipline
+## Disclaimer
 
-Never imply definitive diagnosis. Use "AI Prediction", "Predicted Class",
-"Model Confidence", "Model Agreement", "AI-assisted analysis" — never
-"Diagnosis confirmed" or similar. This is a decision-support, research-
-oriented platform, not a diagnostic device.
+OncoVision AI is a research/decision-support project. Predictions are
+AI-generated model output — labeled as such throughout the UI (e.g. "AI
+Prediction", "Model Confidence") — and are never presented as a confirmed
+diagnosis. It is not certified as a medical device and must not be used
+for actual clinical decision-making.

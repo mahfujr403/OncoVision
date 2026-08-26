@@ -9,6 +9,20 @@ against a real FastAPI backend.
 > status](#backend-integration-status) below for exactly what is and isn't
 > wired to real data.
 
+📄 See also: [Project README](../README.md) · [Backend README](../backend/README.md)
+
+---
+
+## Table of contents
+
+- [Tech stack](#tech-stack)
+- [Getting started](#getting-started)
+- [Project structure](#project-structure)
+- [Docker](#docker)
+- [Backend integration status](#backend-integration-status)
+- [Adding a new backend-integrated feature](#adding-a-new-backend-integrated-feature)
+- [Medical / UX copy discipline](#medical--ux-copy-discipline)
+
 ---
 
 ## Tech stack
@@ -38,12 +52,11 @@ No Redux, no additional state-management library.
 
 ```bash
 npm install
-cp .env.example .env   # if present; otherwise create .env (see below)
+echo "VITE_API_URL=http://localhost:8000/api/v1" > .env   # no .env.example is checked in yet — create .env directly
 npm run dev
 ```
 
-The dev server runs on `0.0.0.0` (configurable via `PORT`, default from
-`vite.config.ts`).
+The dev server runs on `0.0.0.0:5173` (see `vite.config.ts`; `npm run preview` serves the production build on `0.0.0.0:4173`).
 
 ### Environment variables
 
@@ -84,6 +97,56 @@ src/
 Feature-specific UI lives inside its feature folder (`features/auth`,
 `features/prediction`); avoid dumping feature logic into generic
 `components/`.
+
+---
+
+## Docker
+
+The frontend ships a multi-stage `Dockerfile`: a `node:20-alpine` stage runs
+`npm ci && npm run build`, and only the resulting static `dist/` output is
+copied into a lean `nginx:alpine` runtime stage (`nginx.conf` handles gzip,
+long-lived caching for hashed assets, and the SPA fallback to `index.html`
+so client-side routing survives a hard refresh).
+
+### Build & run directly
+
+```bash
+cd Frontend
+docker build -t oncovision-frontend .
+docker run -p 3000:80 oncovision-frontend
+```
+
+The app is served at `http://localhost:3000`. Because `VITE_API_URL` is
+baked in at **build time** (Vite inlines `import.meta.env.*` into the
+bundle), point it at the backend URL the container will actually reach
+before building:
+
+```bash
+docker build --build-arg VITE_API_URL=http://localhost:8000/api/v1 -t oncovision-frontend .
+```
+
+> The current `Dockerfile` doesn't declare that `ARG`/`ENV` yet — add
+> `ARG VITE_API_URL` and `ENV VITE_API_URL=$VITE_API_URL` before the
+> `RUN npm run build` line if you need a non-default API URL baked into a
+> standalone image build.
+
+### Docker Compose (full stack)
+
+For local development, run this alongside the backend and database via the
+`docker-compose.yml` at the **repository root** — see the [root
+README](../README.md#docker-recommended) for the one-command version:
+
+```bash
+# from the repository root
+docker compose up --build
+```
+
+This builds the frontend image, serves it on `http://localhost:3000`
+(mapped to container port 80), and starts it only after the `backend`
+service is up (`depends_on`). The compose frontend service doesn't
+currently pass a `VITE_API_URL` build arg, so it uses the Vite default
+baked into the image — override it as shown above if the backend isn't
+reachable at `http://localhost:8000` from wherever the browser is running.
 
 ---
 
