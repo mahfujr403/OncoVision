@@ -59,16 +59,18 @@ export function DashboardLayout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar onMenuClick={() => setMobileOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto flex flex-col">
           {/* Breadcrumb bar */}
           <div className="sticky top-0 z-10 flex items-center h-9 px-5 border-b border-border bg-background/80 backdrop-blur-sm">
             <Breadcrumb />
           </div>
 
           {/* Page content */}
-          <div className="p-5 md:p-6">
+          <div className="flex-1 p-5 md:p-6">
             <Outlet />
           </div>
+
+          <Footer />
         </main>
       </div>
     </div>

@@ -22,10 +22,19 @@ function LinkedinIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// A bare `mailto:` link silently does nothing on desktop browsers when the
+// OS has no default mail client configured (very common on Windows/Linux
+// without Outlook/Thunderbird set up) — it looks like the icon is dead.
+// Gmail's own web-compose URL always opens in the browser instead, so it
+// works consistently regardless of the visitor's local mail-client setup.
+function gmailComposeUrl(email: string) {
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
+}
+
 const SOCIAL_LINKS = [
   { label: 'LinkedIn', href: DEVELOPER.linkedin, icon: LinkedinIcon },
   { label: 'GitHub', href: DEVELOPER.github, icon: GithubIcon },
-  { label: 'Email', href: `mailto:${DEVELOPER.email}`, icon: Mail },
+  { label: 'Email', href: gmailComposeUrl(DEVELOPER.email), icon: Mail, external: true },
   { label: 'Portfolio', href: DEVELOPER.portfolio, icon: Globe },
 ] as const;
 
@@ -83,8 +92,8 @@ export function Footer() {
                 >
                   <a
                     href={href}
-                    target={href.startsWith('mailto:') ? undefined : '_blank'}
-                    rel={href.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     aria-label={label}
                     title={label}
                   >
