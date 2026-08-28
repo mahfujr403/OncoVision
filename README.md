@@ -4,9 +4,7 @@ Enterprise-oriented AI-assisted histopathology image analysis platform for
 **Lung & Colon Cancer** classification — a React 19 + TypeScript frontend
 backed by a FastAPI + PostgreSQL + TensorFlow backend.
 
-> **Status: under active development.** All planned backend subsystems
-> (auth, AI inference, history, reporting, admin, monitoring) are complete;
-> frontend integration and end-to-end testing are ongoing. This is a
+> **Status: under active development.**  This is a
 > decision-support / research-oriented project — **not a diagnostic
 > device**, not clinically validated, not production-deployed.
 
@@ -52,15 +50,15 @@ EfficientNetV2B0+ResNet50 fusion model). It supports:
 
 ```
 ┌─────────────────────────┐        HTTPS/JSON        ┌──────────────────────────────┐
-│   Frontend (React SPA)   │ ───────────────────────► │   Backend (FastAPI, /api/v1) │
-│   served by Nginx        │ ◄─────────────────────── │                               │
-└─────────────────────────┘                           └───────────────┬───────────────┘
-                                                                        │
-                                              ┌─────────────────────────┼─────────────────────────┐
-                                              ▼                         ▼                         ▼
-                                        PostgreSQL              AI Runtime Manager          Storage volumes
+│   Frontend (React SPA)  │ ───────────────────────► │   Backend (FastAPI, /api/v1) │
+│   served by Nginx       │ ◄─────────────────────── │                              │
+└─────────────────────────┘                          └───────────────┬──────────────┘
+                                                                     │
+                                           ┌─────────────────────────┼─────────────────────────┐
+                                           ▼                         ▼                         ▼
+                                       PostgreSQL              AI Runtime Manager          Storage volumes
                                      (users, history)      (TensorFlow model instances,   (uploads, reports,
-                                                             Hugging Face Hub–backed)        cached model weights)
+                                                            Hugging Face Hub–backed)        cached model weights)
 ```
 
 See the [Backend README](./backend/README.md#architecture) for the full
