@@ -52,9 +52,9 @@ class ModelLoader:
         return model, weight_path, duration_ms
 
     async def _load_into_memory(self, entry: ModelManifestEntry, weight_path: Path) -> Any:
-        """Run the blocking TensorFlow model load in a worker thread."""
+        """Run the blocking model load in a worker thread."""
         try:
-            return await asyncio.to_thread(self._load_model_sync, weight_path)
+            return await asyncio.to_thread(self._load_model_sync, entry, weight_path)
         except ModelLoadError:
             raise
         except Exception as exc:
@@ -62,15 +62,51 @@ class ModelLoader:
             raise ModelLoadError(f"Model '{entry.id}' failed to load: {exc}") from exc
 
     @staticmethod
-    def _load_model_sync(weight_path: Path) -> Any:
-        """Synchronously load a Keras `.h5` model file.
+    def _load_model_sync(entry: ModelManifestEntry, weight_path: Path) -> Any:
+        """Synchronously load a model weight file, dispatching on `entry.format`.
 
-        The `tensorflow` import is deferred to call time so the rest of the
+        Supports:
+          - "tflite": loads a `tflite_runtime.interpreter.Interpreter` (falls
+            back to `tensorflow.lite.Interpreter` if `tflite-runtime` is not
+            installed). This is the low-RAM path used on Render Free.
+          - "h5": loads a Keras `.h5` model via TensorFlow (legacy path,
+            kept for any model not yet converted).
+
+        The relevant import is deferred to call time so the rest of the
         application can start and serve non-ML endpoints even in
-        environments where the (heavyweight) TensorFlow dependency is
-        temporarily unavailable; such a failure surfaces as a `FAILED`
-        model state rather than a startup crash.
+        environments where the ML dependency is temporarily unavailable;
+        such a failure surfaces as a `FAILED` model state rather than a
+        startup crash.
         """
+        if entry.format == "tflite":
+            return ModelLoader._load_tflite_sync(weight_path)
+        if entry.format == "h5":
+            return ModelLoader._load_h5_sync(weight_path)
+        raise ModelLoadError(
+            f"Unsupported model format '{entry.format}' for model '{entry.id}'."
+        )
+
+    @staticmethod
+    def _load_tflite_sync(weight_path: Path) -> Any:
+        """Load a `.tflite` model as an allocated Interpreter instance."""
+        try:
+            from tflite_runtime.interpreter import Interpreter
+        except ImportError:
+            try:
+                from tensorflow.lite import Interpreter
+            except ImportError as exc:
+                raise ModelLoadError(
+                    "Neither 'tflite-runtime' nor 'tensorflow' is installed; "
+                    "cannot load .tflite model weight files."
+                ) from exc
+
+        interpreter = Interpreter(model_path=str(weight_path))
+        interpreter.allocate_tensors()
+        return interpreter
+
+    @staticmethod
+    def _load_h5_sync(weight_path: Path) -> Any:
+        """Load a Keras `.h5` model file (legacy path)."""
         try:
             import tensorflow as tf
         except ImportError as exc:

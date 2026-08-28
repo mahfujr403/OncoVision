@@ -41,7 +41,9 @@ class ModelPredictor:
         started_at = time.perf_counter()
 
         try:
-            output = await asyncio.to_thread(self._run_inference, model, input_tensor)
+            output = await asyncio.to_thread(
+                self._run_inference, entry, model, input_tensor
+            )
         except Exception as exc:
             logger.error("Inference failed for model '%s'.", entry.id, exc_info=True)
             raise PredictionExecutionError(
@@ -67,11 +69,34 @@ class ModelPredictor:
         )
 
     @staticmethod
-    def _run_inference(model: Any, input_tensor: np.ndarray) -> np.ndarray:
-        """Synchronously run the blocking TensorFlow forward pass.
+    def _run_inference(
+        entry: ModelManifestEntry, model: Any, input_tensor: np.ndarray
+    ) -> np.ndarray:
+        """Synchronously run the blocking forward pass, dispatching on `entry.format`.
 
         Executed inside `asyncio.to_thread` so a slow model never blocks
         the event loop or other concurrent predictions.
         """
+        if entry.format == "tflite":
+            return ModelPredictor._run_tflite_inference(model, input_tensor)
         predictions = model.predict(input_tensor, verbose=0)
         return np.asarray(predictions[0])
+
+    @staticmethod
+    def _run_tflite_inference(interpreter: Any, input_tensor: np.ndarray) -> np.ndarray:
+        """Run a forward pass through an already-allocated TFLite Interpreter."""
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+
+        tensor = input_tensor.astype(input_details[0]["dtype"], copy=False)
+
+        if list(input_details[0]["shape"]) != list(tensor.shape):
+            interpreter.resize_tensor_input(input_details[0]["index"], tensor.shape)
+            interpreter.allocate_tensors()
+            input_details = interpreter.get_input_details()
+            output_details = interpreter.get_output_details()
+
+        interpreter.set_tensor(input_details[0]["index"], tensor)
+        interpreter.invoke()
+        output = interpreter.get_tensor(output_details[0]["index"])
+        return np.asarray(output[0])

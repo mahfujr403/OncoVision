@@ -21,8 +21,11 @@ email-validator==2.2.0
 
 huggingface-hub==0.27.1
 
-# ML Dependencies (Compatible with TF 2.10 Models)
-tensorflow==2.10.0
+# ML Dependencies (TFLite models - low RAM footprint for Render Free)
+# tflite-runtime is a lightweight interpreter-only package (~few MB import
+# footprint) vs full `tensorflow` (~300-400MB just to import). All 3 models
+# in the manifest are now .tflite, so tensorflow itself is no longer needed.
+tflite-runtime==2.14.0
 numpy==1.23.5
 Pillow==10.4.0
 h5py==3.11.0
