@@ -1,0 +1,19 @@
+﻿# JavaScript files
+/*.js
+  Content-Type: application/javascript
+
+# JavaScript module files
+/*.mjs
+  Content-Type: application/javascript
+
+# CSS files
+/*.css
+  Content-Type: text/css
+
+# JSON files
+/*.json
+  Content-Type: application/json
+
+# Cache static assets
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
