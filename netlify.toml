@@ -4,7 +4,7 @@
   publish = "dist"
 
 [build.environment]
-  VITE_API_URL = "https://oncovision-backend.onrender.com/api/v1"
+  VITE_API_URL = "https://oncovision-backend-mp8n.onrender.com/api/v1"
 
 [[headers]]
   for = "/*.js"
