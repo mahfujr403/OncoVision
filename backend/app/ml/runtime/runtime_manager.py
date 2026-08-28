@@ -184,6 +184,65 @@ class AIRuntimeManager:
         all_models = await self._state.all()
         return [model.model_dump() for model in sorted(all_models, key=lambda model: model.priority)]
 
+    async def ensure_all_enabled_models_loaded(self) -> int:
+        """Best-effort retry: attempt to load every enabled model not currently READY.
+
+        Maximizes how many manifest models actually participate in the
+        ensemble over the runtime's lifetime, not just at startup. Two
+        cases benefit:
+
+          - A model still on `LoadingStrategy.LAZY` (registered but never
+            triggered) that `predict_multi_model()` would otherwise skip
+            forever, since that method only consumes whatever
+            `get_loaded_models()` already reports as READY -- it never
+            triggers a lazy load itself (ADR-007/ADR-021 keep model
+            loading exclusively the Runtime Manager's job).
+          - A model in `ModelState.FAILED` from a transient issue at
+            startup (e.g. a flaky Hugging Face download, or a momentary
+            memory-check false negative) that would otherwise stay
+            excluded from every future prediction with no retry.
+
+        Safe to call before every prediction request: a model already
+        READY is skipped near-instantly (state check, no re-download), and
+        the same per-model lock used by `_load_entry` prevents duplicate
+        concurrent work when multiple requests call this at once.
+
+        Never raises -- an individual model's retry failure is recorded in
+        its runtime state exactly like startup loading; this method only
+        reports how many models newly became READY.
+
+        Returns:
+            The number of models that transitioned to READY during this call.
+        """
+        if not self._runtime_initialized:
+            return 0
+
+        all_models = await self._state.all()
+        candidates = [
+            model
+            for model in all_models
+            if model.state not in (ModelState.READY, ModelState.DISABLED)
+        ]
+
+        newly_ready = 0
+        for model_info in candidates:
+            try:
+                entry = self._registry.get_model_by_id(model_info.model_id)
+            except Exception:
+                continue
+
+            await self._load_entry(entry)
+
+            updated = await self._state.get(entry.id)
+            if updated is not None and updated.state == ModelState.READY:
+                newly_ready += 1
+
+        if newly_ready:
+            logger.info(
+                "ensure_all_enabled_models_loaded: %d model(s) newly READY.", newly_ready
+            )
+        return newly_ready
+
     async def unload_model(self, model_id: str) -> bool:
         """Unload `model_id` from memory, releasing it for garbage collection.
 

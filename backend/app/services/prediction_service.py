@@ -773,6 +773,20 @@ class PredictionService:
 
         self._enter_stage(PipelineStageName.RUNTIME)
 
+        if self._runtime_manager is not None:
+            try:
+                await self._runtime_manager.ensure_all_enabled_models_loaded()
+            except Exception:
+                # Best-effort self-healing retry only; a failure here must
+                # never block the pipeline. RuntimeValidator.validate_or_raise()
+                # immediately below still enforces the real readiness gate.
+                logger.warning(
+                    "ensure_all_enabled_models_loaded() failed; proceeding with "
+                    "currently loaded models: request_id=%s",
+                    context.request_id,
+                    exc_info=True,
+                )
+
         try:
             with profiler.measure(ProfiledStage.RUNTIME_VALIDATION):
                 runtime_validation = await self._runtime_validator.validate_or_raise()

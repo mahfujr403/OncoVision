@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     # Every other enabled model is registered and loaded lazily on first
     # request. This is priority-driven, never tied to a specific model ID,
     # so new manifest entries never require a code change.
-    STARTUP_MODEL_LOAD_LIMIT: int = 2
+    STARTUP_MODEL_LOAD_LIMIT: int = 3
 
     # Prediction History retrieval configuration (Phase 5.3, ADR-034)
     # Internal upper bound on the number of records returned by the
