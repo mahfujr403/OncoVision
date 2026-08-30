@@ -15,7 +15,7 @@ backed by a FastAPI + PostgreSQL + TensorFlow backend.
 
 | Service | Provider (free tier) | URL |
 |---|---|---|
-| Frontend | Netlify | [`https://oncovision-live.netlify.app`](https://oncovision-live.netlify.app/) — replace with the actual Netlify URL |
+| Frontend | Netlify | [`https://oncovision-live.netlify.app`](https://oncovision-live.netlify.app/) |
 | Backend API | Render | [`https://oncovision-backend-mp8n.onrender.com`](https://oncovision-backend-mp8n.onrender.com) — Swagger docs at `/docs` |
 | Database | Neon (PostgreSQL, serverless) | internal — not publicly exposed |
 | Model storage | Hugging Face Hub | internal — pulled by the backend at runtime |

@@ -250,8 +250,7 @@ that page — the UI shell is already there.
 - `confidence_threshold` on `POST /predictions` only flags results for
   review — it never changes model output.
 - `generate_report` is accepted by `POST /predictions` for contract
-  stability but not yet acted on by the backend; the UI marks it "Coming
-  soon" rather than pretending it works.
+  stability.
 - The real model manifest has exactly 3 models (MobileNetV2, DenseNet121,
   EfficientNetV2B0+ResNet50 fusion) and 5 class labels — see
   `KNOWN_CLASS_LABELS` in `src/constants/app.ts`.
