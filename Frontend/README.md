@@ -4,8 +4,9 @@ Enterprise-oriented AI-assisted histopathology image analysis platform for
 Lung & Colon Cancer classification. React 19 + TypeScript frontend, built
 against a real FastAPI backend.
 
-> **Status: under active development.** Not clinically validated, not a
-> diagnostic tool, not production-ready. See [Backend integration
+> **Status: live.** Deployed as a free-tier demo on Netlify — see
+> [Deployment (Netlify)](#deployment-netlify). Not clinically validated,
+> not a diagnostic tool. See [Backend integration
 > status](#backend-integration-status) below for exactly what is and isn't
 > wired to real data.
 
@@ -19,6 +20,7 @@ against a real FastAPI backend.
 - [Getting started](#getting-started)
 - [Project structure](#project-structure)
 - [Docker](#docker)
+- [Deployment (Netlify)](#deployment-netlify)
 - [Backend integration status](#backend-integration-status)
 - [Adding a new backend-integrated feature](#adding-a-new-backend-integrated-feature)
 - [Medical / UX copy discipline](#medical--ux-copy-discipline)
@@ -147,6 +149,51 @@ service is up (`depends_on`). The compose frontend service doesn't
 currently pass a `VITE_API_URL` build arg, so it uses the Vite default
 baked into the image — override it as shown above if the backend isn't
 reachable at `http://localhost:8000` from wherever the browser is running.
+
+---
+
+## Deployment (Netlify)
+
+The live frontend is deployed on **Netlify's free plan**, building directly
+from this repository. Configuration lives in [`netlify.toml`](../netlify.toml)
+at the repository root:
+
+```toml
+[build]
+  base = "Frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  VITE_API_URL = "https://oncovision-backend-mp8n.onrender.com/api/v1"
+```
+
+Because `VITE_API_URL` is inlined into the bundle at **build time** (same
+constraint as the [Docker build above](#docker)), it's set as a Netlify
+build environment variable rather than something the app reads at runtime.
+`netlify.toml` also declares a SPA fallback (`/* -> /index.html`, status
+200) so client-side routes survive a hard refresh or direct link, and sets
+explicit `Content-Type` headers for `.js`/`.mjs`/`.css` assets.
+
+### Deploying your own copy
+
+1. Push/fork the repo to your own GitHub account.
+2. In Netlify: **Add new site → Import an existing project**, pick the
+   repo. Netlify picks up `base`, `command`, and `publish` from
+   `netlify.toml` automatically — no manual build settings needed.
+3. Set `VITE_API_URL` (Site settings → Environment variables, or via
+   `netlify.toml`) to point at your own backend deployment.
+4. Trigger a deploy. Netlify's free plan is more than sufficient for this
+   static SPA build (no server-side rendering, no functions in use here).
+
+> **Note:** a `vercel.json` also exists in this directory from an earlier
+> deployment option. It isn't used by the current live deployment — Netlify
+> (via `netlify.toml`) is the one actually serving the app — but it's kept
+> in case Vercel is used as an alternative host later.
+
+Because the live backend is on Render's free plan, it can go idle after
+inactivity — see the [root README's live-demo note](../README.md#-live-demo)
+for what that means for first-load latency.
 
 ---
 

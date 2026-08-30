@@ -2,7 +2,7 @@
 
 Enterprise-grade AI Medical Imaging Platform backend for Lung & Colon Cancer Histopathology Image Classification, built with FastAPI, PostgreSQL, and TensorFlow/Keras.
 
-> **Current status: Phase 10 — Production Polish & Final Backend Hardening.** All planned backend subsystems are implemented: authentication, AI model infrastructure, the prediction pipeline, prediction history, reporting, administration, and monitoring. The project remains **UNDER DEVELOPMENT** and is not a production-deployed system;
+> **Current status: live.** All planned backend subsystems (Phase 10 — Production Polish & Final Backend Hardening) are implemented: authentication, AI model infrastructure, the prediction pipeline, prediction history, reporting, administration, and monitoring. It is deployed live on **Render's free plan** as a demo (see [Live Deployment](#live-deployment-render--neon--hugging-face-hub) below) — not as a production-grade, clinically validated system.
 
 📄 See also: [Project README](../README.md) · [Frontend README](../Frontend/README.md)
 
@@ -11,6 +11,7 @@ Enterprise-grade AI Medical Imaging Platform backend for Lung & Colon Cancer His
 ## Table of Contents
 
 - [Project Overview](#project-overview)
+- [Live Deployment](#live-deployment-render--neon--hugging-face-hub)
 - [Technology Stack](#technology-stack)
 - [Architecture](#architecture)
 - [Folder Structure](#folder-structure)
@@ -50,6 +51,49 @@ OncoVision AI supports:
 - ✅ Centralized exception handling and a consistent global API response envelope
 - ✅ OpenAPI/Swagger documentation for every endpoint
 
+## Live Deployment (Render + Neon + Hugging Face Hub)
+
+The backend is deployed live at
+**[`https://oncovision-backend-mp8n.onrender.com`](https://oncovision-backend-mp8n.onrender.com)**
+(Swagger UI at `/docs`, ReDoc at `/redoc`), on **Render's free web service
+plan**, backed by **Neon's free PostgreSQL plan** and pulling model weights
+from **Hugging Face Hub** at runtime. All three are free tiers, which shapes
+a few operational behaviors worth knowing about:
+
+- **Cold starts.** Render free-tier web services spin down after a period
+  of inactivity and spin back up on the next incoming request. The first
+  request after idle time can take **30–60+ seconds** (container boot +
+  model loading via `AIRuntimeManager`) before it responds; this is
+  expected on this plan, not a bug. Subsequent requests are fast until the
+  service idles out again.
+- **Ephemeral disk.** Render's free plan doesn't guarantee persistent disk
+  across restarts/redeploys. Downloaded model weights (cached under
+  `MODEL_STORAGE_PATH`) are re-downloaded and checksum-verified from
+  Hugging Face Hub on cold start if the cache doesn't survive — this is
+  exactly what the `AIRuntimeManager`'s download/cache layer (see
+  [Architecture](#architecture)) is designed to tolerate.
+- **Memory ceiling.** Render's free plan caps RAM (512 MB), which is the
+  practical reason the AI Runtime Manager loads models sequentially and
+  favors availability over guaranteed full-ensemble predictions if a model
+  fails to load — see [AI Model Infrastructure](#ai-model-infrastructure).
+- **Neon free tier.** Neon's free plan auto-suspends the compute endpoint
+  after inactivity (brief reconnect latency on the first query after a
+  suspend) and caps concurrent connections — SQLAlchemy's async connection
+  pool is sized conservatively (see `app/core/settings.py` /
+  `DATABASE_URL` handling) to stay well under Neon's free-tier connection
+  limit rather than exhausting it.
+- **Hugging Face Hub.** Model repositories are public and unauthenticated
+  by default (`HF_TOKEN` is only needed for a private/gated repo — see
+  [Environment Variables](#environment-variables)); Hub download bandwidth
+  and rate limits apply on the free/anonymous tier.
+
+Environment variables for the live deployment (`DATABASE_URL` pointed at
+the Neon connection string, `JWT_SECRET_KEY`, `ALLOWED_ORIGINS` set to the
+Netlify frontend origin, `HF_TOKEN` if needed, etc.) are set directly in
+the Render dashboard rather than shipped as a `.env` file — see
+[Environment Variables](#environment-variables) for the full list and
+`.env.example` for local equivalents.
+
 ## Technology Stack
 
 **Backend**
@@ -64,10 +108,16 @@ OncoVision AI supports:
 - ReportLab (PDF generation)
 
 **Deployment**
-- Backend: Render
-- Database: Neon PostgreSQL
+- Backend: Render (free web service plan) — live at
+  `https://oncovision-backend-mp8n.onrender.com`
+- Database: Neon PostgreSQL (free plan)
 - Model storage: Hugging Face Hub
-- Containerization: Docker / Docker Compose
+- Frontend: Netlify (free plan) — see the [Frontend README](../Frontend/README.md#deployment-netlify)
+- Containerization: Docker / Docker Compose (used for local dev / self-hosting)
+
+See [Live Deployment](#live-deployment-render--neon--hugging-face-hub) above
+for what running on free-tier infrastructure means in practice (cold
+starts, ephemeral disk, connection limits).
 
 ## Architecture
 
@@ -477,8 +527,8 @@ Once running, interactive API docs are available at:
 | Phase 9 — Deployment Optimization | ✅ Complete |
 | Phase 10 — Production Polish & Final Backend Hardening | ✅ Complete |
 
-**Next:** Frontend integration, end-to-end testing, and final project delivery.
+Frontend integration, end-to-end testing, and deployment are complete — see [Live Deployment](#live-deployment-render--neon--hugging-face-hub).
 
 ---
 
-*OncoVision AI remains under active development and is not represented as production-ready.*
+*OncoVision AI is live, deployed as a free-tier demo (Netlify + Render + Neon + Hugging Face Hub). It is not represented as a production-grade or clinically validated system.*

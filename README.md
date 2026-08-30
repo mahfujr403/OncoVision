@@ -4,16 +4,32 @@ Enterprise-oriented AI-assisted histopathology image analysis platform for
 **Lung & Colon Cancer** classification — a React 19 + TypeScript frontend
 backed by a FastAPI + PostgreSQL + TensorFlow backend.
 
-> **Status: under active development.**  This is a
-> decision-support / research-oriented project — **not a diagnostic
-> device**, not clinically validated, not production-deployed.
+> **Status: live.** This is a decision-support / research-oriented project
+> — **not a diagnostic device**, not clinically validated. It's deployed
+> as a **free-tier live demo** (see below), not a production-grade
+> deployment.
 
 📄 Component docs: **[Frontend README](./Frontend/README.md)** · **[Backend README](./backend/README.md)**
+
+## 🔗 Live demo
+
+| Service | Provider (free tier) | URL |
+|---|---|---|
+| Frontend | Netlify | [`https://oncovision-live.netlify.app`](https://oncovision-live.netlify.app/) — replace with the actual Netlify URL |
+| Backend API | Render | [`https://oncovision-backend-mp8n.onrender.com`](https://oncovision-backend-mp8n.onrender.com) — Swagger docs at `/docs` |
+| Database | Neon (PostgreSQL, serverless) | internal — not publicly exposed |
+| Model storage | Hugging Face Hub | internal — pulled by the backend at runtime |
+
+> **Free-tier heads-up:** the Render backend spins down after periods of
+> inactivity. The **first request after idle time can take 30–60+ seconds**
+> (cold start + model load) before it responds — this is expected, not a
+> bug. Subsequent requests are fast until it idles out again.
 
 ---
 
 ## Table of contents
 
+- [Live demo](#-live-demo)
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Tech stack](#tech-stack)
@@ -74,7 +90,7 @@ for the frontend's folder structure.
 | Backend | Python 3.10, FastAPI, Pydantic, SQLAlchemy (async) + Alembic, PyJWT, TensorFlow/Keras 2.10, ReportLab |
 | Database | PostgreSQL (Neon in production; `postgres:16-alpine` locally) |
 | Model storage | Hugging Face Hub (checksum-verified downloads, on-disk cache) |
-| Infra | Docker / Docker Compose, Nginx (frontend static serving), Render (backend deploy target) |
+| Infra | Docker / Docker Compose, Nginx (local frontend static serving); deployed on Netlify (frontend, free plan), Render (backend, free plan), Neon (database, free plan) |
 
 ## Repository layout
 
@@ -166,11 +182,18 @@ Each service owns its own configuration:
   JWT secret, storage paths, upload limits, Hugging Face token, etc.).
 - **Frontend** — a single `VITE_API_URL` (see the [Frontend
   README](./Frontend/README.md#environment-variables)); note it's baked in
-  at **build time**, not read at container runtime.
+  at **build time**, not read at container runtime. In the live deployment
+  this is set via `[build.environment]` in `netlify.toml` — see the
+  [Frontend README's Deployment section](./Frontend/README.md#deployment-netlify).
 - **`docker-compose.yml`** additionally reads `POSTGRES_USER` /
   `POSTGRES_PASSWORD` / `POSTGRES_DB` (from `backend/.env`, with
   `postgres`/`postgres`/`oncovision` defaults) to configure the local `db`
   service.
+
+In production, the backend's environment variables (`DATABASE_URL` pointed
+at Neon, `JWT_SECRET_KEY`, `HF_TOKEN`, etc.) are set directly in the Render
+dashboard rather than shipped as a `.env` file — see the [Backend README's
+Live Deployment section](./backend/README.md#live-deployment-render--neon--hugging-face-hub).
 
 ## API documentation
 
