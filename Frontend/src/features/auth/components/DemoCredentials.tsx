@@ -10,8 +10,8 @@ interface Credential {
 // The backend only has two roles (admin/user); do not add more here
 // unless the seed script grows a matching account.
 const DEMO_CREDENTIALS: Credential[] = [
-  { role: 'Admin', email: 'admin@oncovision.ai', password: 'Demo@Admin123' },
-  { role: 'User', email: 'user@oncovision.ai', password: 'Demo@User123' },
+  { role: 'Admin', email: 'recruiter@gmail.com', password: 'DfkZMva7KquGrb5%' },
+  { role: 'User', email: 'user@gmail.com', password: 'LW9x387ijkCkSVb^' },
 ];
 
 interface DemoCredentialsProps {
