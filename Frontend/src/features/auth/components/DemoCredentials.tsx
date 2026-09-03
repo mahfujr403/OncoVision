@@ -6,10 +6,12 @@ interface Credential {
   password: string;
 }
 
+// Mirrors backend/scripts/seed_demo_users.py — keep these two in sync.
+// The backend only has two roles (admin/user); do not add more here
+// unless the seed script grows a matching account.
 const DEMO_CREDENTIALS: Credential[] = [
-  { role: 'Admin', email: 'admin@oncovision.ai', password: 'Admin@1234' },
-  { role: 'Researcher', email: 'researcher@oncovision.ai', password: 'Researcher@1234' },
-  { role: 'Doctor', email: 'doctor@oncovision.ai', password: 'Doctor@1234' },
+  { role: 'Admin', email: 'admin@oncovision.ai', password: 'Demo@Admin123' },
+  { role: 'User', email: 'user@oncovision.ai', password: 'Demo@User123' },
 ];
 
 interface DemoCredentialsProps {

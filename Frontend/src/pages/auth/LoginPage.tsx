@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ROUTES } from '@/constants/routes';
 import { loginSchema, type LoginFormData } from '@/utils/validation';
-import { authService, AuthErrorAlert, usePasswordToggle } from '@/features/auth';
+import { authService, AuthErrorAlert, usePasswordToggle, DemoCredentials } from '@/features/auth';
 import { useAuth } from '@/hooks/useAuth';
 import type { ApiError } from '@/types';
 
@@ -24,11 +24,17 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
+
+  const handleDemoSelect = (email: string, password: string) => {
+    setValue('email', email, { shouldValidate: true, shouldDirty: true });
+    setValue('password', password, { shouldValidate: true, shouldDirty: true });
+  };
 
   const onSubmit = async (data: LoginFormData) => {
     setServerError('');
@@ -52,6 +58,8 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold font-display">Sign in</h1>
         <p className="text-sm text-muted-foreground">Access your OncoVision AI workspace</p>
       </div>
+
+      <DemoCredentials onSelect={handleDemoSelect} />
 
       {serverError && <AuthErrorAlert message={serverError} />}
 
