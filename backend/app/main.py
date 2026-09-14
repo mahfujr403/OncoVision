@@ -49,6 +49,8 @@ TAGS_METADATA = [
             "Requires administrator authorization."
         ),
     },
+    {"name": "AI Summary", "description": "LLM-generated prediction summaries."},
+    {"name": "AI Chat", "description": "AI-powered chat for prediction discussions and cancer knowledge queries."},
 ]
 
 

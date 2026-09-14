@@ -12,9 +12,9 @@ export function Skeleton({ className }: SkeletonProps) {
   );
 }
 
-export function SkeletonCard() {
+export function SkeletonCard({ className }: SkeletonProps = {}) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+    <div className={cn("rounded-lg border border-border bg-card p-4 space-y-3", className)}>
       <Skeleton className="h-4 w-2/3" />
       <Skeleton className="h-3 w-full" />
       <Skeleton className="h-3 w-4/5" />
@@ -25,6 +25,8 @@ export function SkeletonCard() {
     </div>
   );
 }
+
+export const SkeletonTableRow = SkeletonRow;
 
 export function SkeletonRow() {
   return (

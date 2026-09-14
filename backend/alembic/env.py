@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.settings import get_settings
 from app.database.base import Base
 from app.models import prediction_history, refresh_token, user  # noqa: F401  (register models on Base.metadata)
+from app.models import chat_message, knowledge_embedding  # noqa: F401  (Phase 11 — LLM + RAG)
 
 config = context.config
 

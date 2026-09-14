@@ -19,10 +19,17 @@
 /** Backend enum: `app.models.enums.UserRole`. Only these two values exist. */
 export type UserRole = 'admin' | 'user';
 
+/** Theme mode supported across the app */
+export type Theme = 'light' | 'dark' | 'system';
+
+/** Application navigation page identifier */
+export type PageId = string;
+
 /** `app.schemas.user.UserResponse` */
 export interface User {
   id: string;
   full_name: string;
+  name?: string;
   email: string;
   role: UserRole;
   is_active: boolean;

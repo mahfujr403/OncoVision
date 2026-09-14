@@ -5,7 +5,8 @@ import { Button } from './Button';
 interface ErrorStateProps {
   title?: string;
   message?: string;
-  onRetry?: () => void;
+  variant?: string;
+  onRetry?: (() => void) | (() => Promise<void>);
   className?: string;
 }
 

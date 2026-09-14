@@ -120,6 +120,23 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     BCRYPT_ROUNDS: int = 12
 
+    # LLM / Gemini API configuration (Phase 11 — LLM + RAG Integration)
+    GOOGLE_API_KEY: str = ""
+    LLM_MODEL: str = "gemini-2.0-flash"
+    LLM_EMBEDDING_MODEL: str = "text-embedding-004"
+    LLM_MAX_TOKENS: int = 1024
+    LLM_TEMPERATURE: float = 0.3
+
+    # RAG configuration (Phase 11)
+    RAG_CHUNK_SIZE: int = 500
+    RAG_CHUNK_OVERLAP: int = 50
+    RAG_TOP_K: int = 5
+    RAG_SIMILARITY_THRESHOLD: float = 0.7
+
+    # Chat rate limiting (Phase 11)
+    CHAT_RATE_LIMIT_MAX_REQUESTS: int = 20
+    CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 3600
+
     @field_validator("LOG_LEVEL")
     @classmethod
     def validate_log_level(cls, value: str) -> str:

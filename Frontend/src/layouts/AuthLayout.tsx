@@ -1,7 +1,6 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Stethoscope } from 'lucide-react';
 import { APP_NAME } from '@/constants/app';
-import { Footer } from '@/components/layout/Footer';
 
 export function AuthLayout() {
   return (

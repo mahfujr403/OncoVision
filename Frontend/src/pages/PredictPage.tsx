@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ScanLine } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { UploadZone } from '@/components/predict/UploadZone';
 import { PredictionOptionsPanel } from '@/components/predict/PredictionOptionsPanel';

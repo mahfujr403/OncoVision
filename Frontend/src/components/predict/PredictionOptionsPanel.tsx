@@ -1,7 +1,6 @@
 import { Info } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Toggle } from '@/components/ui/Toggle';
-import { Badge } from '@/components/ui/Badge';
 import type { PredictionRequestOptions } from '@/types/prediction';
 
 interface PredictionOptionsPanelProps {
