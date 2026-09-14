@@ -29,6 +29,8 @@ const NotificationsPage = lazy(() => import('@/pages/dashboard/NotificationsPage
 const ProfilePage = lazy(() => import('@/pages/dashboard/ProfilePage'));
 const SettingsPage = lazy(() => import('@/pages/dashboard/SettingsPage'));
 const ChangePasswordPage = lazy(() => import('@/pages/dashboard/ChangePasswordPage'));
+const AIChatPage = lazy(() => import('@/pages/dashboard/AIChatPage'));
+const PredictionChatPage = lazy(() => import('@/pages/dashboard/PredictionChatPage'));
 
 // Researcher-only
 const ComparisonPage = lazy(() => import('@/pages/dashboard/ComparisonPage'));
@@ -85,6 +87,8 @@ export function AppRoutes() {
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
             <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
             <Route path={ROUTES.CHANGE_PASSWORD} element={<ChangePasswordPage />} />
+            <Route path={ROUTES.AI_CHAT} element={<AIChatPage />} />
+            <Route path={`${ROUTES.PREDICTION_CHAT}/:predictionId`} element={<PredictionChatPage />} />
 
             {/* Comparison and Benchmark are demo-only pages (see
                 DemoDataBanner within them) but open to any authenticated

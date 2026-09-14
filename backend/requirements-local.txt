@@ -1,0 +1,44 @@
+# Local Windows development requirements
+# Derived from requirements.txt with Windows-incompatible packages replaced
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+python-multipart==0.0.20
+
+httpx==0.28.1
+orjson==3.10.13
+
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+psycopg2-binary==2.9.10
+
+passlib==1.7.4
+bcrypt==4.0.1
+PyJWT==2.10.1
+email-validator==2.2.0
+
+huggingface-hub==0.27.1
+
+# ML Dependencies — tflite-runtime is Linux-only, use tensorflow on Windows
+tensorflow>=2.14.0
+numpy==1.23.5
+Pillow==10.4.0
+h5py==3.11.0
+scikit-learn==1.5.1
+
+psutil==7.2.2
+
+# PDF Reporting (Phase 6.4)
+reportlab==4.4.10
+
+# LLM & RAG Integration (Phase 11)
+google-genai>=1.0.0
+pgvector>=0.3.6
+langchain-text-splitters>=0.2.0
+tiktoken>=0.7.0
+sse-starlette>=2.0.0,<3.0.0

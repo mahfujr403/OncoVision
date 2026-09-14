@@ -29,30 +29,17 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
     # --- knowledge_embeddings table ---
-    op.create_table(
-        "knowledge_embeddings",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("source", sa.String(512), nullable=False),
-        sa.Column("topic", sa.String(255), nullable=False),
-        sa.Column("chunk_index", sa.Integer(), nullable=False),
-        sa.Column(
-            "embedding",
-            sa.Column("embedding", sa.LargeBinary()),  # placeholder — see raw SQL below
-            nullable=False,
-        ),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-    )
-    # pgvector column must be added via raw SQL since Alembic doesn't
-    # natively support the ``vector`` type.
-    op.execute("ALTER TABLE knowledge_embeddings DROP COLUMN IF EXISTS embedding")
-    op.execute("ALTER TABLE knowledge_embeddings ADD COLUMN embedding vector(768) NOT NULL")
-
+    op.execute("""
+        CREATE TABLE knowledge_embeddings (
+            id UUID PRIMARY KEY,
+            content TEXT NOT NULL,
+            source VARCHAR(512) NOT NULL,
+            topic VARCHAR(255) NOT NULL,
+            chunk_index INTEGER NOT NULL,
+            embedding vector(768) NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
     op.create_index(
         "ix_knowledge_embeddings_topic",
         "knowledge_embeddings",
@@ -103,5 +90,3 @@ def downgrade() -> None:
     op.drop_column("prediction_history", "ai_summary")
     op.drop_table("chat_messages")
     op.drop_table("knowledge_embeddings")
-    # Note: We don't DROP EXTENSION vector here because other tables might
-    # depend on it and it's generally safe to leave installed.

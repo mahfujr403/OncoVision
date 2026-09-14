@@ -395,6 +395,52 @@ export interface ApiError {
   errors?: ApiErrorDetail[] | null;
 }
 
+// -- AI Chat & Summary (`/api/v1/chat/*`, `/api/v1/predictions/*/summary`) ---
+
+export interface ChatMessageRequest {
+  message: string;
+  conversation_id?: string;
+  language?: 'en' | 'bn';
+}
+
+export interface SourceReference {
+  title: string;
+  source: string;
+  relevance: number;
+}
+
+export interface ChatMessageResponse {
+  response: string;
+  conversation_id: string;
+  sources?: SourceReference[];
+  disclaimer: string;
+}
+
+export interface ChatMessageDetail {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ChatHistoryResponse {
+  messages: ChatMessageDetail[];
+  conversation_id: string;
+  total: number;
+}
+
+export interface SummaryRequest {
+  language?: 'en' | 'bn';
+}
+
+export interface SummaryResponse {
+  summary_text: string;
+  prediction_id: string;
+  language: string;
+  disclaimer: string;
+}
+
 // ============================================================================
 // DEMO-ONLY TYPES
 // No backend endpoint exists for any of the following today. Pages using

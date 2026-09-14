@@ -19,6 +19,9 @@ export const ROUTES = {
   SETTINGS: '/dashboard/settings',
   CHANGE_PASSWORD: '/dashboard/change-password',
 
+  AI_CHAT: '/dashboard/ai-chat',
+  PREDICTION_CHAT: '/dashboard/prediction-chat',
+
   ADMIN: '/dashboard/admin',
   ADMIN_USERS: '/dashboard/admin/users',
   ADMIN_HISTORY: '/dashboard/admin/history',
