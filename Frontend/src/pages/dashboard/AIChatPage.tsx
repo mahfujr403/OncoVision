@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChatPanel, ChatMessage } from '@/features/chat';
 import { sendKnowledgeChat } from '@/api/services/chatService';
 import { toast } from 'sonner';
@@ -40,7 +40,7 @@ export default function AIChatPage() {
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: response.reply,
+        content: response.response,
         sources: response.sources,
         created_at: new Date().toISOString(),
       };

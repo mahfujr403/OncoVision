@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Globe } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export interface ChatInputProps {
   onSend: (message: string) => void;

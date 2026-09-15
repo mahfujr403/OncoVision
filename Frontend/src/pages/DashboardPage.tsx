@@ -52,7 +52,7 @@ export function DashboardPage({ user, onNavigate }: DashboardPageProps) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            {greeting()}, {user.name.split(' ')[0]}
+            {greeting()}, {user.name ? user.name.split(' ')[0] : 'User'}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             OncoVision AI — Lung &amp; Colon Histopathology Analysis Platform

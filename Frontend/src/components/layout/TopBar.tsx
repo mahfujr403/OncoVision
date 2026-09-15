@@ -127,7 +127,7 @@ export function TopBar({
             <Avatar name={user.name} size="xs" />
             <div className="hidden sm:flex flex-col items-start leading-tight">
               <span className="text-xs font-semibold text-foreground leading-none">
-                {user.name.split(' ')[0]}
+                {user.name ? user.name.split(' ')[0] : 'User'}
               </span>
             </div>
             <Badge variant={user.role === 'admin' ? 'admin' : 'user'} className="hidden sm:inline-flex">

@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Microscope, History, GitCompare, BarChart3,
   FileText, Bookmark, Heart, Bell, User, Settings,
   Users, Cpu, Activity, ScrollText, ChevronRight,
-  Stethoscope, ChevronLeft, Zap, KeyRound, Brain, MessageCircle
+  Stethoscope, ChevronLeft, Zap, KeyRound, Brain
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';

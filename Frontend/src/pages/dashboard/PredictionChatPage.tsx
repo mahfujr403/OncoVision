@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChatPanel, ChatMessage } from '@/features/chat';
 import { sendPredictionChat, generatePredictionSummary } from '@/api/services/chatService';
@@ -23,7 +23,7 @@ export default function PredictionChatPage() {
         const summaryMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: response.summary,
+          content: response.summary_text,
           created_at: new Date().toISOString(),
         };
         
@@ -65,7 +65,7 @@ export default function PredictionChatPage() {
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: response.reply,
+        content: response.response,
         sources: response.sources,
         created_at: new Date().toISOString(),
       };
