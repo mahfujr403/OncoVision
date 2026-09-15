@@ -5,6 +5,7 @@ interface AvatarProps {
   src?: string;
   alt?: string;
   fallback?: string;
+  name?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
@@ -17,9 +18,10 @@ const sizeClasses = {
   xl: 'h-14 w-14 text-lg',
 };
 
-export function Avatar({ src, alt, fallback, size = 'md', className }: AvatarProps) {
-  const initials = fallback
-    ? fallback
+export function Avatar({ src, alt, fallback, name, size = 'md', className }: AvatarProps) {
+  const displayName = fallback || name || '';
+  const initials = displayName
+    ? displayName
         .split(' ')
         .slice(0, 2)
         .map((w) => w[0])

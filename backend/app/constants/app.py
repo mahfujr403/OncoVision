@@ -16,6 +16,8 @@ TAG_PREDICTION_HISTORY: Final[str] = "Prediction History"
 TAG_REPORTS: Final[str] = "Reports"
 TAG_ADMIN: Final[str] = "Administration"
 TAG_MONITORING: Final[str] = "Monitoring"
+TAG_AI_CHAT: Final[str] = "AI Chat"
+TAG_AI_SUMMARY: Final[str] = "AI Summary"
 
 REQUEST_ID_HEADER: Final[str] = "X-Request-ID"
 PROCESS_TIME_HEADER: Final[str] = "X-Process-Time"

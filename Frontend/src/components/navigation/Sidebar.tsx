@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Microscope, History, GitCompare, BarChart3,
   FileText, Bookmark, Heart, Bell, User, Settings,
   Users, Cpu, Activity, ScrollText, ChevronRight,
-  Stethoscope, ChevronLeft, Zap, KeyRound,
+  Stethoscope, ChevronLeft, Zap, KeyRound, Brain, MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +35,13 @@ function buildNavGroups(role: ReturnType<typeof useAuth>['role']): NavGroup[] {
       ],
     },
   ];
+
+  groups.push({
+    label: 'AI Assistant',
+    items: [
+      { label: 'Cancer Knowledge Chat', icon: <Brain className="h-4 w-4" />, to: ROUTES.AI_CHAT },
+    ],
+  });
 
   const analysisItems: NavItem[] = [];
   // Comparison/Benchmark are demo-only pages, but every authenticated user

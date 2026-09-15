@@ -45,6 +45,14 @@ export const API_ENDPOINTS = {
     MODELS_STATUS: '/system/models/status',
   },
   HEALTH: '/health',
+  CHAT: {
+    PREDICTION: (predictionId: string) => `/chat/prediction/${predictionId}`,
+    KNOWLEDGE: '/chat/knowledge',
+    HISTORY: (conversationId: string) => `/chat/history/${conversationId}`,
+  },
+  SUMMARY: {
+    GENERATE: (predictionId: string) => `/predictions/${predictionId}/summary`,
+  },
 } as const;
 
 export const QUERY_KEYS = {
@@ -61,4 +69,6 @@ export const QUERY_KEYS = {
   SYSTEM_INFO: ['system', 'info'] as const,
   SYSTEM_MODELS: ['system', 'models'] as const,
   SYSTEM_MODELS_STATUS: ['system', 'models', 'status'] as const,
+  CHAT_HISTORY: (conversationId: string) => ['chat', 'history', conversationId] as const,
+  PREDICTION_SUMMARY: (predictionId: string) => ['predictions', 'summary', predictionId] as const,
 } as const;

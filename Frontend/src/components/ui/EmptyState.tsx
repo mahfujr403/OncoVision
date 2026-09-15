@@ -10,6 +10,7 @@ interface EmptyStateProps {
     label: string;
     onClick: () => void;
   };
+  compact?: boolean;
   className?: string;
 }
 

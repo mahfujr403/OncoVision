@@ -10,6 +10,8 @@ const buttonVariants = cva(
       variant: {
         default:
           'bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98]',
+        primary:
+          'bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98]',
         destructive:
           'bg-destructive text-white hover:opacity-90',
         outline:
@@ -27,6 +29,7 @@ const buttonVariants = cva(
         xs: 'h-6 px-2.5 text-xs',
         sm: 'h-8 px-3 text-xs',
         default: 'h-9 px-4 text-sm',
+        md: 'h-9 px-4 text-sm',
         lg: 'h-10 px-6',
         icon: 'h-9 w-9 p-0',
         'icon-sm': 'h-7 w-7 p-0',
@@ -44,10 +47,11 @@ interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
+  icon?: React.ReactNode;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading = false, children, disabled, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, loading = false, icon, children, disabled, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
     return (
       <Comp
@@ -62,7 +66,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             {children}
           </>
         ) : (
-          children
+          <>
+            {icon}
+            {children}
+          </>
         )}
       </Comp>
     );

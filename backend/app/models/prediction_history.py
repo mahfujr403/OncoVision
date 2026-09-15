@@ -28,7 +28,7 @@ the JSON payload; they are not a second source of truth.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -74,3 +74,7 @@ class PredictionHistoryRecord(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+    # LLM-generated summary, cached after first request (Phase 11).
+    # This is the only mutable column on this otherwise append-only model.
+    ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)

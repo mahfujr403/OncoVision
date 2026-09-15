@@ -15,6 +15,9 @@ const badgeVariants = cva(
         info: 'bg-sky-500/10 text-sky-400 ring-sky-500/20',
         accent: 'bg-accent/10 text-accent ring-accent/20',
         outline: 'bg-transparent text-muted-foreground ring-border',
+        offline: 'bg-zinc-500/10 text-zinc-400 ring-zinc-500/20',
+        admin: 'bg-purple-500/10 text-purple-400 ring-purple-500/20',
+        user: 'bg-blue-500/10 text-blue-400 ring-blue-500/20',
       },
     },
     defaultVariants: {
@@ -39,6 +42,9 @@ export function Badge({ className, variant, dot = false, children, ...props }: B
             variant === 'warning' && 'bg-amber-400',
             variant === 'info' && 'bg-sky-400',
             variant === 'default' && 'bg-primary',
+            variant === 'offline' && 'bg-zinc-400',
+            variant === 'admin' && 'bg-purple-400',
+            variant === 'user' && 'bg-blue-400',
             (!variant || variant === 'secondary' || variant === 'outline') && 'bg-muted-foreground',
           )}
         />
