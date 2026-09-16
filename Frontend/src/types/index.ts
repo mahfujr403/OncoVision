@@ -195,6 +195,7 @@ export interface PredictionHistoryDetail {
   individual_predictions: PredictionHistoryModelEntry[];
   image_metadata: PredictionHistoryImageMetadata;
   runtime_info: PredictionHistoryRuntimeInfo;
+  ai_summary?: string | null;
 }
 
 /** Real, server-validated query params for `GET /predictions/history`. */

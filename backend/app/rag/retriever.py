@@ -5,52 +5,65 @@ from sqlalchemy import select
 from app.rag.embeddings import EmbeddingService
 from app.models.knowledge_embedding import KnowledgeEmbedding
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 class RetrievedDocument(BaseModel):
     content: str
     source: str
     topic: str
     similarity: float
 
+
 class RAGRetriever:
     """Retrieval service for the RAG pipeline."""
-    
+
     def __init__(self, session: AsyncSession, embedding_service: EmbeddingService):
         self.session = session
         self.embedding_service = embedding_service
 
     async def retrieve(self, query: str, top_k: int = 5, similarity_threshold: float = 0.7) -> List[RetrievedDocument]:
         """Retrieve relevant documents based on semantic similarity."""
-        query_embedding = await self.embedding_service.get_embedding(query)
-        
-        # pgvector cosine distance operator is `<=>`
-        # cosine similarity = 1 - cosine distance
-        distance_expr = KnowledgeEmbedding.embedding.cosine_distance(query_embedding)
-        similarity_expr = (1.0 - distance_expr).label("similarity")
-        
-        stmt = (
-            select(KnowledgeEmbedding, similarity_expr)
-            .where(similarity_expr >= similarity_threshold)
-            .order_by(distance_expr)
-            .limit(top_k)
-        )
-        
-        result = await self.session.execute(stmt)
-        rows = result.all()
-        
-        documents = []
-        for row in rows:
-            embedding_record = row[0]
-            similarity = row.similarity
-            documents.append(
-                RetrievedDocument(
-                    content=embedding_record.content,
-                    source=embedding_record.source,
-                    topic=embedding_record.topic,
-                    similarity=float(similarity)
-                )
+        try:
+            query_embedding = await self.embedding_service.get_embedding(query)
+            if not query_embedding:
+                logger.warning("Empty embedding returned for query '%s'", query[:50])
+                return []
+
+            # pgvector cosine distance operator is `<=>`
+            # cosine similarity = 1 - cosine distance
+            distance_expr = KnowledgeEmbedding.embedding.cosine_distance(query_embedding)
+            similarity_expr = (1.0 - distance_expr).label("similarity")
+
+            stmt = (
+                select(KnowledgeEmbedding, similarity_expr)
+                .where(similarity_expr >= similarity_threshold)
+                .order_by(distance_expr)
+                .limit(top_k)
             )
-            
-        return documents
+
+            result = await self.session.execute(stmt)
+            rows = result.all()
+
+            documents = []
+            for row in rows:
+                embedding_record = row[0]
+                similarity = row.similarity
+                documents.append(
+                    RetrievedDocument(
+                        content=embedding_record.content,
+                        source=embedding_record.source,
+                        topic=embedding_record.topic,
+                        similarity=float(similarity),
+                    )
+                )
+
+            return documents
+        except Exception as e:
+            logger.warning("RAG retrieval failed gracefully: %s", e)
+            return []
 
     def format_context(self, documents: List[RetrievedDocument]) -> str:
         """Format retrieved documents into a context string."""

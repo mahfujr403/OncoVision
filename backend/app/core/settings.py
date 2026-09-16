@@ -122,7 +122,7 @@ class Settings(BaseSettings):
 
     # LLM / Gemini API configuration (Phase 11 — LLM + RAG Integration)
     GOOGLE_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-2.0-flash"
+    LLM_MODEL: str = "gemini-2.5-flash"
     LLM_EMBEDDING_MODEL: str = "text-embedding-004"
     LLM_MAX_TOKENS: int = 1024
     LLM_TEMPERATURE: float = 0.3
@@ -173,11 +173,15 @@ class Settings(BaseSettings):
         """Return `ALLOWED_ORIGINS` as a parsed list of origin strings."""
         if self.ALLOWED_ORIGINS.strip() == "*":
             return ["*"]
-        return [
+        origins = [
             origin.strip()
             for origin in self.ALLOWED_ORIGINS.split(",")
             if origin.strip()
         ]
+        netlify_origin = "https://oncovision-live.netlify.app"
+        if netlify_origin not in origins and "*" not in origins:
+            origins.append(netlify_origin)
+        return origins
 
     @property
     def is_production(self) -> bool:

@@ -12,8 +12,11 @@ from app.models.user import User
 from app.repositories.chat_repository import ChatRepository
 from app.schemas.chat import ChatHistoryResponse, ChatMessageRequest, ChatMessageResponse, ChatMessageDetail
 from app.services.chat_service import ChatService
-from app.utils.response import success_response
+import logging
+from app.utils.response import success_response, error_response
 from app.constants.app import TAG_AI_CHAT
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=[TAG_AI_CHAT])
 
@@ -37,7 +40,13 @@ async def prediction_chat_endpoint(
         )
         return success_response(data=result, message="Message sent successfully")
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        return error_response(message=str(e), status_code=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error("Error in prediction chat endpoint: %s", e, exc_info=True)
+        return error_response(
+            message=f"An error occurred: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @router.post("/knowledge", response_model=dict[str, Any])
@@ -57,7 +66,13 @@ async def knowledge_chat_endpoint(
         )
         return success_response(data=result, message="Message sent successfully")
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        return error_response(message=str(e), status_code=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error("Error in knowledge chat endpoint: %s", e, exc_info=True)
+        return error_response(
+            message=f"An error occurred: {str(e)}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @router.get("/history/{conversation_id}", response_model=dict[str, Any])

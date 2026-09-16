@@ -11,6 +11,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { usePredictionHistoryDetail } from '@/hooks/queries/usePredictionHistory';
 import { formatDateTime, formatFileSize, formatInferenceTime } from '@/utils/formatters';
 import { ROUTES } from '@/constants/routes';
+import { AISummaryCard } from '@/features/prediction';
 import type { PredictionHistoryStatus } from '@/types';
 
 function formatClassLabel(raw: string | null): string {
@@ -155,6 +156,12 @@ export default function HistoryDetailPage() {
               </div>
             )}
           </Card>
+
+          {/* AI Clinical Summary & Discussion */}
+          <AISummaryCard
+            predictionId={record.history_id}
+            initialSummary={record.ai_summary}
+          />
 
           {record.individual_predictions.length > 0 && (
             <Card padding="none">

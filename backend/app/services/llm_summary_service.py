@@ -13,7 +13,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
@@ -40,7 +40,7 @@ class LLMSummaryService:
         """Generate or retrieve a cached summary for a prediction.
 
         Args:
-            prediction_id: The UUID of the prediction to summarize.
+            prediction_id: The UUID of the prediction to summarize (matches id or request_id).
             user_id: The UUID of the requesting user (ownership check).
             language: Output language — ``'en'`` for English, ``'bn'`` for Bangla.
 
@@ -53,7 +53,10 @@ class LLMSummaryService:
                 does not own it.
         """
         stmt = select(PredictionHistoryRecord).where(
-            PredictionHistoryRecord.id == prediction_id,
+            or_(
+                PredictionHistoryRecord.id == prediction_id,
+                PredictionHistoryRecord.request_id == str(prediction_id),
+            ),
             PredictionHistoryRecord.user_id == user_id,
         )
         result = await self.session.execute(stmt)

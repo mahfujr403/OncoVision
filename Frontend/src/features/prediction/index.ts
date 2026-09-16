@@ -15,3 +15,4 @@ export * from './components/PredictionWorkflowCard';
 export * from './components/PredictionWorkspace';
 export * from './components/PredictionSidebar';
 export * from './components/PredictionLayout';
+export * from './components/AISummaryCard';

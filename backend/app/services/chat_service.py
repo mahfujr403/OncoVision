@@ -13,7 +13,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
@@ -74,9 +74,12 @@ class ChatService:
         """Handle a chat message about a specific prediction result."""
         await self._check_rate_limit(user_id)
 
-        # Verify the prediction exists and belongs to this user
+        # Verify the prediction exists and belongs to this user (matches id or request_id)
         stmt = select(PredictionHistoryRecord).where(
-            PredictionHistoryRecord.id == prediction_id,
+            or_(
+                PredictionHistoryRecord.id == prediction_id,
+                PredictionHistoryRecord.request_id == str(prediction_id),
+            ),
             PredictionHistoryRecord.user_id == user_id,
         )
         result = await self.session.execute(stmt)
@@ -86,11 +89,11 @@ class ChatService:
 
         conv_id = conversation_id or uuid.uuid4()
 
-        # Persist the user message
+        # Persist the user message using the verified prediction.id
         user_msg = ChatMessage(
             conversation_id=conv_id,
             user_id=user_id,
-            prediction_id=prediction_id,
+            prediction_id=prediction.id,
             role="user",
             content=message,
             chat_type="prediction",
@@ -140,11 +143,11 @@ class ChatService:
             max_output_tokens=settings.LLM_MAX_TOKENS,
         )
 
-        # Persist the assistant response
+        # Persist the assistant response using verified prediction.id
         assistant_msg = ChatMessage(
             conversation_id=conv_id,
             user_id=user_id,
-            prediction_id=prediction_id,
+            prediction_id=prediction.id,
             role="assistant",
             content=response_text,
             chat_type="prediction",
@@ -184,23 +187,28 @@ class ChatService:
         )
         await self.repo.create(user_msg)
 
-        # RAG retrieval
-        embedding_service = EmbeddingService(
-            get_gemini_client(
-                api_key=settings.GOOGLE_API_KEY,
-                model_name=settings.LLM_MODEL,
+        # RAG retrieval with graceful fallback
+        retrieved_docs = []
+        try:
+            embedding_service = EmbeddingService(
+                get_gemini_client(
+                    api_key=settings.GOOGLE_API_KEY,
+                    model_name=settings.LLM_MODEL,
+                )
             )
-        )
-        retriever = RAGRetriever(
-            session=self.session,
-            embedding_service=embedding_service,
-        )
-        retrieved_docs = await retriever.retrieve(
-            query=message,
-            top_k=settings.RAG_TOP_K,
-            similarity_threshold=settings.RAG_SIMILARITY_THRESHOLD,
-        )
-        retrieved_context = retriever.format_context(retrieved_docs)
+            retriever = RAGRetriever(
+                session=self.session,
+                embedding_service=embedding_service,
+            )
+            retrieved_docs = await retriever.retrieve(
+                query=message,
+                top_k=settings.RAG_TOP_K,
+                similarity_threshold=settings.RAG_SIMILARITY_THRESHOLD,
+            )
+            retrieved_context = retriever.format_context(retrieved_docs)
+        except Exception as e:
+            logger.warning("RAG retrieval failed, falling back to general LLM response: %s", e)
+            retrieved_context = "No relevant context found."
 
         sources = [
             {

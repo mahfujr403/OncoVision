@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { getClassLabelColor } from '@/constants/app';
 import type { ApiError, PredictionResponse } from '@/types';
+import { AISummaryCard } from './AISummaryCard';
 
 interface PredictionResultCardProps {
   result: PredictionResponse | null;
@@ -142,6 +143,9 @@ export function PredictionResultCard({ result, error, onReset, className }: Pred
           ))}
         </div>
       </div>
+
+      {/* AI Clinical Summary & Interactive Chat */}
+      <AISummaryCard predictionId={result.prediction_id} />
 
       {/* Individual model predictions */}
       {individual_predictions && individual_predictions.length > 0 && (

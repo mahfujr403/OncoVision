@@ -10,41 +10,97 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_LLM_MODEL = "gemini-2.5-flash"
+FALLBACK_LLM_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"]
+DEFAULT_EMBEDDING_MODEL = "text-embedding-004"
+FALLBACK_EMBEDDING_MODELS = ["text-embedding-004", "embedding-001"]
+
+
 class GeminiClient:
     """Async client for interacting with the Gemini API."""
 
-    def __init__(self, api_key: str, model_name: str = 'gemini-2.0-flash'):
+    def __init__(self, api_key: str, model_name: str = DEFAULT_LLM_MODEL):
         """Initialize the Gemini client."""
         self.api_key = api_key
-        self.model_name = model_name
+        self.model_name = model_name or DEFAULT_LLM_MODEL
         self.client = genai.Client(api_key=self.api_key)
 
-    async def generate(self, prompt: str, system_instruction: str | None = None, temperature: float = 0.3, max_output_tokens: int = 1024) -> str:
-        """Generate text from a prompt with retries and exponential backoff."""
+    def _get_generation_models(self) -> list[str]:
+        """Return priority list of models to try for generation."""
+        models = [self.model_name]
+        for m in FALLBACK_LLM_MODELS:
+            if m not in models:
+                models.append(m)
+        return models
+
+    def _get_embedding_models(self, requested_model: str) -> list[str]:
+        """Return priority list of models to try for embedding."""
+        models = [requested_model]
+        for m in FALLBACK_EMBEDDING_MODELS:
+            if m not in models:
+                models.append(m)
+        return models
+
+    async def generate(
+        self,
+        prompt: str,
+        system_instruction: str | None = None,
+        temperature: float = 0.3,
+        max_output_tokens: int = 1024,
+    ) -> str:
+        """Generate text from a prompt with retries, model fallback, and exponential backoff."""
         config = types.GenerateContentConfig(
             temperature=temperature,
             max_output_tokens=max_output_tokens,
         )
         if system_instruction:
             config.system_instruction = system_instruction
-            
-        retries = 3
-        for attempt in range(retries):
-            try:
-                response = await self.client.aio.models.generate_content(
-                    model=self.model_name,
-                    contents=prompt,
-                    config=config
-                )
-                return response.text
-            except Exception as e:
-                logger.error(f"Error generating content (attempt {attempt + 1}/{retries}): {e}")
-                if attempt == retries - 1:
-                    raise
-                await asyncio.sleep(2 ** attempt)
+
+        models_to_try = self._get_generation_models()
+        last_exception = None
+
+        for model in models_to_try:
+            retries = 2
+            for attempt in range(retries):
+                try:
+                    response = await self.client.aio.models.generate_content(
+                        model=model,
+                        contents=prompt,
+                        config=config,
+                    )
+                    # If fallback worked, remember it
+                    if model != self.model_name:
+                        logger.info("Successfully used fallback model: %s", model)
+                        self.model_name = model
+                    return response.text or ""
+                except Exception as e:
+                    last_exception = e
+                    err_str = str(e)
+                    is_model_unavail = "not found" in err_str.lower() or "not available" in err_str.lower() or "404" in err_str
+                    logger.warning(
+                        "Error generating content with %s (attempt %d/%d): %s",
+                        model,
+                        attempt + 1,
+                        retries,
+                        e,
+                    )
+                    if is_model_unavail:
+                        # Break retry loop immediately and try next fallback model
+                        break
+                    if attempt < retries - 1:
+                        await asyncio.sleep(2 ** attempt)
+
+        if last_exception:
+            raise last_exception
         return ""
 
-    async def generate_stream(self, prompt: str, system_instruction: str | None = None, temperature: float = 0.3, max_output_tokens: int = 1024) -> AsyncGenerator[str, None]:
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_instruction: str | None = None,
+        temperature: float = 0.3,
+        max_output_tokens: int = 1024,
+    ) -> AsyncGenerator[str, None]:
         """Generate text stream from a prompt with retries and exponential backoff."""
         config = types.GenerateContentConfig(
             temperature=temperature,
@@ -52,45 +108,87 @@ class GeminiClient:
         )
         if system_instruction:
             config.system_instruction = system_instruction
-            
-        retries = 3
-        for attempt in range(retries):
-            try:
-                response = await self.client.aio.models.generate_content_stream(
-                    model=self.model_name,
-                    contents=prompt,
-                    config=config
-                )
-                async for chunk in response:
-                    yield chunk.text
-                return # If successful, exit retry loop
-            except Exception as e:
-                logger.error(f"Error generating content stream (attempt {attempt + 1}/{retries}): {e}")
-                if attempt == retries - 1:
-                    raise
-                await asyncio.sleep(2 ** attempt)
 
-    async def embed(self, texts: list[str], model: str = 'text-embedding-004') -> list[list[float]]:
-        """Generate embeddings for a list of texts."""
-        retries = 3
-        for attempt in range(retries):
-            try:
-                response = await self.client.aio.models.embed_content(
-                    model=model,
-                    contents=texts
-                )
-                return [embedding.values for embedding in response.embeddings]
-            except Exception as e:
-                logger.error(f"Error generating embeddings (attempt {attempt + 1}/{retries}): {e}")
-                if attempt == retries - 1:
-                    raise
-                await asyncio.sleep(2 ** attempt)
+        models_to_try = self._get_generation_models()
+        last_exception = None
+
+        for model in models_to_try:
+            retries = 2
+            for attempt in range(retries):
+                try:
+                    response = await self.client.aio.models.generate_content_stream(
+                        model=model,
+                        contents=prompt,
+                        config=config,
+                    )
+                    async for chunk in response:
+                        yield chunk.text
+                    if model != self.model_name:
+                        self.model_name = model
+                    return
+                except Exception as e:
+                    last_exception = e
+                    err_str = str(e)
+                    is_model_unavail = "not found" in err_str.lower() or "not available" in err_str.lower() or "404" in err_str
+                    logger.warning(
+                        "Error generating content stream with %s (attempt %d/%d): %s",
+                        model,
+                        attempt + 1,
+                        retries,
+                        e,
+                    )
+                    if is_model_unavail:
+                        break
+                    if attempt < retries - 1:
+                        await asyncio.sleep(2 ** attempt)
+
+        if last_exception:
+            raise last_exception
+
+    async def embed(
+        self, texts: list[str], model: str = DEFAULT_EMBEDDING_MODEL
+    ) -> list[list[float]]:
+        """Generate embeddings for a list of texts with model fallback."""
+        models_to_try = self._get_embedding_models(model)
+        last_exception = None
+
+        for emb_model in models_to_try:
+            retries = 2
+            for attempt in range(retries):
+                try:
+                    response = await self.client.aio.models.embed_content(
+                        model=emb_model,
+                        contents=texts,
+                    )
+                    return [embedding.values for embedding in response.embeddings]
+                except Exception as e:
+                    last_exception = e
+                    err_str = str(e)
+                    is_model_unavail = "not found" in err_str.lower() or "not available" in err_str.lower() or "404" in err_str
+                    logger.warning(
+                        "Error generating embeddings with %s (attempt %d/%d): %s",
+                        emb_model,
+                        attempt + 1,
+                        retries,
+                        e,
+                    )
+                    if is_model_unavail:
+                        break
+                    if attempt < retries - 1:
+                        await asyncio.sleep(2 ** attempt)
+
+        if last_exception:
+            raise last_exception
         return []
+
 
 # Lazy singleton
 _client_instance = None
 
-def get_gemini_client(api_key: str, model_name: str = 'gemini-2.0-flash') -> GeminiClient:
+
+def get_gemini_client(
+    api_key: str, model_name: str = DEFAULT_LLM_MODEL
+) -> GeminiClient:
     """Get or create the singleton GeminiClient instance."""
     global _client_instance
     if _client_instance is None:
