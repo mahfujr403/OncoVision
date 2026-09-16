@@ -27,6 +27,11 @@ class RAGRetriever:
     async def retrieve(self, query: str, top_k: int = 5, similarity_threshold: float = 0.7) -> List[RetrievedDocument]:
         """Retrieve relevant documents based on semantic similarity."""
         try:
+            # Check if there are any documents before making a remote embedding API call
+            has_records = await self.session.scalar(select(KnowledgeEmbedding.id).limit(1))
+            if has_records is None:
+                return []
+
             query_embedding = await self.embedding_service.get_embedding(query)
             if not query_embedding:
                 logger.warning("Empty embedding returned for query '%s'", query[:50])
