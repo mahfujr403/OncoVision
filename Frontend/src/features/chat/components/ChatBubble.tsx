@@ -21,22 +21,83 @@ export interface ChatBubbleProps {
 }
 
 const renderMarkdown = (text: string) => {
+  if (!text) return null;
   let html = text;
-  // Bold
+
+  const links: string[] = [];
+  // 1. Extract and replace Markdown links [label](url) with tokens
+  html = html.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s\)]+|mailto:[^\s\)]+)\)/g,
+    (_, label, url) => {
+      const id = `%%LINK_${links.length}%%`;
+      const isMail = url.startsWith('mailto:');
+      links.push(
+        `<a href="${url}" ${isMail ? '' : 'target="_blank" rel="noopener noreferrer" '}class="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary hover:text-primary/80 font-medium transition-colors cursor-pointer inline-flex items-center gap-0.5">${label}</a>`
+      );
+      return id;
+    }
+  );
+
+  // 2. Convert standalone raw URLs (not already tokenized)
+  html = html.replace(
+    /\b(https?:\/\/[^\s<"'\)]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary hover:text-primary/80 font-medium transition-colors cursor-pointer inline-flex items-center gap-0.5 break-all">$1</a>'
+  );
+
+  // 3. Convert standalone emails
+  html = html.replace(
+    /\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g,
+    '<a href="mailto:$1" class="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary hover:text-primary/80 font-medium transition-colors cursor-pointer">$1</a>'
+  );
+
+  // 4. Restore placeholders
+  links.forEach((linkHtml, i) => {
+    html = html.replace(`%%LINK_${i}%%`, linkHtml);
+  });
+
+  // 5. Bold: **text**
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  // Italic
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  // Newlines
-  html = html.replace(/\n/g, '<br />');
-  // Bullet points
-  html = html.replace(/^- (.*)$/gm, '<li>$1</li>');
-  
-  // Wrap bullet points in ul if there are any
-  if (html.includes('<li>')) {
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul class="list-disc pl-4 my-2">$1</ul>');
+
+  // 6. Italic: *text*
+  html = html.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+  // 7. Process bullet points and paragraphs
+  const lines = html.split('\n');
+  const processedLines: string[] = [];
+  let inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const bulletMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+
+    if (bulletMatch) {
+      if (!inList) {
+        processedLines.push('<ul class="list-disc pl-5 my-1.5 space-y-1">');
+        inList = true;
+      }
+      processedLines.push(`<li class="leading-relaxed">${bulletMatch[2]}</li>`);
+    } else {
+      if (inList) {
+        processedLines.push('</ul>');
+        inList = false;
+      }
+      if (line.trim() === '') {
+        processedLines.push('<div class="h-1.5"></div>');
+      } else {
+        processedLines.push(`<p class="leading-relaxed my-0.5">${line}</p>`);
+      }
+    }
+  }
+  if (inList) {
+    processedLines.push('</ul>');
   }
 
-  return <div dangerouslySetInnerHTML={{ __html: html }} className="space-y-1" />;
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: processedLines.join('') }}
+      className="space-y-0.5 text-sm md:text-[15px]"
+    />
+  );
 };
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
