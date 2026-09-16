@@ -202,6 +202,35 @@ class ChatService:
         )
         await self.repo.create(user_msg)
 
+        # Build chat history string with rollback safety first so we can support conversational context
+        chat_history = ""
+        last_user_query = ""
+        try:
+            history_records = await self.repo.get_conversation(conv_id, limit=8)
+            if history_records:
+                chat_history = "\n".join(
+                    f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
+                )
+                past_user_msgs = [m.content for m in history_records if m.role == "user" and m.content != message]
+                if past_user_msgs:
+                    last_user_query = past_user_msgs[-1]
+        except Exception as e:
+            logger.warning("Failed to fetch chat history: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
+
+        # Context-aware RAG retrieval query for multi-turn follow-ups
+        retrieval_query = message
+        lower_msg = message.lower()
+        needs_context = (
+            len(message.split()) <= 6
+            or any(kw in lower_msg for kw in ["him", "his", "he", "developer", "creator", "contact", "email", "github", "linkedin", "portfolio", "reach", "provide", "give", "who", "it", "they"])
+        )
+        if needs_context and last_user_query:
+            retrieval_query = f"{last_user_query} {message}"
+
         # RAG retrieval with graceful fallback
         retrieved_docs = []
         try:
@@ -216,7 +245,7 @@ class ChatService:
                 embedding_service=embedding_service,
             )
             retrieved_docs = await retriever.retrieve(
-                query=message,
+                query=retrieval_query,
                 top_k=settings.RAG_TOP_K,
                 similarity_threshold=settings.RAG_SIMILARITY_THRESHOLD,
             )
@@ -233,20 +262,6 @@ class ChatService:
             }
             for doc in retrieved_docs
         ]
-
-        # Build chat history string with rollback safety
-        chat_history = ""
-        try:
-            history_records = await self.repo.get_conversation(conv_id, limit=10)
-            chat_history = "\n".join(
-                f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
-            )
-        except Exception as e:
-            logger.warning("Failed to fetch chat history: %s", e)
-            try:
-                await self.session.rollback()
-            except Exception:
-                pass
 
         # Assemble the prompt
         prompt = KNOWLEDGE_CHAT_USER_PROMPT_TEMPLATE.format(
