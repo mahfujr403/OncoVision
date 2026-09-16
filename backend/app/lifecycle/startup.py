@@ -47,6 +47,23 @@ async def run_startup() -> None:
     try:
         await check_database_connection()
         logger.info("Database connection verified successfully.")
+        
+        # Apply any pending database migrations automatically on startup
+        try:
+            import os
+            from alembic import command
+            from alembic.config import Config
+            import anyio
+
+            ini_path = "alembic.ini" if os.path.exists("alembic.ini") else "backend/alembic.ini"
+            if os.path.exists(ini_path):
+                def _run_migrations():
+                    cfg = Config(ini_path)
+                    command.upgrade(cfg, "head")
+                await anyio.to_thread.run_sync(_run_migrations)
+                logger.info("Database migrations applied successfully on startup.")
+        except Exception as mig_err:
+            logger.warning("Auto-migration skipped or failed: %s", mig_err)
     except Exception:
         logger.error(
             "Database connection check failed. Authentication and other "
