@@ -115,11 +115,19 @@ class ChatService:
             f"Class Probabilities:\n{class_probs}"
         )
 
-        # Build chat history string
-        history_records = await self.repo.get_conversation(conv_id, limit=20)
-        chat_history = "\n".join(
-            f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
-        )
+        # Build chat history string with rollback safety
+        chat_history = ""
+        try:
+            history_records = await self.repo.get_conversation(conv_id, limit=20)
+            chat_history = "\n".join(
+                f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
+            )
+        except Exception as e:
+            logger.warning("Failed to fetch chat history: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
 
         # Assemble the prompt
         prompt = PREDICTION_CHAT_USER_PROMPT_TEMPLATE.format(
@@ -143,16 +151,23 @@ class ChatService:
             max_output_tokens=settings.LLM_MAX_TOKENS,
         )
 
-        # Persist the assistant response using verified prediction.id
-        assistant_msg = ChatMessage(
-            conversation_id=conv_id,
-            user_id=user_id,
-            prediction_id=prediction.id,
-            role="assistant",
-            content=response_text,
-            chat_type="prediction",
-        )
-        await self.repo.create(assistant_msg)
+        # Persist the assistant response using verified prediction.id with rollback safety
+        try:
+            assistant_msg = ChatMessage(
+                conversation_id=conv_id,
+                user_id=user_id,
+                prediction_id=prediction.id,
+                role="assistant",
+                content=response_text,
+                chat_type="prediction",
+            )
+            await self.repo.create(assistant_msg)
+        except Exception as e:
+            logger.warning("Failed to persist assistant message: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
 
         return {
             "response": response_text,
@@ -219,11 +234,19 @@ class ChatService:
             for doc in retrieved_docs
         ]
 
-        # Build chat history string
-        history_records = await self.repo.get_conversation(conv_id, limit=10)
-        chat_history = "\n".join(
-            f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
-        )
+        # Build chat history string with rollback safety
+        chat_history = ""
+        try:
+            history_records = await self.repo.get_conversation(conv_id, limit=10)
+            chat_history = "\n".join(
+                f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
+            )
+        except Exception as e:
+            logger.warning("Failed to fetch chat history: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
 
         # Assemble the prompt
         prompt = KNOWLEDGE_CHAT_USER_PROMPT_TEMPLATE.format(
@@ -247,17 +270,24 @@ class ChatService:
             max_output_tokens=settings.LLM_MAX_TOKENS,
         )
 
-        # Persist the assistant response
-        assistant_msg = ChatMessage(
-            conversation_id=conv_id,
-            user_id=user_id,
-            prediction_id=None,
-            role="assistant",
-            content=response_text,
-            chat_type="knowledge",
-            sources={"sources": sources},
-        )
-        await self.repo.create(assistant_msg)
+        # Persist the assistant response with rollback safety
+        try:
+            assistant_msg = ChatMessage(
+                conversation_id=conv_id,
+                user_id=user_id,
+                prediction_id=None,
+                role="assistant",
+                content=response_text,
+                chat_type="knowledge",
+                sources={"sources": sources},
+            )
+            await self.repo.create(assistant_msg)
+        except Exception as e:
+            logger.warning("Failed to persist assistant response: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
 
         return {
             "response": response_text,

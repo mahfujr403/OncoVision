@@ -20,8 +20,13 @@ FALLBACK_LLM_MODELS = [
     "gemini-3.1-flash-lite",
     "gemini-3.8-flash",
 ]
-DEFAULT_EMBEDDING_MODEL = "text-embedding-004"
-FALLBACK_EMBEDDING_MODELS = ["text-embedding-004", "gemini-embedding-001", "embedding-001"]
+DEFAULT_EMBEDDING_MODEL = "gemini-embedding-2"
+FALLBACK_EMBEDDING_MODELS = [
+    "gemini-embedding-2",
+    "gemini-embedding-2-preview",
+    "gemini-embedding-001",
+    "text-embedding-004",
+]
 
 _DEPRECATED_MODELS = {
     "gemini-2.0-flash",
@@ -201,9 +206,11 @@ class GeminiClient:
             retries = 2
             for attempt in range(retries):
                 try:
+                    config = types.EmbedContentConfig(output_dimensionality=768)
                     response = await self.client.aio.models.embed_content(
                         model=emb_model,
                         contents=texts,
+                        config=config,
                     )
                     return [embedding.values for embedding in response.embeddings]
                 except Exception as e:

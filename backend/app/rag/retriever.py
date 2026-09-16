@@ -68,6 +68,10 @@ class RAGRetriever:
             return documents
         except Exception as e:
             logger.warning("RAG retrieval failed gracefully: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
             return []
 
     def format_context(self, documents: List[RetrievedDocument]) -> str:

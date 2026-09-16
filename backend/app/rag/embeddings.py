@@ -29,11 +29,12 @@ class EmbeddingService:
         """
         if not texts:
             return []
-        return await self.llm_client.embed(texts)
+        embeddings = await self.llm_client.embed(texts)
+        return [emb[:768] for emb in embeddings]
 
     async def get_embedding(self, text: str) -> List[float]:
         """Generate an embedding for a single text."""
         results = await self.llm_client.embed([text])
         if results:
-            return results[0]
+            return results[0][:768]
         return []
