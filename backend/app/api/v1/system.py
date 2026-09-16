@@ -94,3 +94,38 @@ async def get_model_runtime_status(
         data={"models": model_statuses},
         message="Model runtime status retrieved successfully.",
     )
+
+
+@router.get("/system/test-llm", summary="Diagnose Google Gemini models")
+async def test_llm_models():
+    """Diagnostic endpoint to inspect available Google Gemini models and verify generation."""
+    from google import genai
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+    client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+    
+    diagnostic: dict = {
+        "configured_model": settings.LLM_MODEL,
+        "available_models": [],
+        "test_results": {},
+    }
+    
+    try:
+        models = [m.name for m in client.models.list()]
+        diagnostic["available_models"] = [m for m in models if "gemini" in m.lower() or "embed" in m.lower()]
+    except Exception as e:
+        diagnostic["list_error"] = str(e)
+        
+    candidates = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-3.6-flash"]
+    for cand in candidates:
+        try:
+            resp = await client.aio.models.generate_content(
+                model=cand,
+                contents="ping",
+            )
+            diagnostic["test_results"][cand] = {"status": "success", "text": (resp.text or "")[:100]}
+        except Exception as ex:
+            diagnostic["test_results"][cand] = {"status": "error", "error": str(ex)}
+            
+    return success_response(data=diagnostic, message="LLM diagnostic complete")

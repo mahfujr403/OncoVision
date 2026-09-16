@@ -11,17 +11,17 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LLM_MODEL = "gemini-3.6-flash"
+DEFAULT_LLM_MODEL = "gemini-1.5-flash"
 FALLBACK_LLM_MODELS = [
-    "gemini-3.6-flash",
-    "gemini-2.5-flash",
     "gemini-1.5-flash",
-    "gemini-2.0-flash",
+    "gemini-2.5-flash",
+    "gemini-1.5-pro",
+    "gemini-3.6-flash",
 ]
 DEFAULT_EMBEDDING_MODEL = "text-embedding-004"
 FALLBACK_EMBEDDING_MODELS = ["text-embedding-004", "embedding-001"]
 
-_DEPRECATED_MODELS = {"gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"}
+_DEPRECATED_MODELS = {"gemini-2.0-flash"}
 
 
 class GeminiClient:
@@ -41,7 +41,7 @@ class GeminiClient:
         """Return priority list of models to try for generation."""
         models = [self.model_name]
         for m in FALLBACK_LLM_MODELS:
-            if m not in models:
+            if m not in models and m not in _DEPRECATED_MODELS:
                 models.append(m)
         return models
 
@@ -70,8 +70,11 @@ class GeminiClient:
 
         models_to_try = self._get_generation_models()
         last_exception = None
+        attempt_errors: list[str] = []
 
         for model in models_to_try:
+            if model in _DEPRECATED_MODELS:
+                continue
             retries = 2
             for attempt in range(retries):
                 try:
@@ -91,6 +94,7 @@ class GeminiClient:
                 except Exception as e:
                     last_exception = e
                     err_str = str(e)
+                    attempt_errors.append(f"{model} (attempt {attempt+1}): {err_str}")
                     is_model_unavail = "not found" in err_str.lower() or "not available" in err_str.lower() or "404" in err_str
                     logger.warning(
                         "Error generating content with %s (attempt %d/%d): %s",
@@ -105,7 +109,7 @@ class GeminiClient:
                             rec_match = re.search(r"models/(gemini-[\w\.-]+)", err_str.split("use")[-1])
                             if rec_match:
                                 rec_model = rec_match.group(1)
-                                if rec_model not in models_to_try:
+                                if rec_model not in models_to_try and rec_model not in _DEPRECATED_MODELS:
                                     logger.info("Found recommended model in API error: %s", rec_model)
                                     models_to_try.append(rec_model)
                         # Break retry loop immediately and try next model
@@ -114,7 +118,7 @@ class GeminiClient:
                         await asyncio.sleep(2 ** attempt)
 
         if last_exception:
-            raise last_exception
+            raise RuntimeError(f"All candidate LLM models failed. Summary: {'; '.join(attempt_errors)}")
         return ""
 
     async def generate_stream(
