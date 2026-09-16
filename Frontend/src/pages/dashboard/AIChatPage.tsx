@@ -46,13 +46,13 @@ export default function AIChatPage() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      toast.error('Failed to send message. Please try again.');
-      // Optional: Add error message to chat
+    } catch (error: any) {
+      const errText = error?.message || 'Sorry, I encountered an error. Please try again.';
+      toast.error(errText);
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: errText,
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);

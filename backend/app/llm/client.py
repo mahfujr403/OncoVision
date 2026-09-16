@@ -11,17 +11,24 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LLM_MODEL = "gemini-1.5-flash"
+DEFAULT_LLM_MODEL = "gemini-3.6-flash"
 FALLBACK_LLM_MODELS = [
-    "gemini-1.5-flash",
-    "gemini-2.5-flash",
-    "gemini-1.5-pro",
     "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+    "gemini-3.1-flash-lite",
+    "gemini-3.8-flash",
 ]
 DEFAULT_EMBEDDING_MODEL = "text-embedding-004"
-FALLBACK_EMBEDDING_MODELS = ["text-embedding-004", "embedding-001"]
+FALLBACK_EMBEDDING_MODELS = ["text-embedding-004", "gemini-embedding-001", "embedding-001"]
 
-_DEPRECATED_MODELS = {"gemini-2.0-flash"}
+_DEPRECATED_MODELS = {
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-2.5-flash",
+}
 
 
 class GeminiClient:
@@ -71,6 +78,7 @@ class GeminiClient:
         models_to_try = self._get_generation_models()
         last_exception = None
         attempt_errors: list[str] = []
+        quota_exhausted = False
 
         for model in models_to_try:
             if model in _DEPRECATED_MODELS:
@@ -94,7 +102,14 @@ class GeminiClient:
                 except Exception as e:
                     last_exception = e
                     err_str = str(e)
-                    attempt_errors.append(f"{model} (attempt {attempt+1}): {err_str}")
+                    attempt_errors.append(f"{model}: {err_str}")
+                    
+                    is_quota = "429" in err_str or "resource_exhausted" in err_str.lower() or "quota" in err_str.lower()
+                    if is_quota:
+                        quota_exhausted = True
+                        logger.warning("Quota reached for %s, switching to next model...", model)
+                        break  # Immediately switch to next candidate model without waiting
+
                     is_model_unavail = "not found" in err_str.lower() or "not available" in err_str.lower() or "404" in err_str
                     logger.warning(
                         "Error generating content with %s (attempt %d/%d): %s",
@@ -117,8 +132,11 @@ class GeminiClient:
                     if attempt < retries - 1:
                         await asyncio.sleep(2 ** attempt)
 
+        if quota_exhausted:
+            raise RuntimeError("Google Gemini API request limit reached for this free-tier API key. Please retry in 30 seconds.")
+
         if last_exception:
-            raise RuntimeError(f"All candidate LLM models failed. Summary: {'; '.join(attempt_errors)}")
+            raise RuntimeError(f"All candidate LLM models failed: {'; '.join(attempt_errors)}")
         return ""
 
     async def generate_stream(
