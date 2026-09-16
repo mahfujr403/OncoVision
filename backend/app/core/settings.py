@@ -122,15 +122,15 @@ class Settings(BaseSettings):
 
     # LLM / Gemini API configuration (Phase 11 — LLM + RAG Integration)
     GOOGLE_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-3.6-flash"
-    LLM_EMBEDDING_MODEL: str = "text-embedding-004"
-    LLM_MAX_TOKENS: int = 1024
-    LLM_TEMPERATURE: float = 0.3
+    LLM_MODEL: str = "gemini-3.5-flash-lite"
+    LLM_EMBEDDING_MODEL: str = "gemini-embedding-2"
+    LLM_MAX_TOKENS: int = 512
+    LLM_TEMPERATURE: float = 0.2
 
     # RAG configuration (Phase 11)
     RAG_CHUNK_SIZE: int = 500
     RAG_CHUNK_OVERLAP: int = 50
-    RAG_TOP_K: int = 5
+    RAG_TOP_K: int = 3
     RAG_SIMILARITY_THRESHOLD: float = 0.7
 
     # Chat rate limiting (Phase 11)
@@ -141,8 +141,16 @@ class Settings(BaseSettings):
     @classmethod
     def validate_llm_model(cls, value: str) -> str:
         """Upgrade deprecated models to currently supported Google models."""
-        if value in {"gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"}:
-            return "gemini-3.6-flash"
+        if value in {"gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"}:
+            return "gemini-3.5-flash-lite"
+        return value
+
+    @field_validator("LLM_EMBEDDING_MODEL")
+    @classmethod
+    def validate_llm_embedding_model(cls, value: str) -> str:
+        """Upgrade deprecated embedding models."""
+        if value in {"text-embedding-004"}:
+            return "gemini-embedding-2"
         return value
 
     @field_validator("LOG_LEVEL")

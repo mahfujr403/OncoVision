@@ -11,13 +11,13 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LLM_MODEL = "gemini-3.6-flash"
+DEFAULT_LLM_MODEL = "gemini-3.5-flash-lite"
 FALLBACK_LLM_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash",
     "gemini-3.6-flash",
     "gemini-3.7-flash",
-    "gemini-3.5-flash",
-    "gemini-flash-latest",
-    "gemini-3.1-flash-lite",
     "gemini-3.8-flash",
 ]
 DEFAULT_EMBEDDING_MODEL = "gemini-embedding-2"
@@ -25,7 +25,6 @@ FALLBACK_EMBEDDING_MODELS = [
     "gemini-embedding-2",
     "gemini-embedding-2-preview",
     "gemini-embedding-001",
-    "text-embedding-004",
 ]
 
 _DEPRECATED_MODELS = {
@@ -33,6 +32,8 @@ _DEPRECATED_MODELS = {
     "gemini-1.5-flash",
     "gemini-1.5-pro",
     "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "text-embedding-004",
 }
 
 
@@ -83,7 +84,7 @@ class GeminiClient:
         models_to_try = self._get_generation_models()
         last_exception = None
         attempt_errors: list[str] = []
-        quota_exhausted = False
+        quota_errors: list[str] = []
 
         for model in models_to_try:
             if model in _DEPRECATED_MODELS:
@@ -97,7 +98,7 @@ class GeminiClient:
                             contents=prompt,
                             config=config,
                         ),
-                        timeout=35.0,
+                        timeout=25.0,
                     )
                     # If fallback worked, remember it
                     if model != self.model_name:
@@ -111,7 +112,7 @@ class GeminiClient:
                     
                     is_quota = "429" in err_str or "resource_exhausted" in err_str.lower() or "quota" in err_str.lower()
                     if is_quota:
-                        quota_exhausted = True
+                        quota_errors.append(model)
                         logger.warning("Quota reached for %s, switching to next model...", model)
                         break  # Immediately switch to next candidate model without waiting
 
@@ -137,8 +138,8 @@ class GeminiClient:
                     if attempt < retries - 1:
                         await asyncio.sleep(2 ** attempt)
 
-        if quota_exhausted:
-            raise RuntimeError("Google Gemini API request limit reached for this free-tier API key. Please retry in 30 seconds.")
+        if quota_errors and len(quota_errors) >= len([m for m in models_to_try if m not in _DEPRECATED_MODELS]):
+            raise RuntimeError("Google Gemini API request limit reached for all candidate models on this free-tier API key. Please retry in 30 seconds.")
 
         if last_exception:
             raise RuntimeError(f"All candidate LLM models failed: {'; '.join(attempt_errors)}")

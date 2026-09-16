@@ -31,6 +31,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     adjustHeight();
   }, [message]);
 
+  // Automatically place cursor in the text box on mount and when AI response finishes
+  useEffect(() => {
+    if (!disabled) {
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [disabled]);
+
   const handleSend = () => {
     if (message.trim() && !disabled) {
       onSend(message.trim());
@@ -64,15 +74,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         {language === 'en' ? 'EN' : 'বাং'}
       </button>
       
-      <div className="relative flex-1 rounded-2xl bg-muted border overflow-hidden focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all">
+      <div
+        onClick={() => textareaRef.current?.focus()}
+        className="relative flex-1 rounded-2xl bg-muted border overflow-hidden cursor-text focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all"
+      >
         <textarea
           ref={textareaRef}
+          autoFocus
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className="w-full max-h-24 bg-transparent resize-none py-3 px-4 outline-none text-sm disabled:opacity-50"
+          className="w-full max-h-24 bg-transparent resize-none py-3 px-4 outline-none text-sm cursor-text disabled:opacity-50 disabled:cursor-not-allowed"
           rows={1}
         />
       </div>
