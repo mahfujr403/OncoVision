@@ -1,4 +1,28 @@
-# OncoVision AI
+<div align="center">
+
+# 🔬 OncoVision AI
+### Enterprise Histopathology Cancer Classification & AI Clinical Knowledge Assistant
+
+[![Status](https://img.shields.io/badge/Status-Live%20Demo-00C7B7?style=for-the-badge&logo=statuspage&logoColor=white)](https://oncovision-live.netlify.app/)
+[![Frontend](https://img.shields.io/badge/Frontend-Netlify-00AD9F?style=for-the-badge&logo=netlify&logoColor=white)](https://oncovision-live.netlify.app/)
+[![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)](https://oncovision-backend-mp8n.onrender.com/docs)
+[![Database](https://img.shields.io/badge/Database-Neon%20PostgreSQL-00E599?style=for-the-badge&logo=postgresql&logoColor=white)](https://neon.tech)
+[![AI Core](https://img.shields.io/badge/AI%20Core-TensorFlow%202.10-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://huggingface.co)
+[![LLM & RAG](https://img.shields.io/badge/LLM%20%26%20RAG-Google%20Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://aistudio.google.com)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+
+<br/>
+
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![pgvector](https://img.shields.io/badge/pgvector-Vector%20Similarity-336791?style=flat-square&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.x-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com)
+
+</div>
 
 Enterprise-oriented AI-assisted histopathology image analysis platform for
 **Lung & Colon Cancer** classification and **AI Clinical Knowledge Assistant** — a React 19 + TypeScript frontend

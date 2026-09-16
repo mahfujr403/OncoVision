@@ -1,8 +1,21 @@
-# OncoVision AI — Backend
+<div align="center">
+
+# 🧬 OncoVision AI — Backend
+### Enterprise FastAPI API • TensorFlow Adaptive Ensemble • Google Gemini LLM & pgvector RAG
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.10-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://tensorflow.org)
+[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-3.x%20Flash--Lite-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://aistudio.google.com)
+[![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![Live API](https://img.shields.io/badge/Live%20API-Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)](https://oncovision-backend-mp8n.onrender.com/docs)
+
+</div>
 
 Enterprise-grade AI Medical Imaging Platform backend for Lung & Colon Cancer Histopathology Image Classification, built with FastAPI, PostgreSQL, and TensorFlow/Keras.
 
-> **Current status: live.** All planned backend subsystems are implemented: authentication, AI model infrastructure, the prediction pipeline, prediction history, reporting, administration, and monitoring. It is deployed live on **Render's free plan** as a demo (see [Live Deployment](#live-deployment-render--neon--hugging-face-hub) below) — not as a production-grade, clinically validated system.
+> **Current status: live.** All planned backend subsystems are implemented: authentication, AI model infrastructure, the prediction pipeline, prediction history, reporting, administration, monitoring, and Gemini LLM + RAG. It is deployed live on **Render's free plan** as a demo (see [Live Deployment](#live-deployment-render--neon--hugging-face-hub) below) — not as a production-grade, clinically validated system.
 
 📄 See also: [Project README](../README.md) · [Frontend README](../Frontend/README.md)
 
@@ -132,32 +145,59 @@ starts, ephemeral disk, connection limits).
 The backend follows layered Clean Architecture with fully isolated Machine Learning and LLM/RAG subsystems. Routers never contain business logic, repositories never perform machine learning or external LLM calls, and only dedicated services interact with external AI providers.
 
 ```
-Frontend (React SPA)
-   │
-   ├─► REST API (/api/v1) — FastAPI Routers (thin; auth, validation, delegation)
-   │      │
-   │      ├─► Application Services (Auth, History, Reports, Admin, Monitoring)
-   │      │      ↓
-   │      │   Repositories ──► PostgreSQL (Neon: users, history, refresh_tokens)
-   │      │
-   │      ├─► AI Prediction Engine & Runtime
-   │      │      ↓
-   │      │   AI Runtime Manager (sole owner of TensorFlow instances)
-   │      │      ↓
-   │      │   Model Registry / Manifest (Hugging Face Hub download & cache)
-   │      │      ↓
-   │      │   Prediction Engine ──► Adaptive Ensemble Engine ──► Calibration ──► Final Builder
-   │      │
-   │      └─► LLM & RAG Subsystem (Phase 11)
-   │             ↓
-   │          ChatService / LLMSummaryService
-   │             ↓                                       ↓
-   │          RAGRetriever (pgvector `<=>`)            GeminiClient (google-genai)
-   │             ↓                                       ↓
-   │          knowledge_embeddings (768-dim)          Gemini 3.5 Flash-Lite
-   │                                                  (auto-fallback cascade & quota resilience)
-```                  ↓
-                                              Reporting / Analytics / CSV / PDF Export
+                                 ┌──────────────────────────────┐
+                                 │     Frontend (React SPA)     │
+                                 └──────────────┬───────────────┘
+                                                │ HTTPS / JSON
+                                                ▼
+                   ┌────────────────────────────────────────────────────────┐
+                   │       REST API (/api/v1) — FastAPI Thin Routers        │
+                   └───────┬────────────────────┬────────────────────┬──────┘
+                           │                    │                    │
+            ┌──────────────┴─────────┐          │          ┌─────────┴──────────────┐
+            ▼                        ▼          │          ▼                        ▼
+      Auth & Admin            Predictions       │     Clinical Chat          AI Summaries
+     (/auth, /admin)         (/predictions)     │        (/chat)       (/predictions/{id}/summary)
+            │                        │          │          │                        │
+            ▼                        ▼          │          └───────────┬────────────┘
+    ┌───────────────┐     ┌──────────────────┐  │                      │
+    │ App Services  │     │Prediction Service│  │                      ▼
+    │ & Repositories│     └────────┬─────────┘  │             ┌─────────────────┐
+    └───────┬───────┘              │            │             │ LLM & RAG Layer │
+            │                      ▼            │             └────────┬────────┘
+            │             ┌──────────────────┐  │                      │
+            │             │AI Runtime Manager│  │         ┌────────────┴────────────┐
+            │             │(TensorFlow Owner)│  │         ▼                         ▼
+            │             └────────┬─────────┘  │  RAGRetriever (pgvector)    GeminiClient
+            │                      │            │  (Cosine Distance `<=>`)  (GenAI SDK 3.x)
+            │             ┌────────┴─────────┐  │         │                         │
+            │             │Prediction Engine ├──┤         │                         │
+            │             └────────┬─────────┘  │         ▼                         ▼
+            │                      │            │  knowledge_embeddings      Google Gemini
+            │                      ▼            │     (768-dim)             (Flash-Lite/Flash)
+            │             ┌──────────────────┐  │
+            │             │Adaptive Ensemble ├──┤
+            │             └────────┬─────────┘  │
+            │                      │            │
+            │                      ▼            │
+            │             ┌──────────────────┐  │
+            │             │Confidence Calib. ├──┤
+            │             └────────┬─────────┘  │
+            │                      │            │
+            │                      ▼            │
+            │             ┌──────────────────┐  │
+            │             │Response Builder  ├──┘
+            │             └────────┬─────────┘
+            │                      │
+            ▼                      ▼
+    ┌───────────────────────────────────────────┐
+    │          PostgreSQL Database (Neon)       │
+    │  • users & refresh_tokens                 │
+    │  • prediction_history (cached ai_summary) │
+    │  • chat_messages (conversations)          │
+    │  • knowledge_embeddings (pgvector vectors)│
+    └───────────────────────────────────────────┘
+```
 
 Key architectural rules enforced throughout the codebase (see the project's Architecture Decision Records):
 

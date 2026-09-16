@@ -1,7 +1,20 @@
-# OncoVision AI — Frontend
+<div align="center">
+
+# 🖥️ OncoVision AI — Frontend
+### React 19 SPA • TypeScript • Vite • Tailwind CSS • shadcn/ui • AI Clinical Assistant
+
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.x-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-Radix%20Primitives-000000?style=for-the-badge&logo=radix-ui&logoColor=white)](https://ui.shadcn.com)
+[![TanStack Query](https://img.shields.io/badge/TanStack%20Query-v5-FF4154?style=for-the-badge&logo=react-query&logoColor=white)](https://tanstack.com/query)
+[![Deployed on Netlify](https://img.shields.io/badge/Deployed%20on-Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)](https://oncovision-live.netlify.app/)
+
+</div>
 
 Enterprise-oriented AI-assisted histopathology image analysis platform for
-Lung & Colon Cancer classification. React 19 + TypeScript frontend, built
+Lung & Colon Cancer classification and AI Clinical Knowledge Assistant. React 19 + TypeScript frontend, built
 against a real FastAPI backend.
 
 > **Status: live.** Deployed as a free-tier demo on Netlify — see
