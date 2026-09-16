@@ -3,6 +3,7 @@ Gemini API client module.
 """
 import asyncio
 import logging
+import re
 from typing import AsyncGenerator
 
 from google import genai
@@ -10,10 +11,17 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LLM_MODEL = "gemini-2.5-flash"
-FALLBACK_LLM_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"]
+DEFAULT_LLM_MODEL = "gemini-3.6-flash"
+FALLBACK_LLM_MODELS = [
+    "gemini-3.6-flash",
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+]
 DEFAULT_EMBEDDING_MODEL = "text-embedding-004"
 FALLBACK_EMBEDDING_MODELS = ["text-embedding-004", "embedding-001"]
+
+_DEPRECATED_MODELS = {"gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"}
 
 
 class GeminiClient:
@@ -22,7 +30,11 @@ class GeminiClient:
     def __init__(self, api_key: str, model_name: str = DEFAULT_LLM_MODEL):
         """Initialize the Gemini client."""
         self.api_key = api_key
-        self.model_name = model_name or DEFAULT_LLM_MODEL
+        # Automatically upgrade deprecated model requests
+        if model_name in _DEPRECATED_MODELS:
+            self.model_name = DEFAULT_LLM_MODEL
+        else:
+            self.model_name = model_name or DEFAULT_LLM_MODEL
         self.client = genai.Client(api_key=self.api_key)
 
     def _get_generation_models(self) -> list[str]:
@@ -85,7 +97,15 @@ class GeminiClient:
                         e,
                     )
                     if is_model_unavail:
-                        # Break retry loop immediately and try next fallback model
+                        # Extract any recommended model from Google's error message
+                        if "use" in err_str:
+                            rec_match = re.search(r"models/(gemini-[\w\.-]+)", err_str.split("use")[-1])
+                            if rec_match:
+                                rec_model = rec_match.group(1)
+                                if rec_model not in models_to_try:
+                                    logger.info("Found recommended model in API error: %s", rec_model)
+                                    models_to_try.append(rec_model)
+                        # Break retry loop immediately and try next model
                         break
                     if attempt < retries - 1:
                         await asyncio.sleep(2 ** attempt)
@@ -191,6 +211,7 @@ def get_gemini_client(
 ) -> GeminiClient:
     """Get or create the singleton GeminiClient instance."""
     global _client_instance
-    if _client_instance is None:
-        _client_instance = GeminiClient(api_key=api_key, model_name=model_name)
+    target_model = DEFAULT_LLM_MODEL if model_name in _DEPRECATED_MODELS else (model_name or DEFAULT_LLM_MODEL)
+    if _client_instance is None or _client_instance.model_name in _DEPRECATED_MODELS:
+        _client_instance = GeminiClient(api_key=api_key, model_name=target_model)
     return _client_instance

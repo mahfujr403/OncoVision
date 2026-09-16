@@ -122,7 +122,7 @@ class Settings(BaseSettings):
 
     # LLM / Gemini API configuration (Phase 11 — LLM + RAG Integration)
     GOOGLE_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-2.5-flash"
+    LLM_MODEL: str = "gemini-3.6-flash"
     LLM_EMBEDDING_MODEL: str = "text-embedding-004"
     LLM_MAX_TOKENS: int = 1024
     LLM_TEMPERATURE: float = 0.3
@@ -136,6 +136,14 @@ class Settings(BaseSettings):
     # Chat rate limiting (Phase 11)
     CHAT_RATE_LIMIT_MAX_REQUESTS: int = 20
     CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 3600
+
+    @field_validator("LLM_MODEL")
+    @classmethod
+    def validate_llm_model(cls, value: str) -> str:
+        """Upgrade deprecated models to currently supported Google models."""
+        if value in {"gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"}:
+            return "gemini-3.6-flash"
+        return value
 
     @field_validator("LOG_LEVEL")
     @classmethod
