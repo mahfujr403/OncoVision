@@ -23,6 +23,7 @@ Enterprise-grade AI Medical Imaging Platform backend for Lung & Colon Cancer His
 - [Reporting](#reporting)
 - [Administration](#administration)
 - [Monitoring](#monitoring)
+- [LLM & RAG Integration Subsystem (Phase 11)](#llm--rag-integration-subsystem-phase-11)
 - [Authentication & Authorization](#authentication--authorization)
 - [Running Locally](#running-locally)
 - [Environment Variables](#environment-variables)
@@ -47,6 +48,11 @@ OncoVision AI supports:
 - ✅ Prediction Analytics, CSV export, and PDF report generation
 - ✅ Administration: user management, prediction/history oversight, system status
 - ✅ Runtime/application/database monitoring, isolated from the core prediction pipeline
+- ✅ Google Gemini 3.x Flash-Lite LLM orchestration with model fallback cascade and quota exhaustion resilience
+- ✅ Retrieval-Augmented Generation (RAG) powered by PostgreSQL `pgvector` (768-dim embeddings via `gemini-embedding-2`)
+- ✅ On-demand and cached AI Clinical Summaries (`POST`/`GET /api/v1/predictions/{id}/summary`)
+- ✅ Contextual Prediction Chat and Platform/Oncology Knowledge Chat with clickable markdown links and structured bullet formatting
+- ✅ In-memory sliding-window rate limiting and bilingual generation support (English & Bangla)
 - ✅ Dockerized deployment (multi-stage, non-root, healthchecked) targeting Render + Neon PostgreSQL
 - ✅ Centralized exception handling and a consistent global API response envelope
 - ✅ OpenAPI/Swagger documentation for every endpoint
@@ -98,14 +104,16 @@ the Render dashboard rather than shipped as a `.env` file — see
 
 **Backend**
 - Python 3.10 (Docker runtime) / FastAPI
-- Pydantic & Pydantic Settings
+- Pydantic v2 & Pydantic Settings
 - SQLAlchemy (async) + Alembic
-- PostgreSQL (Neon in production)
+- PostgreSQL with `pgvector` extension (Neon in production)
 - PyJWT + Passlib/bcrypt
 - TensorFlow / Keras (2.10)
 - NumPy, OpenCV/Pillow
 - Hugging Face Hub (model storage/download)
 - ReportLab (PDF generation)
+- Google GenAI SDK (`google-genai` 1.x)
+- Gemini 3.5 Flash-Lite & Gemini Embedding 2 (`gemini-embedding-2`)
 
 **Deployment**
 - Backend: Render (free web service plan) — live at
@@ -121,33 +129,35 @@ starts, ephemeral disk, connection limits).
 
 ## Architecture
 
-The backend follows layered Clean Architecture with a fully isolated Machine Learning subsystem. Routers never contain business logic, repositories never perform machine learning, and only the AI Runtime Manager may create TensorFlow model instances.
+The backend follows layered Clean Architecture with fully isolated Machine Learning and LLM/RAG subsystems. Routers never contain business logic, repositories never perform machine learning or external LLM calls, and only dedicated services interact with external AI providers.
 
 ```
-Frontend
-   ↓
-REST API (/api/v1) — FastAPI Routers (thin; auth, validation, delegation only)
-   ↓
-Application Services (business logic)
-   ↓                                   ↓
-Repositories ──► PostgreSQL           AI Runtime Layer
-                  (Neon)                 ↓
-                                       AI Runtime Manager (sole owner of TensorFlow instances)
-                                          ↓
-                                       Model Registry / Manifest (single source of truth)
-                                          ↓
-                                       Download Manager + Cache Manager ── Hugging Face Hub
-
-Prediction Engine ──► Adaptive Ensemble Engine ──► Confidence Calibration
-      (per-model inference)   (weighted voting,          ↓
-                                agreement scoring)   Final Prediction Builder
-                                                            ↓
-                                                     Response Builder ──► API Response
-                                                            ↓
-                                                     Prediction History (immutable, append-only)
-                                                            ↓
+Frontend (React SPA)
+   │
+   ├─► REST API (/api/v1) — FastAPI Routers (thin; auth, validation, delegation)
+   │      │
+   │      ├─► Application Services (Auth, History, Reports, Admin, Monitoring)
+   │      │      ↓
+   │      │   Repositories ──► PostgreSQL (Neon: users, history, refresh_tokens)
+   │      │
+   │      ├─► AI Prediction Engine & Runtime
+   │      │      ↓
+   │      │   AI Runtime Manager (sole owner of TensorFlow instances)
+   │      │      ↓
+   │      │   Model Registry / Manifest (Hugging Face Hub download & cache)
+   │      │      ↓
+   │      │   Prediction Engine ──► Adaptive Ensemble Engine ──► Calibration ──► Final Builder
+   │      │
+   │      └─► LLM & RAG Subsystem (Phase 11)
+   │             ↓
+   │          ChatService / LLMSummaryService
+   │             ↓                                       ↓
+   │          RAGRetriever (pgvector `<=>`)            GeminiClient (google-genai)
+   │             ↓                                       ↓
+   │          knowledge_embeddings (768-dim)          Gemini 3.5 Flash-Lite
+   │                                                  (auto-fallback cascade & quota resilience)
+```                  ↓
                                               Reporting / Analytics / CSV / PDF Export
-```
 
 Key architectural rules enforced throughout the codebase (see the project's Architecture Decision Records):
 
@@ -169,7 +179,7 @@ backend/
 │   ├── main.py                        # FastAPI application entry point
 │   ├── core/
 │   │   ├── config.py                   # Storage directory helpers
-│   │   ├── settings.py                 # Environment-driven Settings model
+│   │   ├── settings.py                 # Environment-driven Settings model (with LLM & RAG config)
 │   │   ├── logging.py                  # Structured logging configuration
 │   │   ├── exceptions.py               # Centralized exception types + handlers
 │   │   ├── request_metrics.py          # In-memory request metrics store (Monitoring)
@@ -178,41 +188,58 @@ backend/
 │   │   ├── router.py                    # Aggregates every versioned sub-router
 │   │   └── v1/
 │   │       ├── health.py                 # GET /api/v1/health
-│   │       ├── system.py                 # GET /api/v1/system, /system/models, /system/runtime, /system/models/status
+│   │       ├── system.py                 # GET /api/v1/system, /system/models, /system/test-llm
 │   │       ├── auth.py                   # POST/GET /api/v1/auth/*
 │   │       ├── predictions/              # POST /api/v1/predictions
+│   │       ├── summary.py                # POST/GET /api/v1/predictions/{id}/summary
+│   │       ├── chat.py                   # POST /api/v1/chat/knowledge, /chat/prediction/{id}, GET /chat/history/{id}
 │   │       ├── history/                  # GET /api/v1/predictions/history, /predictions/history/{id}
 │   │       ├── reports.py                # GET /api/v1/reports/*
 │   │       ├── monitoring.py             # GET /api/v1/monitoring
 │   │       └── admin/                    # /api/v1/admin/* — users, history, system
 │   ├── middleware/                       # Request ID, logging, metrics, process-time, security headers
-│   ├── models/                           # SQLAlchemy ORM models (User, RefreshToken, PredictionHistoryRecord, enums)
-│   ├── repositories/                     # Database access layer — the only layer that queries PostgreSQL
+│   ├── models/                           # SQLAlchemy ORM models (User, RefreshToken, PredictionHistoryRecord,
+│   │                                      #   ChatMessage, KnowledgeEmbedding)
+│   ├── repositories/                     # Database access layer (User, History, ChatRepository)
 │   ├── database/                         # Async SQLAlchemy engine, session, declarative base
-│   ├── schemas/                          # Public Pydantic request/response contracts
-│   ├── services/                         # Business logic: auth, JWT, password, prediction orchestration,
-│   │                                      #   runtime adapter/validator/metadata, history, analytics, reports,
-│   │                                      #   admin (users/history/system), monitoring
-│   ├── history/                          # Prediction History domain module (filters, pagination, mapper, enums)
+│   ├── schemas/                          # Public Pydantic request/response contracts (Chat, Summary, Predict, etc.)
+│   ├── services/                         # Business logic: auth, JWT, prediction orchestration,
+│   │                                      #   chat_service, llm_summary_service, history, reports, monitoring
+│   ├── llm/                              # Google Gemini LLM Subsystem (Phase 11)
+│   │   ├── client.py                     # Async GeminiClient with model cascade & quota failover
+│   │   ├── prompts.py                    # Curated medical & platform prompt templates
+│   │   └── rate_limiter.py               # Sliding-window rate limiter for LLM queries
+│   ├── rag/                              # Retrieval-Augmented Generation (Phase 11)
+│   │   ├── embeddings.py                 # 768-dim vector embedding generation (gemini-embedding-2)
+│   │   ├── ingestion.py                  # Markdown document chunking and vector indexing pipeline
+│   │   ├── retriever.py                  # pgvector cosine similarity retrieval engine (<=>)
+│   │   └── knowledge_base/               # Curated medical & system knowledge files
+│   │       ├── colon_cancer/             # Colon adenocarcinoma, benign tissue, guidelines
+│   │       ├── lung_cancer/              # Lung adenocarcinoma, SCC, benign tissue
+│   │       ├── histopathology/           # H&E staining, cellular morphology, artifact guide
+│   │       ├── general_oncology/         # Cancer grading, WHO classification, staging
+│   │       ├── platform_info/            # OncoVision AI architecture & model details
+│   │       └── developer_info/           # Verified developer profile, bio, papers, handles
+│   ├── history/                          # Prediction History domain module
 │   ├── reports/                          # Reporting subsystem: analytics, CSV export, PDF export
-│   ├── monitoring/                       # Monitoring domain module (health, metrics, result contracts)
+│   ├── monitoring/                       # Monitoring domain module
 │   ├── admin/                            # Administration-specific exceptions
 │   ├── ml/                               # AI / Machine Learning subsystem (isolated from API/DB layers)
 │   │   ├── manifest/models.json           # Model Manifest — single source of truth for model metadata
 │   │   ├── registry/                      # Manifest loading + validated, read-only registry access
 │   │   ├── downloader/                    # Hugging Face Hub download + checksum verification
 │   │   ├── cache/                         # Local on-disk model weight cache
-│   │   ├── metadata/                      # Read-only manifest/registry/cache summaries for the API layer
+│   │   ├── metadata/                      # Read-only manifest/registry/cache summaries
 │   │   ├── runtime/                       # AI Runtime Manager — sole owner of TensorFlow instances
 │   │   ├── preprocessing/                 # Manifest-driven image preprocessing
 │   │   ├── prediction/                    # Prediction Engine — per-model inference only
 │   │   ├── ensemble/                      # Adaptive Ensemble Engine — voting, calibration, final prediction
-│   │   └── response/                      # Response Builder — assembles the public prediction response
+│   │   └── response/                      # Response Builder — assembles public prediction response
 │   ├── utils/                             # Response envelope helpers, environment helpers, security helpers
 │   ├── constants/                         # Static application constants (tags, prefixes, supported formats)
 │   ├── dependencies/                      # FastAPI DI providers + auth/authorization dependencies
-│   └── lifecycle/                         # Startup/shutdown lifespan logic
-├── alembic/                              # Database migrations
+│   └── lifecycle/                         # Startup (auto-migrations, RAG sync) and shutdown hooks
+├── alembic/                              # Database migrations (0001_auth, 0002_history, 0003_llm_rag)
 ├── storage/
 │   ├── uploads/                           # Uploaded histopathology images (transient)
 │   ├── reports/                           # Generated PDF reports (transient)
@@ -320,6 +347,31 @@ Every admin endpoint requires a valid access token belonging to a user with the 
 
 Monitoring is strictly read-only, reuses existing runtime and prediction statistics rather than recalculating them, and a monitoring failure never affects prediction, history, or reporting requests.
 
+### AI Clinical Chat (`/chat`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/chat/knowledge` | access token | RAG-powered interactive oncology and platform knowledge Q&A |
+| POST | `/chat/prediction/{prediction_id}` | access token | Contextual clinical chat explaining specific histopathology findings and model consensus |
+| GET | `/chat/history/{conversation_id}` | access token | Retrieve multi-turn chat message history for an active conversation |
+
+Accepts JSON payloads with `message`, optional `conversation_id`, and `language` (`en` or `bn`). Answers are strictly formatted using concise bullet points and clickable markdown links. Rate limited to 20 requests per hour per user.
+
+### AI Clinical Summary (`/predictions/{prediction_id}/summary`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/predictions/{prediction_id}/summary` | access token | Generate or retrieve cached 2-3 sentence clinical digest for a prediction |
+| GET | `/predictions/{prediction_id}/summary` | access token | Retrieve existing cached AI summary without regeneration |
+
+Summaries are stored on the `prediction_history.ai_summary` column for rapid subsequent retrieval and zero extra LLM token usage on repeated views.
+
+### System Diagnostics (`/system`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/system/test-llm` | none | Diagnostic utility inspecting available Google Gemini models and verifying latency |
+
 ## AI Model Infrastructure
 
 ### Model Manifest & Registry
@@ -390,6 +442,73 @@ The Administration layer provides user management, account activation/deactivati
 
 The Monitoring layer aggregates application health, database connectivity, AI Runtime health, and per-model availability from components that already compute this information — it introduces no duplicate metric calculations and no parallel health-check implementation. A monitoring failure is isolated and never affects prediction, history, or reporting requests.
 
+## LLM & RAG Integration Subsystem (Phase 11)
+
+The LLM & RAG subsystem augments OncoVision's computer vision predictions with conversational intelligence, on-demand clinical summaries, and domain-grounded question answering powered by **Google Gemini** and **PostgreSQL `pgvector`**.
+
+### 1. Model Selection & Fallback Cascade
+
+The subsystem uses the latest Google GenAI SDK (`google-genai`). Because Google frequently updates its generative AI endpoints on the free tier, the client (`GeminiClient` in `app/llm/client.py`) implements a resilient **model fallback cascade**:
+
+- **Default Generation Model**: `gemini-3.5-flash-lite` (optimized for lowest latency and high token allowances).
+- **Candidate Fallback Pool**: `["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash"]`.
+- **Automatic Model Deprecation Upgrade**: Requests configured with retired models (e.g. `gemini-2.0-flash`, `gemini-1.5-*`, `gemini-2.5-*`) are automatically upgraded to `gemini-3.5-flash-lite`.
+- **Quota Resilience**: If a `429 Too Many Requests` or `RESOURCE_EXHAUSTED` error occurs, the client **immediately switches to the next candidate model** in the pool without waiting, preventing request failure on free-tier limits.
+- **Adaptive Discovery**: When Google's API returns a 404 suggesting a newer active model name (e.g., "use models/gemini-..."), regex extraction dynamically enqueues the recommended model.
+
+### 2. Retrieval-Augmented Generation (RAG) Architecture
+
+```
+User Query ──► Query Embedding (gemini-embedding-2, 768-dim)
+                     │
+                     ▼
+             pgvector Cosine Distance (<=>)
+             SELECT * FROM knowledge_embeddings
+             WHERE 1 - (embedding <=> query_vec) >= 0.7
+             ORDER BY embedding <=> query_vec LIMIT 3;
+                     │
+                     ▼
+             Retrieved Knowledge Chunks
+                     │
+                     ▼
+Prompt Assembly (Context + Chat History + User Message) ──► Gemini 3.5 Flash-Lite ──► Formatted Response
+```
+
+- **Embedding Service** (`app/rag/embeddings.py`): Generates 768-dimensional embeddings using `gemini-embedding-2` (falling back to `gemini-embedding-2-preview` and `gemini-embedding-001`).
+- **Database Vector Store**: Utilizes the PostgreSQL `pgvector` extension via Alembic migration `0003_llm_rag_integration`. The `knowledge_embeddings` table stores text content, source metadata, topic tags, chunk indices, and a 768-dimension vector column.
+- **Graceful Retrieval & Empty-Table Bypass** (`app/rag/retriever.py`): Before issuing external embedding API calls, the retriever checks if records exist; if the table is empty, it returns early without incurring remote latency. Database queries use transaction rollback guards to prevent aborted transaction states.
+
+### 3. Domain Knowledge Base
+
+The knowledge base is organized under `app/rag/knowledge_base/` into modular Markdown documents:
+
+- **`colon_cancer/`**: Histopathology of adenocarcinoma, benign colonic mucosa, polyp classification, and TNM staging.
+- **`lung_cancer/`**: Adenocarcinoma acinar/papillary patterns, squamous cell carcinoma keratin pearls, and normal alveolar architecture.
+- **`histopathology/`**: Principles of Hematoxylin and Eosin (H&E) staining, cellular morphology, mitotic counting, and frozen section artifacts.
+- **`general_oncology/`**: Tumor grading, WHO classification standards, and diagnostic triage workflows.
+- **`platform_info/`**: OncoVision ensemble mechanics (MobileNetV2, DenseNet121, Feature Fusion), confidence calibration, agreement scoring, and operational boundaries.
+- **`developer_info/`**: Verified developer bio, peer-reviewed publications (IEEE ICCIT 2025 on Colon/Lung Cancer Feature Fusion with 100% test accuracy, IEEE QPAIN), verified contact information ([mahfujr403@gmail.com](mailto:mahfujr403@gmail.com)), and portfolio/profiles ([GitHub](https://github.com/mahfujr403), [LinkedIn](https://linkedin.com/in/mahfujr403), [Google Scholar](https://scholar.google.com/citations?user=ssuw-WEAAAAJ&hl=en)).
+
+> **Automatic Ingestion**: On application startup (`app/lifecycle/startup.py`), the backend automatically checks if knowledge base embeddings exist and indexes missing files asynchronously if `GOOGLE_API_KEY` is provided.
+
+### 4. AI Clinical Summary Caching
+
+- When a clinician opens a prediction detail, they can generate an AI clinical summary explaining the predicted class, confidence level, model agreement ratio, and class probabilities.
+- Summaries are generated in under 80 words and persisted directly into `prediction_history.ai_summary`. Subsequent page loads fetch the cached summary with zero database re-computation or external LLM API costs.
+
+### 5. Strict Prompt Engineering & Output Formatting
+
+All system prompts (`app/llm/prompts.py`) enforce medical-grade standards:
+- **Concise Bullet Formatting**: Information is presented in clear, scannable bullet points (`*` or `-`) rather than dense prose.
+- **Clickable Markdown Links**: Links, profiles, and email addresses must be formatted as Markdown links `[Label](URL)` or `[Email](mailto:address)`.
+- **Medical Disclaimer Separation**: Long disclaimer disclaimers are avoided in generated text because the UI provides dedicated persistent disclaimer banners.
+- **Non-Diagnostic Policy**: The assistant explicitly guides clinicians and researchers and never issues definitive medical prescriptions.
+- **Bilingual Capabilities**: Full prompt translation support for English and Bengali (Bangla).
+
+### 6. Rate Limiting & Safety
+
+To protect Google AI Studio free-tier quotas and prevent abuse, an in-memory sliding-window rate limiter (`app/llm/rate_limiter.py`) limits requests to **20 requests per hour per user**, returning a structured `429 Too Many Requests` envelope if exceeded.
+
 ## Authentication & Authorization
 
 - JWT-based authentication (`HS256`), with separate, explicitly typed access and refresh tokens — a refresh token can never be used where an access token is expected, and vice versa.
@@ -450,9 +569,20 @@ All configuration is sourced from environment variables (see `.env.example` for 
 | `DATABASE_URL` | Async PostgreSQL connection string | *(must be set)* |
 | `JWT_SECRET_KEY` | Secret used to sign JWTs | *(must be set to a strong value in production)* |
 | `JWT_ALGORITHM` | JWT signing algorithm | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime, in minutes | `15` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime, in minutes | `120` |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime, in days | `30` |
 | `BCRYPT_ROUNDS` | Password hashing cost factor | `12` |
+| `GOOGLE_API_KEY` | Google AI Studio API key for Gemini models | *(required for LLM/RAG features)* |
+| `LLM_MODEL` | Active LLM model name | `gemini-3.5-flash-lite` |
+| `LLM_EMBEDDING_MODEL` | Text embedding model name | `gemini-embedding-2` |
+| `LLM_MAX_TOKENS` | Maximum token limit for generation | `512` |
+| `LLM_TEMPERATURE` | Generation sampling temperature | `0.2` |
+| `RAG_CHUNK_SIZE` | Text chunk size for knowledge ingestion | `500` |
+| `RAG_CHUNK_OVERLAP` | Character overlap between chunks | `50` |
+| `RAG_TOP_K` | Number of context documents retrieved per query | `3` |
+| `RAG_SIMILARITY_THRESHOLD` | Minimum cosine similarity threshold (0.0–1.0) | `0.7` |
+| `CHAT_RATE_LIMIT_MAX_REQUESTS`| Max chat requests per window | `20` |
+| `CHAT_RATE_LIMIT_WINDOW_SECONDS`| Chat rate limit window in seconds | `3600` |
 
 Supported uploaded image formats for prediction: **JPEG, JPG, PNG, TIFF**.
 
@@ -468,6 +598,7 @@ Migrations live under `alembic/versions/` as a single linear chain (no branching
 |---|---|
 | `0001_initial_auth_tables` | `users`, `refresh_tokens` |
 | `0002_prediction_history_table` | `prediction_history` |
+| `0003_llm_rag_integration` | `pgvector` extension, `knowledge_embeddings`, `chat_messages`, `ai_summary` |
 
 ## Docker
 
@@ -526,6 +657,7 @@ Once running, interactive API docs are available at:
 | Phase 8 — Monitoring & Observability | ✅ Complete |
 | Phase 9 — Deployment Optimization | ✅ Complete |
 | Phase 10 — Production Polish & Final Backend Hardening | ✅ Complete |
+| Phase 11 — LLM & RAG Integration (Gemini 3.x, pgvector, Knowledge Chat, Prediction Explainer) | ✅ Complete |
 
 Frontend integration, end-to-end testing, and deployment are complete — see [Live Deployment](#live-deployment-render--neon--hugging-face-hub).
 

@@ -22,6 +22,7 @@ against a real FastAPI backend.
 - [Docker](#docker)
 - [Deployment (Netlify)](#deployment-netlify)
 - [Backend integration status](#backend-integration-status)
+- [AI Clinical Assistant & LLM Chat Interface](#ai-clinical-assistant--llm-chat-interface)
 - [Adding a new backend-integrated feature](#adding-a-new-backend-integrated-feature)
 - [Medical / UX copy discipline](#medical--ux-copy-discipline)
 
@@ -32,11 +33,12 @@ against a real FastAPI backend.
 - React 19, TypeScript, Vite
 - Tailwind CSS, shadcn/ui (Radix primitives), Framer Motion
 - TanStack Query (server state), Axios (HTTP)
-- React Router
+- React Router (client-side routing)
 - React Hook Form + Zod
-- Lucide React, Sonner (toasts), React Dropzone
+- Lucide React (clinical & UI icons), Sonner (toasts), React Dropzone
+- Interactive AI Chat components with word-by-word streaming effect, markdown link parsing, and bilingual support (EN/BN)
 
-No Redux, no additional state-management library.
+No Redux, no additional external state-management library.
 
 ---
 
@@ -82,22 +84,28 @@ The dev server runs on `0.0.0.0:5173` (see `vite.config.ts`; `npm run preview` s
 ```
 src/
 ├── api/               # Axios instance, interceptors, envelope unwrap helper,
-│                       # api/services/* (one file per backend resource)
-├── components/         # Shared UI primitives (shadcn-style) + navigation
+│                       # api/services/* (auth, prediction, history, reports, chatService, admin)
+├── components/         # Shared UI primitives (shadcn-style) + navigation + reports
 ├── constants/          # api.ts (endpoint map), app.ts, roles.ts, routes.ts
 ├── contexts/            # AuthContext (real session state)
-├── features/            # Feature-scoped code — auth/, prediction/
+├── features/            # Feature-scoped code:
+│   ├── auth/           # Login & registration forms
+│   ├── chat/           # ChatPanel, ChatBubble, ChatInput, OncoVisionIcon
+│   └── prediction/     # Image dropzone, results breakdown, AISummaryCard
 ├── hooks/               # useAuth, usePagination, useSearch, queries/*
-├── layouts/              # AuthLayout, LandingLayout, DashboardLayout, etc.
-├── pages/                # Route-level page components (auth/, dashboard/, admin/, landing/)
+├── layouts/              # AuthLayout, LandingLayout, DashboardLayout
+├── pages/                # Route-level page components:
+│   ├── auth/           # Login, Register
+│   ├── dashboard/      # Predict, History, Reports, AIChatPage, PredictionChatPage
+│   └── admin/          # AdminUsers, AdminHistory, AdminSystemHealth, AdminModels
 ├── providers/            # App-wide providers (QueryClient, Theme, Auth)
 ├── routes/               # Route table + guards (ProtectedRoute, AdminRoute, PublicRoute)
-├── types/                # index.ts — real backend-contract types + demo-only types
+├── types/                # index.ts — backend-contract types (Chat, Summary, Prediction, History)
 └── utils/                # formatters, validation schemas, permissions
 ```
 
 Feature-specific UI lives inside its feature folder (`features/auth`,
-`features/prediction`); avoid dumping feature logic into generic
+`features/prediction`, `features/chat`); avoid dumping feature logic into generic
 `components/`.
 
 ---
@@ -211,6 +219,9 @@ mirrors. Two tiers:
 | Register / Login / Session restore / Logout / Logout-all | `POST /auth/register`, `/login`, `GET /auth/me`, `POST /auth/logout(-all)` |
 | Predict | `POST /predictions` (multipart) |
 | Prediction History (list + detail) | `GET /predictions/history[/​{id}]` |
+| AI Clinical Summary (generate / retrieve) | `POST /predictions/{id}/summary`, `GET /predictions/{id}/summary` |
+| AI Prediction Context Chat | `POST /chat/prediction/{prediction_id}` |
+| AI Cancer Knowledge Chat (RAG) | `POST /chat/knowledge`, `GET /chat/history/{conversation_id}` |
 | Reports & Analytics (+ CSV/PDF export) | `GET /reports/analytics`, `/reports/export/csv`, `/reports/export/pdf` |
 | Admin — Users (list, activate, deactivate) | `GET /admin/users`, `POST /admin/users/{id}/activate|deactivate` |
 | Admin — System Health | `GET /monitoring`, `GET /admin/system` |
@@ -254,6 +265,43 @@ that page — the UI shell is already there.
 - The real model manifest has exactly 3 models (MobileNetV2, DenseNet121,
   EfficientNetV2B0+ResNet50 fusion) and 5 class labels — see
   `KNOWN_CLASS_LABELS` in `src/constants/app.ts`.
+
+---
+
+## AI Clinical Assistant & LLM Chat Interface
+
+The frontend incorporates an AI assistant powered by Google Gemini and RAG vector retrieval, featuring three core modalities:
+
+### 1. Cancer Knowledge Chat (`/dashboard/ai-chat`)
+
+- **Interactive Oncology Assistant**: Accessible from the sidebar ("Cancer Knowledge Chat"). Powered by the backend `POST /api/v1/chat/knowledge` endpoint.
+- **RAG-Grounded Context**: Queries retrieve semantic embeddings from the curated knowledge base (colon/lung pathology, H&E staining, platform architecture, developer publications).
+- **Suggestion Chips**: Quick-start prompt chips for common inquiries (e.g. *"What is adenocarcinoma?"*, *"Explain H&E staining"*, *"Tell me about the developer & research papers"*).
+- **Bilingual Switcher**: Toggle button between English (`EN`) and Bengali (`BN` / বাংলা) for locale-tailored responses.
+- **Conversation Management**: Clear conversation action, auto-scrolling message list, and session continuity.
+
+### 2. Prediction Context Chat (`/dashboard/prediction-chat/:predictionId`)
+
+- **Anchored Case Discussion**: Accessible directly from any prediction result or history detail page via the "Chat About Prediction" button.
+- **Pre-Loaded Clinical Context**: Displays a header badge with the case's predicted class, calibrated confidence percentage, and model agreement status.
+- **Initial Digest**: Automatically calls `generatePredictionSummary` on first mount to populate the chat with a concise clinical digest.
+- **Follow-up Q&A**: Users can ask specific questions regarding why a certain model voted as it did, cellular morphology characteristics, or relevant clinical guidelines.
+
+### 3. Embedded AI Clinical Summary Card (`AISummaryCard`)
+
+- **Component**: Located in `src/features/prediction/components/AISummaryCard.tsx`, embedded on `HistoryDetailPage`.
+- **Cached Display**: Displays existing `record.ai_summary` from PostgreSQL cache instantly without regenerating.
+- **On-Demand Generation**: For records without cached summaries, a single click on "Generate AI Summary" calls `POST /api/v1/predictions/{id}/summary`.
+- **Utility Actions**: Copy-to-clipboard button with toast feedback and a direct link to open the full `PredictionChatPage`.
+
+### 4. Chat UI Features & UX Polish
+
+- **Word-by-Word Streaming Animation**: Assistant messages render with a smooth typewriter streaming effect to provide real-time visual feedback.
+- **Clickable Markdown Links**: Links in AI responses (such as developer GitHub, LinkedIn, Google Scholar, portfolio, or mailto links) are parsed and rendered as styled, clickable interactive links (`[Label](URL)`).
+- **Structured Bullet Formatting**: Bullet points (`*` or `-`) are parsed into clean, spaced list items for high readability.
+- **Visual Distinction**: User messages render in high-contrast indigo bubbles; AI assistant messages render in sleek card containers with the custom OncoVision pulse icon.
+- **Keyboard Shortcuts**: `Enter` to send, `Shift + Enter` for new lines, with automatic textarea height resizing and auto-focusing on mount.
+- **Graceful Quota Handling**: Displays user-friendly callout banners when free-tier Google Gemini rate limits (HTTP 429) are encountered.
 
 ---
 
