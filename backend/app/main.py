@@ -72,8 +72,16 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Middleware order matters: the last added middleware runs first on the
-    # request path and last on the response path.
+    # Middleware order in Starlette/FastAPI: the LAST added middleware wraps
+    # all previous middlewares (executing first on request, last on response).
+    # CORSMiddleware MUST be added LAST so that it is the outermost middleware,
+    # ensuring all requests (including OPTIONS preflights) and all responses
+    # (including 401s, 500s, and unhandled exceptions) receive CORS headers.
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(LoggingMiddleware)
+    app.add_middleware(RequestMetricsMiddleware)
+    app.add_middleware(ProcessTimeMiddleware)
+    app.add_middleware(RequestIDMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins_list,
@@ -82,11 +90,6 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(LoggingMiddleware)
-    app.add_middleware(RequestMetricsMiddleware)
-    app.add_middleware(ProcessTimeMiddleware)
-    app.add_middleware(RequestIDMiddleware)
 
     register_exception_handlers(app)
 

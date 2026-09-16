@@ -75,10 +75,13 @@ class GeminiClient:
             retries = 2
             for attempt in range(retries):
                 try:
-                    response = await self.client.aio.models.generate_content(
-                        model=model,
-                        contents=prompt,
-                        config=config,
+                    response = await asyncio.wait_for(
+                        self.client.aio.models.generate_content(
+                            model=model,
+                            contents=prompt,
+                            config=config,
+                        ),
+                        timeout=35.0,
                     )
                     # If fallback worked, remember it
                     if model != self.model_name:

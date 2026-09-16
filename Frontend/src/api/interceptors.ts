@@ -26,7 +26,7 @@ export function clearTokens(): void {
 
 // A bare axios client (no interceptors) used only for the refresh call
 // itself, so refreshing never recurses through the 401 handler below.
-const refreshClient = axios.create({ baseURL: API_BASE_URL, timeout: 15_000 });
+const refreshClient = axios.create({ baseURL: API_BASE_URL, timeout: 30_000 });
 
 // --- Single-flight refresh + pending-request queue --------------------------
 // Prevents concurrent 401s from firing multiple /auth/refresh calls and

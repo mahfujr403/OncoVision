@@ -20,7 +20,7 @@ router = APIRouter(prefix="/predictions", tags=[TAG_AI_SUMMARY])
 @router.post("/{prediction_id}/summary", response_model=dict[str, Any])
 async def generate_summary(
     prediction_id: uuid.UUID,
-    request: SummaryRequest,
+    request: SummaryRequest = SummaryRequest(),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
