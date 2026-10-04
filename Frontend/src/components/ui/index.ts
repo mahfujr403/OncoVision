@@ -46,3 +46,5 @@ export {
 } from "./Table"
 
 export { Toggle } from "./Toggle"
+
+export { BrandLogo, BrandIcon } from "../brand/BrandLogo"

@@ -1,8 +1,9 @@
 import type { SVGProps } from "react"
-import { Mail, Globe, ArrowUpRight, Microscope } from "lucide-react"
+import { Mail, Globe, ArrowUpRight } from "lucide-react"
 import { APP_NAME, APP_TAGLINE } from "@/constants/app"
 import { DEVELOPER, PROJECT_REPO_URL } from "@/constants/site"
 import { Button } from "@/components/ui/Button"
+import { BrandIcon } from "@/components/brand"
 
 // `lucide-react` ships no brand glyphs, so GitHub and LinkedIn are inline SVGs
 function GithubIcon(props: SVGProps<SVGSVGElement>) {
@@ -53,12 +54,7 @@ export function Footer() {
               className="group inline-flex items-center gap-2.5"
               aria-label={`${APP_NAME} — view source on GitHub`}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Microscope
-                  className="h-4 w-4 text-primary-foreground"
-                  aria-hidden="true"
-                />
-              </div>
+              <BrandIcon size="md" className="transition-transform group-hover:scale-105" />
               <span className="font-semibold font-display text-sm text-text-primary transition-colors group-hover:text-primary">
                 {APP_NAME}
               </span>

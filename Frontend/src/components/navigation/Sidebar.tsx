@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { ROUTES } from "@/constants/routes"
 import { isAdmin, hasPermission } from "@/utils/permissions"
 import { Avatar } from "@/components/ui/Avatar"
-import { APP_NAME } from "@/constants/app"
+import { BrandLogo } from "@/components/brand"
 import { ROLE_LABELS } from "@/constants/roles"
 
 interface NavItem {
@@ -220,19 +220,11 @@ export function Sidebar({
       >
         {/* Brand Area */}
         <div className="flex items-center gap-3 px-3.5 h-14 border-b border-border shrink-0 bg-surface">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
-            <Microscope className="h-4 w-4" aria-hidden="true" />
-          </div>
-          {(!isCollapsed || mobile) && (
-            <div className="overflow-hidden flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-none tracking-tight font-display text-text-primary truncate">
-                {APP_NAME}
-              </p>
-              <p className="text-[11px] text-text-muted mt-1 truncate font-sans">
-                Clinical Intelligence
-              </p>
-            </div>
-          )}
+          <BrandLogo
+            collapsed={isCollapsed}
+            subtitle="Clinical Intelligence"
+            className="flex-1 min-w-0"
+          />
           {!mobile && (
             <button
               onClick={onToggle}

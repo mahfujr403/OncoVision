@@ -1,8 +1,8 @@
 import { Outlet, Link } from 'react-router-dom';
-import { Microscope, ArrowRight, Sun, Moon } from 'lucide-react';
-import { APP_NAME } from '@/constants/app';
+import { ArrowRight, Sun, Moon } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { Button } from '@/components/ui/Button';
+import { BrandLogo } from '@/components/brand';
 import { Footer } from '@/components/layout/Footer';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -15,14 +15,11 @@ export function LandingLayout() {
       <header className="sticky top-0 z-40 border-b border-border bg-surface/85 backdrop-blur-md transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           {/* Brand Logo */}
-          <Link to={ROUTES.LANDING} className="flex items-center gap-2.5 shrink-0 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs transition-transform group-hover:scale-105">
-              <Microscope className="h-4.5 w-4.5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold font-display text-sm tracking-tight text-text-primary">{APP_NAME}</span>
-            </div>
-          </Link>
+          <BrandLogo
+            to={ROUTES.LANDING}
+            size="md"
+            badgeClassName="transition-transform group-hover:scale-105"
+          />
 
           {/* Section Anchor Navigation */}
           <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-text-muted">

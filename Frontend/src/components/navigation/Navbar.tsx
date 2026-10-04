@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useState, useRef, useEffect } from "react"
+import { Link, useNavigate, useLocation } from "react-router-dom"
 import {
   Bell,
   Sun,
@@ -31,7 +31,33 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [searchQuery, setSearchQuery] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
+
+  // Only display the top search bar on pages where global discovery is relevant (e.g. Dashboard overview).
+  // Detail pages, action forms (Predict), settings/profile, and pages with their own in-page search toolbar do not show the duplicate top search.
+  const isSearchAllowed = location.pathname === ROUTES.DASHBOARD || location.pathname === `${ROUTES.DASHBOARD}/`
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k" && isSearchAllowed) {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isSearchAllowed])
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`${ROUTES.HISTORY}?q=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchOpen(false)
+    }
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -51,68 +77,78 @@ export function Navbar({ onMenuClick }: NavbarProps) {
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Desktop Search Bar */}
-      <div className="hidden md:block flex-1 max-w-xs lg:max-w-md">
-        <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            placeholder="Search cases, reports, models..."
-            aria-label="Global clinical search"
-            className={cn(
-              "h-9 w-full rounded-md border border-border bg-surface-raised/70 pl-9 pr-12 text-sm text-text-primary",
-              "placeholder:text-text-muted/70",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
-              "transition-colors duration-150",
-            )}
-          />
-          <kbd
-            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 rounded border border-border-subtle px-1.5 py-0.5 text-[10px] font-mono text-text-muted bg-surface select-none"
-            aria-hidden="true"
-          >
-            ⌘K
-          </kbd>
-        </div>
-      </div>
-
-      {/* Mobile Search Toggle */}
-      <div className="flex-1 md:hidden flex items-center">
-        {searchOpen ? (
-          <div className="relative w-full flex items-center">
+      {/* Desktop Search Bar (Only on pages where search is needed) */}
+      {isSearchAllowed && (
+        <form onSubmit={handleSearchSubmit} className="hidden md:block flex-1 max-w-xs lg:max-w-md">
+          <div className="relative">
             <Search
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none"
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none"
               aria-hidden="true"
             />
             <input
+              ref={searchInputRef}
               type="search"
-              placeholder="Search..."
-              autoFocus
-              aria-label="Mobile search"
-              className="h-8 w-full rounded-md border border-border bg-surface-raised pl-8 pr-8 text-xs text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search cases, reports, models..."
+              aria-label="Global clinical search"
+              className={cn(
+                "h-9 w-full rounded-md border border-border bg-surface-raised/70 pl-9 pr-12 text-sm text-text-primary",
+                "placeholder:text-text-muted/70",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
+                "transition-colors duration-150",
+              )}
             />
-            <button
-              onClick={() => setSearchOpen(false)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-0.5"
-              aria-label="Close search"
+            <kbd
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 rounded border border-border-subtle px-1.5 py-0.5 text-[10px] font-mono text-text-muted bg-surface select-none"
+              aria-hidden="true"
             >
-              <X className="h-3.5 w-3.5" />
-            </button>
+              ⌘K
+            </kbd>
           </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setSearchOpen(true)}
-            className="text-text-secondary hover:text-text-primary"
-            aria-label="Open search input"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+        </form>
+      )}
+
+      {/* Mobile Search Toggle (Only on pages where search is needed) */}
+      {isSearchAllowed && (
+        <div className="flex-1 md:hidden flex items-center">
+          {searchOpen ? (
+            <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
+              <Search
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                autoFocus
+                aria-label="Mobile search"
+                className="h-8 w-full rounded-md border border-border bg-surface-raised pl-8 pr-8 text-xs text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setSearchOpen(false)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-0.5"
+                aria-label="Close search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </form>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setSearchOpen(true)}
+              className="text-text-secondary hover:text-text-primary"
+              aria-label="Open search input"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Header Actions */}
       <div className="ml-auto flex items-center gap-1.5">

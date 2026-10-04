@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Microscope, Filter, X, ArrowRight, Eye, ChevronRight } from 'lucide-react';
 import { SearchBox } from '@/components/ui/SearchBox';
 import { Badge } from '@/components/ui/Badge';
@@ -54,11 +54,19 @@ const STATUS_OPTIONS: { value: PredictionHistoryStatus; label: string }[] = [
 
 export default function HistoryPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlQuery = searchParams.get('q') || searchParams.get('search') || '';
   const { page, pageSize, goToPage } = usePagination();
   const [statusFilter, setStatusFilter] = useState<PredictionHistoryStatus | ''>('');
   const [classFilter, setClassFilter] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [pageQuery, setPageQuery] = useState('');
+  const [pageQuery, setPageQuery] = useState(urlQuery);
+
+  useEffect(() => {
+    if (urlQuery) {
+      setPageQuery(urlQuery);
+    }
+  }, [urlQuery]);
 
   const { data, isLoading, isError, refetch } = usePredictionHistory({
     page,

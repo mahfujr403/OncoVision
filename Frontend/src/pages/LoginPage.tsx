@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Sun, Moon } from 'lucide-react';
+import { BrandLogo } from '@/components/brand';
 
 interface LoginPageProps {
   onLogin: (email: string, password: string) => void;
@@ -14,22 +15,12 @@ interface LoginPageProps {
 
 function OvLogo() {
   return (
-    <div className="flex items-center gap-2.5 justify-center mb-8">
-      <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-        <svg className="w-5 h-5 text-primary-foreground" viewBox="0 0 20 20" fill="none">
-          <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.75" />
-          <circle cx="10" cy="10" r="2.5" fill="currentColor" />
-          <line x1="10" y1="1" x2="10" y2="3.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-          <line x1="10" y1="16.5" x2="10" y2="19" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-          <line x1="1" y1="10" x2="3.5" y2="10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-          <line x1="16.5" y1="10" x2="19" y2="10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-        </svg>
-      </div>
-      <div>
-        <p className="text-base font-bold text-foreground leading-tight">OncoVision AI</p>
-        <p className="text-[11px] text-muted-foreground font-mono leading-tight">Histopathology Analysis Platform</p>
-      </div>
-    </div>
+    <BrandLogo
+      size="lg"
+      subtitle="Histopathology Analysis Platform"
+      className="justify-center mb-8"
+      subtitleClassName="font-mono text-[11px]"
+    />
   );
 }
 

@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import type { User as UserType, PageId, Theme } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
+import { BrandLogo } from '@/components/brand';
 
 interface NavItem {
   id: PageId;
@@ -111,38 +112,11 @@ function SidebarContent({
           collapsed && !isMobileDrawer ? 'justify-center px-0' : 'justify-between'
         )}
       >
-        {(!collapsed || isMobileDrawer) && (
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4 text-primary-foreground" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5" />
-                <circle cx="8" cy="8" r="2" fill="currentColor" />
-                <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-sidebar-foreground leading-tight truncate">
-                OncoVision AI
-              </p>
-            </div>
-          </div>
-        )}
-
-        {collapsed && !isMobileDrawer && (
-          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-            <svg className="w-4 h-4 text-primary-foreground" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5" />
-              <circle cx="8" cy="8" r="2" fill="currentColor" />
-              <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </div>
-        )}
+        <BrandLogo
+          size="sm"
+          collapsed={collapsed && !isMobileDrawer}
+          className="min-w-0"
+        />
 
         {isMobileDrawer ? (
           <button

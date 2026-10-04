@@ -1,5 +1,5 @@
-import { Outlet, Link } from 'react-router-dom';
-import { Stethoscope } from 'lucide-react';
+import { Outlet } from 'react-router-dom';
+import { BrandLogo } from '@/components/brand';
 import { APP_NAME } from '@/constants/app';
 
 export function AuthLayout() {
@@ -16,12 +16,7 @@ export function AuthLayout() {
           }}
         />
 
-        <Link to="/" className="flex items-center gap-2.5 relative z-10">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Stethoscope className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="font-semibold font-display text-base">{APP_NAME}</span>
-        </Link>
+        <BrandLogo to="/" size="lg" className="relative z-10" />
 
         <div className="relative z-10 space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1">
@@ -59,12 +54,9 @@ export function AuthLayout() {
       <div className="flex items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
-          <Link to="/" className="flex items-center gap-2 mb-8 md:hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Stethoscope className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-semibold font-display">{APP_NAME}</span>
-          </Link>
+          <div className="mb-8 md:hidden">
+            <BrandLogo to="/" size="md" />
+          </div>
 
           <Outlet />
         </div>
