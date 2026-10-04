@@ -20,12 +20,12 @@ function evaluateStrength(password: string): StrengthResult {
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
   const levels: StrengthResult[] = [
-    { score: 0, label: 'Too weak', color: 'bg-destructive' },
-    { score: 1, label: 'Weak', color: 'bg-destructive' },
-    { score: 2, label: 'Fair', color: 'bg-amber-400' },
-    { score: 3, label: 'Good', color: 'bg-yellow-400' },
-    { score: 4, label: 'Strong', color: 'bg-emerald-400' },
-    { score: 5, label: 'Very strong', color: 'bg-emerald-500' },
+    { score: 0, label: 'Too weak', color: 'bg-error' },
+    { score: 1, label: 'Weak', color: 'bg-error' },
+    { score: 2, label: 'Fair', color: 'bg-warning' },
+    { score: 3, label: 'Good', color: 'bg-warning' },
+    { score: 4, label: 'Strong', color: 'bg-success' },
+    { score: 5, label: 'Very strong', color: 'bg-success' },
   ];
 
   return { ...levels[Math.min(score, 5)], score };
@@ -48,7 +48,7 @@ export function PasswordStrength({ password, className }: PasswordStrengthProps)
           />
         ))}
       </div>
-      <p className={cn('text-[10px] font-medium', score <= 1 ? 'text-destructive' : score <= 3 ? 'text-amber-400' : 'text-emerald-400')}>
+      <p className={cn('text-[10px] font-medium', score <= 1 ? 'text-error' : score <= 3 ? 'text-warning' : 'text-success')}>
         {label}
       </p>
     </div>

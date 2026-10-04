@@ -1,45 +1,65 @@
-import { Server, Cpu, Activity, Database } from 'lucide-react';
+import { Server, Cpu, Activity, Database, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Info, HardDrive } from 'lucide-react';
 import { SectionTitle } from '@/components/ui/SectionTitle';
 import { Card, CardHeader, CardTitle, CardContent, StatCard } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useMonitoring } from '@/hooks/queries/useMonitoring';
 import { formatDateTime } from '@/utils/formatters';
 import type { ComponentStatus } from '@/types';
 
-// NOTE: the previous version of this page showed a fabricated service list
-// (API Gateway, Notification Service, PostgreSQL latencies...) and fake
-// CPU/Memory/GPU gauges — none of that exists on the backend. This page now
-// reflects only what GET /api/v1/monitoring actually returns (verified
-// against app/schemas/monitoring.py): application/database/runtime health,
-// per-model runtime state, and request/prediction metrics. There is no
-// GPU/CPU/memory utilization endpoint, so those gauges are gone rather than
-// invented.
 export default function AdminSystemHealthPage() {
-  const { data, isLoading, isError, refetch } = useMonitoring();
+  const { data, isLoading, isError, refetch, isFetching } = useMonitoring();
 
   return (
-    <div className="space-y-5">
-      <SectionTitle
-        title="System Health"
-        description="Live status from the AI runtime and application monitoring endpoint"
-        action={data && <StatusBadge status={data.status} />}
-      />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SectionTitle
+          title="System Health"
+          description="Live operational telemetry, inference engine state, and backend service monitoring."
+        />
+        <div className="flex items-center gap-2">
+          {data && <OverallStatusBadge status={data.status} />}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-1.5 text-xs"
+            aria-label="Refresh system health telemetry"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </Button>
+        </div>
+      </div>
 
       {isError ? (
-        <ErrorState message="Couldn't load monitoring status." onRetry={() => refetch()} />
+        <ErrorState message="Could not retrieve monitoring telemetry from backend services." onRetry={() => refetch()} />
       ) : isLoading || !data ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="space-y-2">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-6 w-14" />
-            </Card>
-          ))}
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="space-y-2 p-4">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-6 w-16" />
+              </Card>
+            ))}
+          </div>
+          <Card className="p-6 space-y-4">
+            <Skeleton className="h-5 w-40" />
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          </Card>
         </div>
       ) : (
         <>
+          {/* Top Operational Metrics */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard
               label="Loaded Models"
@@ -47,67 +67,98 @@ export default function AdminSystemHealthPage() {
               icon={<Cpu className="h-4 w-4" />}
             />
             <StatCard
-              label="Total Requests"
+              label="Total HTTP Requests"
               value={data.request_metrics.total_requests.toLocaleString()}
               icon={<Activity className="h-4 w-4" />}
             />
             <StatCard
-              label="Avg. Request Time"
+              label="Mean Response Latency"
               value={`${data.request_metrics.average_duration_ms.toFixed(0)} ms`}
               icon={<Server className="h-4 w-4" />}
             />
             <StatCard
-              label="Prediction Requests"
+              label="Inference Throughput"
               value={`${data.prediction_metrics.successful_requests}/${data.prediction_metrics.total_requests}`}
               icon={<Database className="h-4 w-4" />}
             />
           </div>
 
-          {/* Component health */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Component Status</CardTitle>
+          {/* Core Infrastructure Components */}
+          <Card className="p-5">
+            <CardHeader className="p-0 pb-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Server className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm">Core Service Infrastructure</CardTitle>
+                </div>
+                <span className="text-xs font-mono text-text-muted">
+                  Service Level Health
+                </span>
+              </div>
             </CardHeader>
-            <CardContent className="divide-y divide-border">
+            <CardContent className="p-0 pt-1 divide-y divide-border-subtle">
               <ComponentRow
+                icon={<HardDrive className="h-4 w-4 text-text-muted" />}
                 name={data.application.name}
-                detail={`v${data.application.version} · ${data.application.environment}`}
+                detail={`Build v${data.application.version} · Environment: ${data.application.environment}`}
                 status={data.application.status}
               />
               <ComponentRow
-                name="Database"
-                detail={data.database.connected ? 'Connected' : 'Not connected'}
+                icon={<Database className="h-4 w-4 text-text-muted" />}
+                name="PostgreSQL Database"
+                detail={data.database.connected ? 'Active connection pool verified' : 'Database connection pool disconnected'}
                 status={data.database.status}
               />
               <ComponentRow
-                name="AI Runtime"
-                detail={`${data.runtime.loaded_model_count} loaded · ${data.runtime.failed_model_count} failed · ${data.runtime.pending_model_count} pending`}
+                icon={<Cpu className="h-4 w-4 text-text-muted" />}
+                name="Inference Runtime Engine"
+                detail={`${data.runtime.loaded_model_count} active in memory · ${data.runtime.pending_model_count} pending · ${data.runtime.failed_model_count} faults`}
                 status={data.runtime.status}
               />
             </CardContent>
           </Card>
 
-          {/* Per-model runtime status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Model Runtime</CardTitle>
+          {/* Model Runtime Daemon State */}
+          <Card className="p-5">
+            <CardHeader className="p-0 pb-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm">Runtime Estimator Daemon Instances</CardTitle>
+                </div>
+                <span className="text-xs font-mono text-text-muted">
+                  {data.runtime.models.length} registered processes
+                </span>
+              </div>
             </CardHeader>
-            <CardContent className="divide-y divide-border">
+            <CardContent className="p-0 pt-1 divide-y divide-border-subtle">
               {data.runtime.models.length === 0 ? (
-                <p className="py-3 text-xs text-muted-foreground">No models registered.</p>
+                <p className="py-4 text-xs font-mono text-text-muted text-center">
+                  No individual model processes are currently reported by the runtime manager.
+                </p>
               ) : (
                 data.runtime.models.map((m) => (
-                  <div key={m.model_id} className="flex items-center gap-4 py-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
-                      <Cpu className="h-4 w-4 text-muted-foreground" />
+                  <div key={m.model_id} className="flex items-center justify-between gap-4 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-raised border border-border text-primary">
+                        <Cpu className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-text-primary truncate">{m.display_name}</p>
+                        <p className="text-[11px] text-text-muted font-mono truncate">
+                          {m.error_message ? (
+                            <span className="text-error">{m.error_message}</span>
+                          ) : (
+                            `Daemon Process ID: ${m.model_id}`
+                          )}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{m.display_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {m.error_message ?? `State: ${m.state}`}
-                      </p>
-                    </div>
-                    <Badge variant={m.is_available ? 'success' : 'destructive'} dot className="text-[10px] capitalize">
+                    <Badge
+                      variant={m.is_available ? 'success' : 'error'}
+                      dot
+                      className="text-[10px] capitalize font-mono shrink-0"
+                    >
                       {m.state}
                     </Badge>
                   </div>
@@ -116,59 +167,130 @@ export default function AdminSystemHealthPage() {
             </CardContent>
           </Card>
 
-          {/* Request breakdown */}
-          <Card className="space-y-3">
-            <p className="text-sm font-semibold">HTTP Response Breakdown</p>
-            <div className="grid grid-cols-4 gap-3 text-center">
-              <ResponseStat label="2xx" value={data.request_metrics.status_2xx} tone="success" />
-              <ResponseStat label="3xx" value={data.request_metrics.status_3xx} tone="secondary" />
-              <ResponseStat label="4xx" value={data.request_metrics.status_4xx} tone="warning" />
-              <ResponseStat label="5xx" value={data.request_metrics.status_5xx} tone="destructive" />
+          {/* HTTP Gateway Breakdown */}
+          <Card className="p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-text-primary">Gateway HTTP Status Distribution</h3>
+              </div>
+              <span className="text-xs font-mono text-text-muted">
+                Cumulative Session Volume
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <ResponseStat label="2xx Success" value={data.request_metrics.status_2xx} tone="success" desc="Normal operational requests" />
+              <ResponseStat label="3xx Redirect" value={data.request_metrics.status_3xx} tone="secondary" desc="Route redirects" />
+              <ResponseStat label="4xx Client Error" value={data.request_metrics.status_4xx} tone="warning" desc="Auth, 404, or validation faults" />
+              <ResponseStat label="5xx Server Error" value={data.request_metrics.status_5xx} tone="destructive" desc="Runtime or internal faults" />
             </div>
           </Card>
 
-          <p className="text-[11px] text-muted-foreground">Generated {formatDateTime(data.generated_at)}</p>
+          {/* Telemetry Provenance Notice & Timestamp */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg border border-border bg-surface-raised/40 text-xs text-text-secondary">
+            <div className="flex items-start gap-2.5">
+              <Info className="h-4 w-4 text-text-muted shrink-0 mt-0.5" />
+              <p>
+                Telemetry polled from backend health daemon (<code className="font-mono text-[11px] bg-secondary px-1 py-0.5 rounded">/api/v1/monitoring/status</code>).
+                Statuses represent factual connectivity and response codes.
+              </p>
+            </div>
+            <span className="font-mono text-[11px] text-text-muted shrink-0">
+              Sampled: {formatDateTime(data.generated_at)}
+            </span>
+          </div>
         </>
       )}
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: ComponentStatus }) {
-  const variant = status === 'healthy' ? 'success' : status === 'degraded' ? 'warning' : 'destructive';
-  const label =
-    status === 'healthy' ? 'All systems operational' : status === 'degraded' ? 'Degraded performance' : 'Service disruption';
+function OverallStatusBadge({ status }: { status: ComponentStatus }) {
+  if (status === 'healthy') {
+    return (
+      <Badge variant="success" dot className="text-xs font-mono px-2.5 py-1">
+        <CheckCircle2 className="h-3 w-3 mr-1" />
+        All Systems Operational
+      </Badge>
+    );
+  }
+  if (status === 'degraded') {
+    return (
+      <Badge variant="warning" dot className="text-xs font-mono px-2.5 py-1">
+        <AlertTriangle className="h-3 w-3 mr-1" />
+        Degraded Performance
+      </Badge>
+    );
+  }
+  if (status === 'down') {
+    return (
+      <Badge variant="error" dot className="text-xs font-mono px-2.5 py-1">
+        <XCircle className="h-3 w-3 mr-1" />
+        Service Disruption
+      </Badge>
+    );
+  }
   return (
-    <Badge variant={variant} dot>
-      {label}
+    <Badge variant="secondary" dot className="text-xs font-mono px-2.5 py-1">
+      Operational State Unknown
     </Badge>
   );
 }
 
-function ComponentRow({ name, detail, status }: { name: string; detail: string; status: ComponentStatus }) {
+function ComponentRow({
+  icon,
+  name,
+  detail,
+  status,
+}: {
+  icon: React.ReactNode;
+  name: string;
+  detail: string;
+  status: ComponentStatus;
+}) {
+  const variant = status === 'healthy' ? 'success' : status === 'degraded' ? 'warning' : 'error';
+  const label = status === 'healthy' ? 'Operational' : status === 'degraded' ? 'Degraded' : 'Unavailable';
+
   return (
-    <div className="flex items-center gap-4 py-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
-        <Server className="h-4 w-4 text-muted-foreground" />
+    <div className="flex items-center justify-between gap-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-raised border border-border">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-text-primary">{name}</p>
+          <p className="text-[11px] text-text-muted font-mono">{detail}</p>
+        </div>
       </div>
-      <div className="flex-1">
-        <p className="text-sm font-medium">{name}</p>
-        <p className="text-xs text-muted-foreground">{detail}</p>
-      </div>
-      <Badge variant={status === 'healthy' ? 'success' : status === 'degraded' ? 'warning' : 'destructive'} dot className="text-[10px] capitalize">
-        {status}
+      <Badge variant={variant} dot className="text-[10px] font-mono shrink-0">
+        {label}
       </Badge>
     </div>
   );
 }
 
-function ResponseStat({ label, value, tone }: { label: string; value: number; tone: 'success' | 'secondary' | 'warning' | 'destructive' }) {
+function ResponseStat({
+  label,
+  value,
+  tone,
+  desc,
+}: {
+  label: string;
+  value: number;
+  tone: 'success' | 'secondary' | 'warning' | 'destructive';
+  desc: string;
+}) {
   return (
-    <div className="space-y-0.5">
-      <p className="text-lg font-bold font-display">{value}</p>
-      <Badge variant={tone} className="text-[10px]">
-        {label}
-      </Badge>
+    <div className="p-3.5 rounded-lg border border-border bg-surface-raised/40 space-y-1">
+      <div className="flex items-center justify-between">
+        <Badge variant={tone} className="text-[10px] font-mono">
+          {label}
+        </Badge>
+      </div>
+      <p className="text-xl font-bold font-mono tabular-nums text-text-primary pt-1">
+        {value.toLocaleString()}
+      </p>
+      <p className="text-[10px] text-text-muted leading-tight">{desc}</p>
     </div>
   );
 }

@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
-import type { ReactNode } from 'react';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { STALE_TIME_MS, CACHE_TIME_MS } from '@/constants/app';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { Toaster } from "sonner"
+import type { ReactNode } from "react"
+import { AuthProvider } from "@/contexts/AuthContext"
+import { ThemeProvider } from "@/contexts/ThemeContext"
+import { useTheme } from "@/hooks/useTheme"
+import { STALE_TIME_MS, CACHE_TIME_MS } from "@/constants/app"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,10 +15,31 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
     },
   },
-});
+})
 
 interface ProvidersProps {
-  children: ReactNode;
+  children: ReactNode
+}
+
+function ThemedToaster() {
+  const { theme } = useTheme()
+
+  return (
+    <Toaster
+      position="top-right"
+      theme={theme}
+      richColors
+      closeButton
+      toastOptions={{
+        style: {
+          background: "var(--color-surface)",
+          border: "1px solid var(--color-border)",
+          color: "var(--color-text-primary)",
+          fontFamily: "var(--font-sans)",
+        },
+      }}
+    />
+  )
 }
 
 export function Providers({ children }: ProvidersProps) {
@@ -26,22 +48,9 @@ export function Providers({ children }: ProvidersProps) {
       <ThemeProvider>
         <AuthProvider>
           {children}
-          <Toaster
-            position="top-right"
-            theme="dark"
-            richColors
-            closeButton
-            toastOptions={{
-              style: {
-                background: 'var(--card)',
-                border: '1px solid var(--border)',
-                color: 'var(--foreground)',
-                fontFamily: 'Inter, sans-serif',
-              },
-            }}
-          />
+          <ThemedToaster />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
-  );
+  )
 }

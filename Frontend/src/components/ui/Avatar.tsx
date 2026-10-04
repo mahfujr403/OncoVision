@@ -1,45 +1,52 @@
-import * as RadixAvatar from '@radix-ui/react-avatar';
-import { cn } from '@/lib/utils';
+import * as RadixAvatar from "@radix-ui/react-avatar"
+import { cn } from "@/lib/utils"
 
 interface AvatarProps {
-  src?: string;
-  alt?: string;
-  fallback?: string;
-  name?: string;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  className?: string;
+  src?: string
+  alt?: string
+  fallback?: string
+  name?: string
+  size?: "xs" | "sm" | "md" | "lg" | "xl"
+  className?: string
 }
 
 const sizeClasses = {
-  xs: 'h-6 w-6 text-xs',
-  sm: 'h-8 w-8 text-xs',
-  md: 'h-9 w-9 text-sm',
-  lg: 'h-11 w-11 text-base',
-  xl: 'h-14 w-14 text-lg',
-};
+  xs: "h-6 w-6 text-xs",
+  sm: "h-8 w-8 text-xs",
+  md: "h-9 w-9 text-sm",
+  lg: "h-11 w-11 text-base",
+  xl: "h-14 w-14 text-lg",
+}
 
-export function Avatar({ src, alt, fallback, name, size = 'md', className }: AvatarProps) {
-  const displayName = fallback || name || '';
+export function Avatar({
+  src,
+  alt,
+  fallback,
+  name,
+  size = "md",
+  className,
+}: AvatarProps) {
+  const displayName = fallback || name || ""
   const initials = displayName
     ? displayName
-        .split(' ')
+        .split(" ")
         .slice(0, 2)
         .map((w) => w[0])
-        .join('')
+        .join("")
         .toUpperCase()
-    : '?';
+    : "?"
 
   return (
     <RadixAvatar.Root
       className={cn(
-        'inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary/20',
+        "inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary-surface border border-primary/20",
         sizeClasses[size],
         className,
       )}
     >
       <RadixAvatar.Image
         src={src}
-        alt={alt ?? fallback ?? 'Avatar'}
+        alt={alt ?? fallback ?? "Avatar"}
         className="h-full w-full object-cover"
       />
       <RadixAvatar.Fallback
@@ -49,5 +56,5 @@ export function Avatar({ src, alt, fallback, name, size = 'md', className }: Ava
         {initials}
       </RadixAvatar.Fallback>
     </RadixAvatar.Root>
-  );
+  )
 }

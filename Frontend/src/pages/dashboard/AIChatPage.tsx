@@ -3,11 +3,11 @@ import { ChatPanel, ChatMessage } from '@/features/chat';
 import { sendKnowledgeChat } from '@/api/services/chatService';
 import { toast } from 'sonner';
 
-const SUGGESTIONS = [
-  'What is lung adenocarcinoma?',
-  'কোলন ক্যান্সারের লক্ষণ কি?',
-  'How does histopathology classification work?',
-  'Tell me about cancer screening methods',
+const PATHOLOGY_SUGGESTIONS = [
+  'What are the key histopathological characteristics of lung adenocarcinoma?',
+  'How does multi-model ensemble consensus operate on H&E slide images?',
+  'What morphological features distinguish colon adenocarcinoma from benign tissue?',
+  'কোলন ও ফুসফুসের ক্যান্সারের প্রাথমিক হিস্টোপ্যাথলজিক্যাল লক্ষণ কি?',
 ];
 
 export default function AIChatPage() {
@@ -47,7 +47,7 @@ export default function AIChatPage() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error: any) {
-      const errText = error?.message || 'Sorry, I encountered an error. Please try again.';
+      const errText = error?.message || 'The clinical knowledge assistant encountered an error. Please retry.';
       toast.error(errText);
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -62,16 +62,17 @@ export default function AIChatPage() {
   };
 
   return (
-    <div className="h-full flex-1 w-full max-w-5xl mx-auto flex flex-col p-4 md:p-6">
+    <div className="h-[calc(100vh-8rem)] min-h-[540px] w-full max-w-5xl mx-auto flex flex-col pb-2">
       <ChatPanel
         messages={messages}
         onSend={handleSend}
         isLoading={isLoading}
-        title="AI Cancer Knowledge Assistant"
-        subtitle="Ask questions about cancer, histopathology, and OncoVision"
+        title="Medical Knowledge & Evidence Assistant"
+        subtitle="Explore peer-reviewed pathology concepts, tissue classifications, and ensemble methodology"
         language={language}
         onLanguageChange={setLanguage}
-        suggestions={SUGGESTIONS}
+        suggestions={PATHOLOGY_SUGGESTIONS}
+        mode="knowledge"
       />
     </div>
   );

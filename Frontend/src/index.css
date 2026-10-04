@@ -1,69 +1,280 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Sora:wght@600;700;800&display=swap');
+/* ==========================================================================
+   ONCOVISION AI — CLINICAL INTELLIGENCE DESIGN SYSTEM
+   Phase 2: Global Theme Engine & Semantic Token Implementation
+   Architecture: Tailwind CSS v4 (@theme inline) + OKLCH Color Engine
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. IMPORTS
+   -------------------------------------------------------------------------- */
 @import 'tailwindcss';
 
+/* --------------------------------------------------------------------------
+   2. TAILWIND V4 @THEME INLINE TOKEN BINDINGS
+   -------------------------------------------------------------------------- */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-display: 'Sora', 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  /* Typography Families */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Surfaces & Canvas (Levels 0 - 3) */
+  --color-background: var(--color-bg);
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-overlay: var(--color-surface-overlay);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text-primary);
+
+  /* Borders */
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border: var(--color-border);
+  --color-border-emphasis: var(--color-border-emphasis);
+
+  /* Typography / Text */
+  --color-foreground: var(--color-text-primary);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-muted: var(--color-surface-raised);
+  --color-muted-foreground: var(--color-text-muted);
+
+  /* Primary Interactive Elements (Surgical Cyan-Teal) */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-primary-surface: var(--color-primary-surface);
+
+  /* Secondary & Analytical Accent */
+  --color-secondary: var(--color-surface-raised);
+  --color-secondary-foreground: var(--color-text-secondary);
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-text-primary);
+  --color-accent-surface: var(--color-accent-surface);
+
+  /* Semantic Status (System State Only — Not Clinical Diagnoses) */
+  --color-success: var(--color-success);
+  --color-success-surface: var(--color-success-surface);
+  --color-warning: var(--color-warning);
+  --color-warning-surface: var(--color-warning-surface);
+  --color-error: var(--color-error);
+  --color-error-surface: var(--color-error-surface);
+  --color-destructive: var(--color-error);
+  --color-info: var(--color-info);
+  --color-info-surface: var(--color-info-surface);
+
+  /* Disease Histopathology Classes (Objective Clinical Morphology) */
+  --color-class-lung-aca: var(--color-class-lung-aca);
+  --color-class-lung-scc: var(--color-class-lung-scc);
+  --color-class-colon-aca: var(--color-class-colon-aca);
+  --color-class-lung-benign: var(--color-class-lung-benign);
+  --color-class-colon-benign: var(--color-class-colon-benign);
+
+  /* Concentric Radius Scale */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  /* Interactive Focus Ring */
+  --color-ring: var(--color-primary);
 }
 
+/* --------------------------------------------------------------------------
+   3. THEME TOKENS (:root — Clinical Dark Foundation)
+   -------------------------------------------------------------------------- */
 :root {
-  --background: oklch(0.12 0.015 240);
-  --foreground: oklch(0.93 0.01 240);
-  --card: oklch(0.16 0.018 240);
-  --card-foreground: oklch(0.93 0.01 240);
-  --primary: oklch(0.62 0.18 220);
-  --primary-foreground: oklch(0.98 0.005 240);
-  --secondary: oklch(0.20 0.022 240);
-  --secondary-foreground: oklch(0.82 0.01 240);
-  --muted: oklch(0.18 0.02 240);
-  --muted-foreground: oklch(0.58 0.015 240);
-  --accent: oklch(0.58 0.20 195);
-  --accent-foreground: oklch(0.98 0.005 240);
-  --destructive: oklch(0.55 0.22 25);
-  --border: oklch(0.24 0.018 240);
-  --ring: oklch(0.62 0.18 220);
-  --radius: 0.5rem;
+  /* Neutral Palette Scale (Clinical Obsidian / Slate, Hue 250) */
+  --neutral-50: oklch(0.98 0.005 250);
+  --neutral-100: oklch(0.93 0.008 250);
+  --neutral-200: oklch(0.85 0.010 250);
+  --neutral-300: oklch(0.72 0.012 250);
+  --neutral-400: oklch(0.60 0.015 250);
+  --neutral-500: oklch(0.48 0.018 250);
+  --neutral-600: oklch(0.36 0.018 250);
+  --neutral-700: oklch(0.26 0.018 250);
+  --neutral-800: oklch(0.18 0.016 250);
+  --neutral-900: oklch(0.14 0.014 250);
+  --neutral-950: oklch(0.10 0.012 250);
+
+  /* Semantic Surfaces */
+  --color-bg: oklch(0.10 0.012 250);               /* Level 0: App canvas */
+  --color-surface: oklch(0.14 0.014 250);          /* Level 1: Standard card surface */
+  --color-surface-raised: oklch(0.18 0.016 250);   /* Level 2: Raised popover / dropdown */
+  --color-surface-overlay: oklch(0.15 0.015 250);  /* Level 3: Modal dialog overlay */
+
+  /* Semantic Borders */
+  --color-border-subtle: oklch(0.20 0.015 250);
+  --color-border: oklch(0.26 0.018 250);
+  --color-border-emphasis: oklch(0.36 0.018 250);
+
+  /* Semantic Text (WCAG AAA/AA Compliant in Dark Mode) */
+  --color-text-primary: oklch(0.95 0.006 250);     /* 17.2:1 contrast */
+  --color-text-secondary: oklch(0.78 0.012 250);   /* 9.95:1 contrast */
+  --color-text-muted: oklch(0.62 0.015 250);       /* 5.47:1 contrast */
+
+  /* Primary Interactive Elements (Surgical Cyan-Teal) */
+  --color-primary: oklch(0.66 0.16 215);
+  --color-primary-hover: oklch(0.72 0.15 215);
+  --color-primary-foreground: oklch(0.99 0.005 250);
+  --color-primary-surface: oklch(0.66 0.16 215 / 0.12);
+
+  /* Secondary & Analytical Accent */
+  --color-accent: oklch(0.68 0.14 185);
+  --color-accent-surface: oklch(0.68 0.14 185 / 0.12);
+
+  /* Semantic Status Indicators */
+  --color-success: oklch(0.68 0.16 145);
+  --color-success-surface: oklch(0.68 0.16 145 / 0.12);
+  --color-warning: oklch(0.74 0.16 75);
+  --color-warning-surface: oklch(0.74 0.16 75 / 0.12);
+  --color-error: oklch(0.64 0.22 28);
+  --color-error-surface: oklch(0.64 0.22 28 / 0.12);
+  --color-info: oklch(0.68 0.14 235);
+  --color-info-surface: oklch(0.68 0.14 235 / 0.12);
+
+  /* Disease Histopathology Classes */
+  --color-class-lung-aca: oklch(0.68 0.16 20);     /* Deep Rust-Coral */
+  --color-class-lung-scc: oklch(0.70 0.15 48);     /* Amber Ochre */
+  --color-class-colon-aca: oklch(0.68 0.16 310);   /* Deep Amethyst */
+  --color-class-lung-benign: oklch(0.66 0.14 155); /* Clinical Sage */
+  --color-class-colon-benign: oklch(0.68 0.14 190);/* Subdued Teal-Cyan */
+
+  /* Elevation Shadows */
+  --shadow-level-0: none;
+  --shadow-level-1: 0 1px 2px 0 oklch(0 0 0 / 0.25);
+  --shadow-level-2: 0 4px 12px 0 oklch(0 0 0 / 0.35);
+  --shadow-level-3: 0 16px 32px -4px oklch(0 0 0 / 0.50);
+
+  /* Spacing Scale (8pt grid with 4pt half-steps) */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.50rem;  /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1.00rem;  /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.50rem;  /* 24px */
+  --space-8: 2.00rem;  /* 32px */
+  --space-10: 2.50rem; /* 40px */
+  --space-12: 3.00rem; /* 48px */
+  --space-16: 4.00rem; /* 64px */
+
+  /* Concentric Radius Scale */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+  --radius: 6px;
+
+  /* Backward-Compatibility Aliases */
+  --background: var(--color-bg);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text-primary);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-surface-raised);
+  --secondary-foreground: var(--color-text-secondary);
+  --muted: var(--color-surface-raised);
+  --muted-foreground: var(--color-text-muted);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-text-primary);
+  --destructive: var(--color-error);
+  --border: var(--color-border);
+  --ring: var(--color-primary);
 }
 
-.light {
-  --background: oklch(0.98 0.005 240);
-  --foreground: oklch(0.12 0.015 240);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0.015 240);
-  --primary: oklch(0.48 0.18 220);
-  --primary-foreground: oklch(0.98 0.005 240);
-  --secondary: oklch(0.94 0.01 240);
-  --secondary-foreground: oklch(0.25 0.015 240);
-  --muted: oklch(0.96 0.008 240);
-  --muted-foreground: oklch(0.50 0.015 240);
-  --accent: oklch(0.46 0.20 195);
-  --accent-foreground: oklch(0.98 0.005 240);
-  --destructive: oklch(0.52 0.22 25);
-  --border: oklch(0.88 0.01 240);
-  --ring: oklch(0.48 0.18 220);
+/* --------------------------------------------------------------------------
+   4. LIGHT THEME OVERRIDES (.light, html.light — Clinical White/Cold Slate)
+   -------------------------------------------------------------------------- */
+.light, html.light {
+  /* Inverted Neutral Palette Scale */
+  --neutral-50: oklch(0.12 0.015 250);
+  --neutral-100: oklch(0.16 0.018 250);
+  --neutral-200: oklch(0.24 0.020 250);
+  --neutral-300: oklch(0.35 0.020 250);
+  --neutral-400: oklch(0.50 0.018 250);
+  --neutral-500: oklch(0.62 0.015 250);
+  --neutral-600: oklch(0.74 0.012 250);
+  --neutral-700: oklch(0.86 0.010 250);
+  --neutral-800: oklch(0.94 0.006 250);
+  --neutral-900: oklch(0.97 0.004 250);
+  --neutral-950: oklch(0.99 0.002 250);
+
+  /* Semantic Surfaces */
+  --color-bg: oklch(0.985 0.003 250);              /* Level 0: Pure sterile canvas */
+  --color-surface: oklch(1.00 0.000 0);            /* Level 1: Crisp white card */
+  --color-surface-raised: oklch(0.96 0.005 250);   /* Level 2: Raised popover */
+  --color-surface-overlay: oklch(1.00 0.000 0);    /* Level 3: Modal dialog overlay */
+
+  /* Semantic Borders */
+  --color-border-subtle: oklch(0.92 0.006 250);
+  --color-border: oklch(0.86 0.010 250);
+  --color-border-emphasis: oklch(0.74 0.014 250);
+
+  /* Semantic Text (WCAG AAA/AA Compliant in Light Mode) */
+  --color-text-primary: oklch(0.12 0.015 250);     /* 19.4:1 contrast */
+  --color-text-secondary: oklch(0.32 0.020 250);   /* 12.6:1 contrast */
+  --color-text-muted: oklch(0.44 0.020 250);       /* 7.42:1 contrast (exceeds WCAG AAA) */
+
+  /* Primary Interactive Elements (Darker Teal for Light Canvas) */
+  --color-primary: oklch(0.46 0.18 215);
+  --color-primary-hover: oklch(0.40 0.19 215);
+  --color-primary-foreground: oklch(0.99 0.005 250);
+  --color-primary-surface: oklch(0.46 0.18 215 / 0.08);
+
+  /* Secondary & Analytical Accent */
+  --color-accent: oklch(0.46 0.15 185);
+  --color-accent-surface: oklch(0.46 0.15 185 / 0.08);
+
+  /* Semantic Status Indicators */
+  --color-success: oklch(0.44 0.17 145);
+  --color-success-surface: oklch(0.44 0.17 145 / 0.08);
+  --color-warning: oklch(0.50 0.18 75);
+  --color-warning-surface: oklch(0.50 0.18 75 / 0.08);
+  --color-error: oklch(0.48 0.22 28);
+  --color-error-surface: oklch(0.48 0.22 28 / 0.08);
+  --color-info: oklch(0.46 0.16 235);
+  --color-info-surface: oklch(0.46 0.16 235 / 0.08);
+
+  /* Disease Histopathology Classes */
+  --color-class-lung-aca: oklch(0.48 0.18 20);     /* Deep Rust-Coral */
+  --color-class-lung-scc: oklch(0.50 0.17 48);     /* Amber Ochre */
+  --color-class-colon-aca: oklch(0.46 0.18 310);   /* Deep Amethyst */
+  --color-class-lung-benign: oklch(0.44 0.15 155); /* Clinical Sage */
+  --color-class-colon-benign: oklch(0.44 0.15 190);/* Subdued Teal-Cyan */
+
+  /* Elevation Shadows */
+  --shadow-level-0: none;
+  --shadow-level-1: 0 1px 3px 0 oklch(0 0 0 / 0.05), 0 1px 2px -1px oklch(0 0 0 / 0.05);
+  --shadow-level-2: 0 4px 12px -2px oklch(0 0 0 / 0.08), 0 2px 6px -1px oklch(0 0 0 / 0.04);
+  --shadow-level-3: 0 20px 25px -5px oklch(0 0 0 / 0.10), 0 8px 10px -6px oklch(0 0 0 / 0.05);
+
+  /* Backward-Compatibility Aliases */
+  --background: var(--color-bg);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text-primary);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-surface-raised);
+  --secondary-foreground: var(--color-text-secondary);
+  --muted: var(--color-surface-raised);
+  --muted-foreground: var(--color-text-muted);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-text-primary);
+  --destructive: var(--color-error);
+  --border: var(--color-border);
+  --ring: var(--color-primary);
 }
 
+/* --------------------------------------------------------------------------
+   5. BASE STYLES & RESETS
+   -------------------------------------------------------------------------- */
 *, *::before, *::after {
-  border-color: var(--border);
+  border-color: var(--color-border);
   box-sizing: border-box;
 }
 
@@ -76,15 +287,16 @@ html.light {
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -95,15 +307,157 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background: var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+  background: var(--color-text-muted);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* --------------------------------------------------------------------------
+   6. TYPOGRAPHY SYSTEM
+   -------------------------------------------------------------------------- */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.type-display-lg {
+  font-family: var(--font-display);
+  font-size: 2rem;       /* 32px */
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.type-display-md {
+  font-family: var(--font-display);
+  font-size: 1.5rem;     /* 24px */
+  font-weight: 600;
+  line-height: 1.20;
+  letter-spacing: -0.020em;
+}
+
+.type-heading-lg {
+  font-family: var(--font-sans);
+  font-size: 1.25rem;    /* 20px */
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.type-heading-md {
+  font-family: var(--font-sans);
+  font-size: 1.00rem;    /* 16px */
+  font-weight: 600;
+  line-height: 1.30;
+  letter-spacing: -0.010em;
+}
+
+.type-heading-sm {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;   /* 14px */
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+}
+
+.type-body {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;   /* 14px */
+  font-weight: 400;
+  line-height: 1.50;
+  letter-spacing: 0.000em;
+}
+
+.type-body-md {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;   /* 14px */
+  font-weight: 500;
+  line-height: 1.50;
+  letter-spacing: 0.000em;
+}
+
+.type-caption {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;    /* 12px */
+  font-weight: 400;
+  line-height: 1.40;
+  letter-spacing: 0.005em;
+}
+
+.type-overline {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;  /* 11px */
+  font-weight: 600;
+  line-height: 1.20;
+  letter-spacing: 0.060em;
+  text-transform: uppercase;
+}
+
+.type-data-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;  /* 13px */
+  font-weight: 500;
+  line-height: 1.40;
+  letter-spacing: -0.010em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   7. ACCESSIBILITY
+   -------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+   8. REDUCED MOTION
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. UTILITY / HELPER STYLES
+   -------------------------------------------------------------------------- */
+.elevation-0 {
+  box-shadow: var(--shadow-level-0);
+}
+
+.elevation-1 {
+  box-shadow: var(--shadow-level-1);
+}
+
+.elevation-2 {
+  box-shadow: var(--shadow-level-2);
+}
+
+.elevation-3 {
+  box-shadow: var(--shadow-level-3);
 }

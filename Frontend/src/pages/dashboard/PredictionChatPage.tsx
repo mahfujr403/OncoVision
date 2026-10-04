@@ -2,7 +2,16 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChatPanel, ChatMessage } from '@/features/chat';
 import { sendPredictionChat, generatePredictionSummary } from '@/api/services/chatService';
+import { usePredictionHistoryDetail } from '@/hooks/queries/usePredictionHistory';
+import { ROUTES } from '@/constants/routes';
 import { toast } from 'sonner';
+
+const CASE_SUGGESTIONS = [
+  'Explain the ensemble consensus and confidence for this slide evaluation',
+  'What histological criteria characterize this predicted tissue class?',
+  'Which model architectures agreed or diverged during inference?',
+  'What are the recommended clinical correlation steps for this finding?',
+];
 
 export default function PredictionChatPage() {
   const { predictionId } = useParams<{ predictionId: string }>();
@@ -12,6 +21,9 @@ export default function PredictionChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasFetchedSummary, setHasFetchedSummary] = useState(false);
 
+  // Fetch underlying case evaluation record for context strip
+  const { data: record } = usePredictionHistoryDetail(predictionId);
+
   useEffect(() => {
     if (!predictionId || hasFetchedSummary) return;
 
@@ -19,18 +31,18 @@ export default function PredictionChatPage() {
       try {
         setIsLoading(true);
         const response = await generatePredictionSummary(predictionId, { language });
-        
+
         const summaryMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
           content: response.summary_text,
           created_at: new Date().toISOString(),
         };
-        
+
         setMessages([summaryMessage]);
         setHasFetchedSummary(true);
       } catch (error) {
-        toast.error('Failed to generate summary.');
+        toast.error('Failed to generate initial case summary.');
       } finally {
         setIsLoading(false);
       }
@@ -72,7 +84,7 @@ export default function PredictionChatPage() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error: any) {
-      const errText = error?.message || 'Sorry, I encountered an error. Please try again.';
+      const errText = error?.message || 'Case discussion assistant encountered an error. Please retry.';
       toast.error(errText);
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -86,16 +98,29 @@ export default function PredictionChatPage() {
     }
   };
 
+  const caseContext = {
+    caseId: predictionId,
+    predictedClass: record?.predicted_class,
+    confidence: record?.confidence,
+    agreementRatio: record?.agreement_ratio,
+    imageFilename: record?.image_metadata?.filename,
+    status: record?.status,
+  };
+
   return (
-    <div className="h-full flex-1 w-full max-w-5xl mx-auto flex flex-col p-4 md:p-6">
+    <div className="h-[calc(100vh-8rem)] min-h-[540px] w-full max-w-5xl mx-auto flex flex-col pb-2">
       <ChatPanel
         messages={messages}
         onSend={handleSend}
         isLoading={isLoading}
-        title="Prediction Discussion"
-        subtitle={`Prediction ID: ${predictionId}`}
+        title={predictionId ? `Case Discussion: #${predictionId.slice(0, 8)}` : 'Case Discussion'}
+        subtitle="Report-scoped discussion grounded in computational pathology evaluation"
         language={language}
         onLanguageChange={setLanguage}
+        mode="case_discussion"
+        caseContext={caseContext}
+        backUrl={predictionId ? `${ROUTES.HISTORY}/${predictionId}` : ROUTES.HISTORY}
+        suggestions={CASE_SUGGESTIONS}
       />
     </div>
   );

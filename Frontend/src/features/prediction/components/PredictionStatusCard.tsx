@@ -29,7 +29,7 @@ const STATUS_CONFIG: Record<WorkspaceStatus, StatusConfig> = {
   processing: {
     icon: <Loader2 className="h-4 w-4 animate-spin" />,
     label: 'Ensemble AI processing…',
-    description: 'Six models are running in parallel.',
+    description: 'Ensemble models are running in parallel.',
     color: 'text-accent',
     animate: false,
   },
@@ -37,7 +37,7 @@ const STATUS_CONFIG: Record<WorkspaceStatus, StatusConfig> = {
     icon: <CheckCircle2 className="h-4 w-4" />,
     label: 'Classification complete',
     description: 'Results are ready to review.',
-    color: 'text-emerald-400',
+    color: 'text-success',
     animate: false,
   },
   error: {

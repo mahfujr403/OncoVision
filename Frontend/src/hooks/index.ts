@@ -5,3 +5,4 @@ export { useLocalStorage } from './useLocalStorage';
 export { useModal } from './useModal';
 export { usePagination } from './usePagination';
 export { useSearch } from './useSearch';
+export { useClinicalCases, type ClinicalCase } from './useClinicalCases';

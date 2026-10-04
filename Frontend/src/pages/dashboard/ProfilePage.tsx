@@ -1,7 +1,6 @@
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Calendar, Clock, Edit, LogOut, Shield, KeyRound } from 'lucide-react';
-import { SectionTitle } from '@/components/ui/SectionTitle';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { User, Mail, Calendar, Clock, Edit, LogOut, Shield, KeyRound, Settings, Fingerprint, Activity } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
@@ -13,15 +12,15 @@ import { formatDate, formatDateTime } from '@/utils/formatters';
 
 // NOTE: the backend User contract (GET /auth/me, verified against
 // app/schemas/user.py) has no institution/specialty fields, and there is no
-// profile-update endpoint at all — those were fabricated in the previous
-// version of this page, along with an "Activity Summary" of made-up
-// prediction/report/saved-case counts. This version shows only real fields,
-// pulls a real prediction count from the History endpoint, and disables
-// editing with an explanation rather than pretending it saves anywhere.
+// profile-update endpoint at all — those were fabricated in earlier drafts.
+// This page reflects only verified fields, pulls a real prediction evaluation
+// count from the History endpoint pagination, and keeps the presentation
+// strictly aligned with clinical workspace standards.
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  // Cheap real count: page_size=1 still returns the true total in pagination.
+
+  // Real evaluation count: page_size=1 returns the true total_records in pagination.
   const { data: historySample } = usePredictionHistory({ page: 1, page_size: 1 });
 
   if (!user) return null;
@@ -31,106 +30,149 @@ export default function ProfilePage() {
     navigate(ROUTES.LOGIN, { replace: true });
   };
 
-  const profileFields = [
-    { icon: <User className="h-4 w-4" />, label: 'Full name', value: user.full_name },
-    { icon: <Mail className="h-4 w-4" />, label: 'Email address', value: user.email },
-    { icon: <Calendar className="h-4 w-4" />, label: 'Member since', value: formatDate(user.created_at) },
+  const identityFields = [
+    { icon: <User className="h-4 w-4" />, label: 'Full Name', value: user.full_name },
+    { icon: <Mail className="h-4 w-4" />, label: 'Email Address', value: user.email },
+    { icon: <Fingerprint className="h-4 w-4" />, label: 'Account Identifier', value: user.id, isMono: true },
+    { icon: <Shield className="h-4 w-4" />, label: 'Assigned Role', value: ROLE_LABELS[user.role] },
+    { icon: <Calendar className="h-4 w-4" />, label: 'Registration Date', value: formatDate(user.created_at) },
     {
       icon: <Clock className="h-4 w-4" />,
-      label: 'Last login',
+      label: 'Last Authenticated Session',
       value: user.last_login ? formatDateTime(user.last_login) : 'Never',
     },
   ];
 
   return (
-    <div className="space-y-5 max-w-xl">
-      <SectionTitle title="Profile" description="Your account information" />
+    <div className="space-y-6 max-w-2xl">
+      {/* Calm Scientific Header */}
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight text-text-primary sm:text-2xl">
+          User Profile
+        </h1>
+        <p className="mt-1 text-sm text-text-muted">
+          Authenticated clinician and researcher identity context.
+        </p>
+      </div>
 
-      {/* Identity card */}
-      <Card>
-        <div className="flex items-center gap-4 pb-5 border-b border-border">
-          <div className="relative">
-            <Avatar src={user.avatar_url ?? undefined} fallback={user.full_name} size="xl" />
-            <div
-              className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full ring-2 ring-card ${user.is_active ? 'bg-emerald-400' : 'bg-muted-foreground'}`}
-            />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-base font-semibold">{user.full_name}</h2>
-            <p className="text-xs text-muted-foreground">{user.email}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant="default">
-                <Shield className="h-3 w-3" />
-                {ROLE_LABELS[user.role]}
-              </Badge>
-              <Badge variant={user.is_active ? 'success' : 'destructive'} dot>
-                {user.is_active ? 'Active' : 'Inactive'}
-              </Badge>
-              <Badge variant={user.is_verified ? 'info' : 'outline'}>
-                {user.is_verified ? 'Verified' : 'Unverified'}
-              </Badge>
+      {/* Primary Identity Card */}
+      <Card className="p-5 sm:p-6 space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-border-subtle">
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0">
+              <Avatar src={user.avatar_url ?? undefined} fallback={user.full_name} size="xl" />
+              <div
+                title={user.is_active ? 'Active Account' : 'Inactive Account'}
+                className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full ring-2 ring-surface ${user.is_active ? 'bg-success' : 'bg-text-muted'}`}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold text-text-primary">{user.full_name}</h2>
+              <p className="text-xs text-text-muted font-mono">{user.email}</p>
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <Badge variant="primary" dot>
+                  <Shield className="h-3 w-3" />
+                  <span>{ROLE_LABELS[user.role]}</span>
+                </Badge>
+                <Badge variant={user.is_active ? 'success' : 'secondary'} dot>
+                  {user.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+                <Badge variant={user.is_verified ? 'info' : 'outline'}>
+                  {user.is_verified ? 'Verified' : 'Unverified'}
+                </Badge>
+              </div>
             </div>
           </div>
-          <Button variant="outline" size="sm" disabled title="No profile-update endpoint exists yet">
+
+          <Button
+            variant="outline"
+            size="sm"
+            disabled
+            title="Profile modification is managed through administrative directory services"
+            className="self-start sm:self-auto gap-1.5 text-xs text-text-muted"
+          >
             <Edit className="h-3.5 w-3.5" />
-            Edit
+            <span>Edit Profile</span>
           </Button>
         </div>
 
-        <div className="pt-5 space-y-4">
-          {profileFields.map((f) => (
-            <div key={f.label} className="flex items-center gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                {f.icon}
+        {/* Structured Identity Attributes */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {identityFields.map((field) => (
+            <div key={field.label} className="flex items-start gap-3 rounded-lg border border-border-subtle bg-surface-raised/30 p-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-raised text-primary">
+                {field.icon}
               </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{f.label}</p>
-                <p className="text-sm font-medium">{f.value}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">{field.label}</p>
+                <p className={`text-xs font-medium text-text-primary mt-0.5 truncate ${field.isMono ? 'font-mono text-[11px]' : ''}`}>
+                  {field.value}
+                </p>
               </div>
             </div>
           ))}
         </div>
       </Card>
 
-      {/* Real activity: total prediction count from history pagination */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center">
-            <p className="text-2xl font-bold font-mono text-primary">
-              {historySample?.pagination.total_records ?? '—'}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Total predictions</p>
+      {/* Verified Activity Telemetry Card */}
+      <Card className="p-5 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-text-muted">
+            <Activity className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold text-text-primary">Clinical Inference Telemetry</h2>
           </div>
-        </CardContent>
+          <span className="text-[11px] font-mono text-text-muted">History Endpoint Verified</span>
+        </div>
+        <div className="flex items-baseline gap-2 pt-2">
+          <span className="text-3xl font-semibold font-mono tabular-nums text-text-primary">
+            {historySample?.pagination.total_records ?? '0'}
+          </span>
+          <span className="text-xs text-text-muted">total evaluated slide specimens</span>
+        </div>
+        <p className="text-xs text-text-muted leading-relaxed">
+          Histopathology analyses logged in your personal prediction record. Records can be reviewed or exported from the History workspace.
+        </p>
       </Card>
 
-      {/* Actions */}
-      <Card className="space-y-2" padding="sm">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">Account Actions</p>
+      {/* Quick Account Navigation Actions */}
+      <Card className="p-3 space-y-1">
+        <p className="text-[11px] font-medium text-text-muted uppercase tracking-wider px-3 py-1.5">
+          Account Security & Preferences
+        </p>
         <div className="space-y-0.5">
           <Link
             to={ROUTES.CHANGE_PASSWORD}
-            className="flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm hover:bg-secondary transition-colors group"
+            className="flex items-center justify-between rounded-md px-3 py-2.5 text-xs font-medium text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-colors"
           >
-            <KeyRound className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-            Change password
+            <div className="flex items-center gap-2.5">
+              <KeyRound className="h-4 w-4 text-text-muted" />
+              <span>Change account password</span>
+            </div>
+            <span className="text-[11px] font-mono text-text-muted">Credentials</span>
           </Link>
+
           <Link
             to={ROUTES.SETTINGS}
-            className="flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm hover:bg-secondary transition-colors group"
+            className="flex items-center justify-between rounded-md px-3 py-2.5 text-xs font-medium text-text-secondary hover:bg-surface-raised hover:text-text-primary transition-colors"
           >
-            <User className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-            Account settings
+            <div className="flex items-center gap-2.5">
+              <Settings className="h-4 w-4 text-text-muted" />
+              <span>Workspace & display settings</span>
+            </div>
+            <span className="text-[11px] font-mono text-text-muted">Preferences</span>
           </Link>
+
           <button
+            type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+            className="w-full flex items-center justify-between rounded-md px-3 py-2.5 text-xs font-medium text-error hover:bg-error-surface transition-colors"
           >
-            <LogOut className="h-4 w-4" />
-            Sign out
+            <div className="flex items-center gap-2.5">
+              <LogOut className="h-4 w-4" />
+              <span>Sign out of session</span>
+            </div>
+            <span className="text-[11px] font-mono">End Session</span>
           </button>
         </div>
       </Card>

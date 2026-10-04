@@ -193,7 +193,7 @@ export default function DashboardPage() {
               <>
                 <div className="flex items-center gap-2 pb-2 border-b border-border">
                   <div
-                    className={`h-2 w-2 rounded-full ${monitoring.data.runtime.is_operational ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}
+                    className={`h-2 w-2 rounded-full ${monitoring.data.runtime.is_operational ? 'bg-success animate-pulse' : 'bg-warning'}`}
                   />
                   <span className="text-xs text-muted-foreground">
                     {monitoring.data.runtime.loaded_model_count}/{monitoring.data.runtime.total_model_count} models

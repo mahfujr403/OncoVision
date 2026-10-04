@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Globe } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 export interface ChatInputProps {
   onSend: (message: string) => void;
@@ -12,7 +13,7 @@ export interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   disabled = false,
-  placeholder = "Inquire about tissue pathology, tumor classes, or H&E findings...",
+  placeholder = 'Inquire about tissue pathology, tumor classes, or H&E findings…',
   language,
   onLanguageChange,
 }) => {
@@ -23,7 +24,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 110)}px`;
     }
   };
 
@@ -31,7 +32,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     adjustHeight();
   }, [message]);
 
-  // Automatically place cursor in the text box on mount and when AI response finishes
   useEffect(() => {
     if (!disabled) {
       const timer = setTimeout(() => {
@@ -63,53 +63,60 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-1.5 p-3 bg-card border-t">
+    <div className="flex flex-col gap-2 p-3 bg-surface border-t border-border">
       <div className="flex items-end gap-2">
-        <button
+        <Button
           onClick={toggleLanguage}
           type="button"
-          className="p-2.5 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-shrink-0 flex items-center justify-center h-10 w-[64px] text-xs font-semibold shadow-2xs"
-          title={language === 'en' ? 'Switch to Bengali' : 'Switch to English'}
+          variant="outline"
+          size="sm"
+          className="h-10 px-2.5 shrink-0 gap-1.5 font-mono text-xs font-semibold"
+          aria-label={language === 'en' ? 'Switch response language to Bengali' : 'Switch response language to English'}
+          title={language === 'en' ? 'Switch response language to Bengali' : 'Switch response language to English'}
         >
-          <Globe size={14} className="mr-1 hidden sm:block text-primary" />
-          {language === 'en' ? 'EN' : 'বাং'}
-        </button>
-        
+          <Globe size={13} className="text-primary shrink-0" aria-hidden="true" />
+          <span>{language === 'en' ? 'EN' : 'বাং'}</span>
+        </Button>
+
         <div
           onClick={() => textareaRef.current?.focus()}
-          className="relative flex-1 rounded-2xl bg-muted/60 border border-border/80 overflow-hidden cursor-text focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all shadow-2xs"
+          className="relative flex-1 rounded-xl bg-surface-raised/50 border border-border overflow-hidden cursor-text focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all shadow-2xs"
         >
           <textarea
             ref={textareaRef}
-            autoFocus
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="w-full max-h-24 bg-transparent resize-none py-2.5 px-4 outline-none text-sm cursor-text disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Clinical inquiry input"
+            className="w-full max-h-28 bg-transparent resize-none py-2.5 px-3.5 outline-none text-xs sm:text-sm text-text-primary placeholder:text-text-muted disabled:opacity-50 disabled:cursor-not-allowed leading-relaxed"
             rows={1}
           />
         </div>
 
-        <button
+        <Button
           onClick={handleSend}
           type="button"
+          variant="primary"
+          size="sm"
           disabled={!message.trim() || disabled}
-          className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 h-10 w-10 flex items-center justify-center shadow-xs"
+          aria-label="Send clinical inquiry"
+          className="h-10 w-10 p-0 shrink-0 shadow-xs"
         >
-          <Send size={16} />
-        </button>
+          <Send size={15} aria-hidden="true" />
+        </Button>
       </div>
 
-      <div className="flex items-center justify-between px-2 text-[10px] text-muted-foreground/60">
-        <span className="flex items-center gap-1 font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+      <div className="flex items-center justify-between px-1 text-[10px] text-text-muted">
+        <span className="flex items-center gap-1.5 font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
           Clinical Knowledge RAG Active
         </span>
-        <span className="hidden sm:inline">Press Enter to send • Shift+Enter for new line</span>
+        <span className="hidden sm:inline font-mono">
+          Press Enter to send · Shift+Enter for newline
+        </span>
       </div>
     </div>
   );
 };
-

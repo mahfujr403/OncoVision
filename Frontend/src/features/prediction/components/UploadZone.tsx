@@ -1,17 +1,17 @@
-import { useCallback } from 'react';
-import { useDropzone, type FileRejection } from 'react-dropzone';
-import { motion } from 'framer-motion';
-import { Upload, ImagePlus, ClipboardPaste } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_SIZE_BYTES } from '@/constants/app';
-import type { UploadState } from '../types';
+import { useCallback } from "react"
+import { useDropzone, type FileRejection } from "react-dropzone"
+import { motion } from "framer-motion"
+import { Microscope, ImagePlus, ClipboardPaste } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_SIZE_BYTES } from "@/constants/app"
+import type { UploadState } from "../types"
 
 interface UploadZoneProps {
-  uploadState: UploadState;
-  onDrop: (files: File[], rejections: FileRejection[]) => void;
-  onDragEnter: () => void;
-  onDragLeave: () => void;
-  className?: string;
+  uploadState: UploadState
+  onDrop: (files: File[], rejections: FileRejection[]) => void
+  onDragEnter: () => void
+  onDragLeave: () => void
+  className?: string
 }
 
 export function UploadZone({
@@ -30,19 +30,19 @@ export function UploadZone({
     maxFiles: 1,
     noClick: false,
     noKeyboard: false,
-  });
+  })
 
-  // Expose input for keyboard trigger
-  const { ref: dzRef, ...rootProps } = getRootProps();
+  const { ref: dzRef, ...rootProps } = getRootProps()
   const setRef = useCallback(
     (el: HTMLDivElement | null) => {
-      if (typeof dzRef === 'function') dzRef(el);
-      else if (dzRef && 'current' in dzRef) (dzRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      if (typeof dzRef === "function") dzRef(el)
+      else if (dzRef && "current" in dzRef)
+        (dzRef as React.MutableRefObject<HTMLDivElement | null>).current = el
     },
     [dzRef],
-  );
+  )
 
-  const isDragging = isDragActive || uploadState === 'dragging';
+  const isDragging = isDragActive || uploadState === "dragging"
 
   return (
     <div
@@ -50,98 +50,84 @@ export function UploadZone({
       {...rootProps}
       role="button"
       tabIndex={0}
-      aria-label="Upload histopathology image. Click, drag and drop, or press Enter to browse files."
+      aria-label="Upload histopathology slide image. Click, drag and drop, or press Enter to browse files."
       className={cn(
-        'group relative flex flex-col items-center justify-center gap-5 rounded-xl border-2 border-dashed p-10 text-center transition-all duration-300 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        "group relative flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed p-8 md:p-10 text-center transition-all duration-200 cursor-pointer",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         isDragging
-          ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
-          : uploadState === 'error'
-            ? 'border-destructive/40 bg-destructive/3 hover:border-destructive/60'
-            : 'border-border/60 bg-card/40 hover:border-primary/40 hover:bg-card/70',
+          ? "border-primary bg-primary/10 shadow-xs"
+          : uploadState === "error"
+            ? "border-error/40 bg-error-surface/40 hover:border-error/60"
+            : "border-border bg-surface hover:border-primary/50 hover:bg-surface-raised/40",
         className,
       )}
     >
       <input {...getInputProps()} aria-hidden="true" />
 
-      {/* Animated background blob on drag */}
-      {isDragging && (
-        <motion.div
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1.5, opacity: 0.06 }}
-          className="pointer-events-none absolute inset-0 rounded-xl bg-primary"
-        />
-      )}
-
-      {/* Icon cluster */}
+      {/* Laboratory Specimen Icon Area */}
       <motion.div
-        animate={isDragging ? { scale: 1.12, y: -4 } : { scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-        className="relative flex h-16 w-16 items-center justify-center"
+        animate={isDragging ? { scale: 1.08, y: -2 } : { scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+        className="relative flex h-14 w-14 items-center justify-center"
       >
-        {/* Outer ring */}
-        <motion.div
-          animate={isDragging ? { scale: 1.2, opacity: 1 } : { scale: 1, opacity: 0 }}
-          className="absolute inset-0 rounded-full border-2 border-dashed border-primary/40"
-        />
         <div
           className={cn(
-            'flex h-14 w-14 items-center justify-center rounded-full transition-colors duration-300',
+            "flex h-14 w-14 items-center justify-center rounded-xl border transition-colors duration-200",
             isDragging
-              ? 'bg-primary/20'
-              : uploadState === 'error'
-                ? 'bg-destructive/10'
-                : 'bg-secondary group-hover:bg-primary/10',
+              ? "bg-primary/20 border-primary text-primary"
+              : uploadState === "error"
+                ? "bg-error-surface border-error text-error"
+                : "bg-surface-raised border-border-subtle text-text-secondary group-hover:border-primary/40 group-hover:text-primary",
           )}
         >
           {isDragging ? (
-            <ImagePlus className="h-7 w-7 text-primary" />
+            <ImagePlus className="h-6 w-6 text-primary" />
           ) : (
-            <Upload
-              className={cn(
-                'h-7 w-7 transition-colors duration-300',
-                uploadState === 'error' ? 'text-destructive' : 'text-muted-foreground group-hover:text-primary',
-              )}
-            />
+            <Microscope className="h-6 w-6" />
           )}
         </div>
       </motion.div>
 
       {/* Copy */}
-      <div className="space-y-1.5">
-        <p className="text-sm font-semibold tracking-tight">
-          {isDragging ? 'Release to upload' : 'Drop your slide image here'}
+      <div className="space-y-1">
+        <p className="text-sm font-semibold tracking-tight text-text-primary">
+          {isDragging
+            ? "Release to stage slide specimen"
+            : "Select or drag histopathology slide"}
         </p>
-        <p className="text-xs text-muted-foreground">
-          or{' '}
-          <span className="text-primary underline-offset-2 hover:underline cursor-pointer">
-            click to browse files
-          </span>
+        <p className="text-xs text-text-muted">
+          Supported high-resolution formats for lung &amp; colon biopsy tissue
         </p>
       </div>
 
       {/* Format tags */}
-      <div className="flex flex-wrap justify-center gap-1.5">
-        {['JPG', 'JPEG', 'PNG', 'TIFF'].map((fmt) => (
+      <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+        {["JPEG", "PNG", "TIFF"].map((fmt) => (
           <span
             key={fmt}
-            className="rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground"
+            className="rounded-md border border-border-subtle bg-surface-raised px-2 py-0.5 font-mono text-[10px] font-medium text-text-muted"
           >
             {fmt}
           </span>
         ))}
-        <span className="rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
-          ≤ 50 MB
+        <span className="rounded-md border border-border-subtle bg-surface-raised px-2 py-0.5 font-mono text-[10px] font-medium text-text-muted">
+          ≤ 10 MB
         </span>
       </div>
 
       {/* Paste hint */}
-      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
-        <ClipboardPaste className="h-3 w-3" aria-hidden />
+      <div className="flex items-center gap-1.5 text-[11px] text-text-muted pt-1">
+        <ClipboardPaste
+          className="h-3.5 w-3.5 text-text-muted/70"
+          aria-hidden="true"
+        />
         <span>
-          You can also paste an image with{' '}
-          <kbd className="rounded border border-border/50 px-1 py-0.5 font-mono text-[9px]">Ctrl+V</kbd>
+          Clipboard paste supported with{" "}
+          <kbd className="rounded border border-border-subtle bg-surface-raised px-1 py-0.5 font-mono text-[10px] text-text-secondary">
+            Ctrl+V
+          </kbd>
         </span>
       </div>
     </div>
-  );
+  )
 }

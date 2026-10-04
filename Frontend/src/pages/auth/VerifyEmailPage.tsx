@@ -13,8 +13,8 @@ export default function VerifyEmailPage() {
   return (
     <div className="space-y-5 text-center">
       <div className="flex justify-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10">
-          <AlertTriangle className="h-7 w-7 text-amber-500" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-warning-surface">
+          <AlertTriangle className="h-7 w-7 text-warning" />
         </div>
       </div>
       <div className="space-y-1">
