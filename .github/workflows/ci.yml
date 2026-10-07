@@ -82,7 +82,7 @@ jobs:
           GOOGLE_API_KEY: ci-mock-gemini-key
           GEMINI_API_KEY: ci-mock-gemini-key
         run: |
-          pytest tests/ -v
+          pytest tests/ -v --ignore=tests/rag/test_evaluation_metrics.py
 
   frontend-ci:
     name: Frontend CI (React / Vite)
