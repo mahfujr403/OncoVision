@@ -47,11 +47,39 @@ jobs:
         run: |
           python -m compileall app tests
 
+      - name: Extract Curated Medical Knowledge Base
+        working-directory: .
+        run: |
+          python - << 'EOF'
+          import sys
+          import zipfile
+          from pathlib import Path
+
+          zip_path = Path("knowledge_base/oncovision_medical_knowledgebase_v3.zip")
+          if not zip_path.is_file():
+              sys.exit(f"ERROR: Knowledge base archive not found: {zip_path}")
+
+          dest_dir = Path("knowledge_base/oncovision_medical_knowledgebase_v3")
+          if dest_dir.exists():
+              sys.exit(f"ERROR: Destination directory already exists: {dest_dir}")
+
+          with zipfile.ZipFile(zip_path, "r") as zf:
+              zf.extractall("knowledge_base")
+
+          internal_dir = Path("knowledge_base/oncovision_knowledgebase_v2")
+          if not internal_dir.is_dir():
+              sys.exit(f"ERROR: Expected archive directory not found: {internal_dir}")
+
+          internal_dir.rename(dest_dir)
+          print(f"Successfully extracted knowledge base to {dest_dir}")
+          EOF
+
       - name: Run Backend Tests
         env:
           APP_ENV: development
           JWT_SECRET_KEY: ci-test-secret-key-for-github-actions
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/oncovision
+          GOOGLE_API_KEY: ci-mock-gemini-key
           GEMINI_API_KEY: ci-mock-gemini-key
         run: |
           pytest tests/ -v
