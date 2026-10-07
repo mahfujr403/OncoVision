@@ -17,6 +17,7 @@ __all__ = [
     "engine",
     "get_db",
     "check_database_connection",
+    "check_readiness",
     "close_database_connection",
 ]
 
@@ -32,6 +33,21 @@ async def check_database_connection() -> None:
         await connection.execute(text("SELECT 1"))
 
 
+async def check_readiness() -> dict[str, str]:
+    """Verify database connectivity and pgvector extension availability."""
+    async with engine.connect() as connection:
+        await connection.execute(text("SELECT 1"))
+        result = await connection.execute(
+            text("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
+        )
+        has_vector = result.scalar() is not None
+        return {
+            "database": "connected",
+            "pgvector": "available" if has_vector else "unavailable",
+        }
+
+
 async def close_database_connection() -> None:
     """Dispose of the async engine's connection pool on application shutdown."""
     await engine.dispose()
+

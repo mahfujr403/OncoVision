@@ -108,7 +108,7 @@ class Settings(BaseSettings):
     REPORT_EXPORT_MAX_SIZE_BYTES: int = 5 * 1024 * 1024  # 5 MB
 
     # CORS
-    ALLOWED_ORIGINS: str = "*"
+    ALLOWED_ORIGINS: str = "https://oncovision-live.netlify.app"
 
     # Database configuration
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/oncovision"
@@ -127,15 +127,68 @@ class Settings(BaseSettings):
     LLM_MAX_TOKENS: int = 512
     LLM_TEMPERATURE: float = 0.2
 
-    # RAG configuration (Phase 11)
+    # RAG configuration (Phase 11 & Phase 3)
     RAG_CHUNK_SIZE: int = 500
     RAG_CHUNK_OVERLAP: int = 50
-    RAG_TOP_K: int = 3
-    RAG_SIMILARITY_THRESHOLD: float = 0.7
+    RAG_TOP_K: int = 4
+    RAG_SIMILARITY_THRESHOLD: float = 0.55
+    RAG_MAX_CONTEXT_CHUNKS: int = 5
+    RAG_CANDIDATE_POOL_SIZE: int = 15
 
     # Chat rate limiting (Phase 11)
     CHAT_RATE_LIMIT_MAX_REQUESTS: int = 20
     CHAT_RATE_LIMIT_WINDOW_SECONDS: int = 3600
+
+    # Chat input boundary hardening (Phase 6.2-B, FINDING-06)
+    CHAT_MAX_MESSAGE_LENGTH: int = 2000
+
+    # System diagnostic LLM rate limiting (Phase 6.1-A)
+    SYSTEM_TEST_LLM_RATE_LIMIT_MAX_REQUESTS: int = 5
+    SYSTEM_TEST_LLM_RATE_LIMIT_WINDOW_SECONDS: int = 60
+
+    # Authentication rate limiting configuration (Phase 6.1-D, FINDING-05)
+    AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS: int = 5
+    AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    AUTH_REGISTER_RATE_LIMIT_MAX_REQUESTS: int = 3
+    AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS: int = 3600
+
+    # Security headers / HSTS configuration (Phase 6.1-C, ADR-043)
+    HSTS_ENABLED: bool = True
+    HSTS_MAX_AGE_SECONDS: int = 31536000  # 1 year
+    HSTS_INCLUDE_SUBDOMAINS: bool = True
+    HSTS_PRELOAD: bool = False
+
+    # Knowledge Base & Ingestion configuration (Phase 2)
+    KNOWLEDGE_BASE_PATH: str = "knowledge_base/oncovision_medical_knowledgebase_v3"
+    AUTO_INGEST_ON_STARTUP: bool = False
+
+    # Grounded RAG Generation configuration (Phase 4)
+    RAG_GENERATION_MODEL: str = "gemini-3.5-flash-lite"
+    RAG_GENERATION_TEMPERATURE: float = 0.2
+    RAG_GENERATION_MAX_OUTPUT_TOKENS: int = 768
+    RAG_GENERATION_TIMEOUT: float = 30.0
+    RAG_GENERATION_MAX_RETRIES: int = 2
+
+    # RAG Grounding & Relevance Evaluation configuration (Phase 5.1)
+    RAG_MIN_GROUNDING_SIMILARITY: float = 0.75
+    RAG_STRONG_GROUNDING_SIMILARITY: float = 0.82
+
+    # RAG Observability & Reliability configuration (Phase 5.2)
+    RAG_OBSERVABILITY_ENABLED: bool = True
+    RAG_LOG_QUERY_CONTENT: bool = False
+
+    # RAG Production Performance & Optimization configuration (Phase 5.3)
+    RAG_EMBEDDING_CACHE_ENABLED: bool = True
+    RAG_EMBEDDING_CACHE_MAX_SIZE: int = 512
+    RAG_EMBEDDING_CACHE_TTL_SECONDS: float = 3600.0
+
+    @field_validator("RAG_GENERATION_MODEL")
+    @classmethod
+    def validate_rag_generation_model(cls, value: str) -> str:
+        """Upgrade deprecated models to currently supported Google models."""
+        if value in {"gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"}:
+            return "gemini-3.5-flash-lite"
+        return value
 
     @field_validator("LLM_MODEL")
     @classmethod
@@ -184,20 +237,75 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _validate_production_cors(self) -> "Settings":
+        """Refuse insecure CORS configurations when `APP_ENV=production`.
+
+        Production must never allow wildcard origins (`*`) while credentials are enabled.
+        """
+        if self.is_production:
+            raw_origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+            if self.ALLOWED_ORIGINS.strip() == "*" or "*" in raw_origins:
+                raise ValueError(
+                    "ALLOWED_ORIGINS cannot contain '*' in production when credentials are "
+                    "enabled. Specify explicit trusted origin(s), e.g. 'https://oncovision-live.netlify.app'."
+                )
+            if not raw_origins:
+                raise ValueError(
+                    "ALLOWED_ORIGINS must contain at least one trusted origin in production."
+                )
+        return self
+
     @property
     def allowed_origins_list(self) -> list[str]:
-        """Return `ALLOWED_ORIGINS` as a parsed list of origin strings."""
+        """Return `ALLOWED_ORIGINS` as a parsed list of explicitly trusted origin strings."""
+        if self.is_production:
+            origins = [
+                origin.strip()
+                for origin in self.ALLOWED_ORIGINS.split(",")
+                if origin.strip() and origin.strip() != "*"
+            ]
+            canonical_origin = "https://oncovision-live.netlify.app"
+            if canonical_origin not in origins:
+                origins.append(canonical_origin)
+            return origins
+
+        # In development: if configured with '*', resolve to canonical production + local dev origins
+        # rather than literal ['*'], preventing insecure wildcard origin reflection with credentials.
         if self.ALLOWED_ORIGINS.strip() == "*":
-            return ["*"]
+            return [
+                "https://oncovision-live.netlify.app",
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:3000",
+            ]
+
         origins = [
             origin.strip()
             for origin in self.ALLOWED_ORIGINS.split(",")
-            if origin.strip()
+            if origin.strip() and origin.strip() != "*"
         ]
-        netlify_origin = "https://oncovision-live.netlify.app"
-        if netlify_origin not in origins and "*" not in origins:
-            origins.append(netlify_origin)
+        canonical_origin = "https://oncovision-live.netlify.app"
+        if canonical_origin not in origins:
+            origins.append(canonical_origin)
+
+        for dev_origin in ("http://localhost:5173", "http://localhost:3000"):
+            if dev_origin not in origins:
+                origins.append(dev_origin)
+
         return origins
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        """Return regex for matching local development origins, or None in production.
+
+        In production, arbitrary subdomain regex matching is strictly disabled.
+        Only explicit origins in `allowed_origins_list` are accepted.
+        """
+        if self.is_production:
+            return None
+        return r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
     @property
     def is_production(self) -> bool:
@@ -208,6 +316,16 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Return True when running in a development environment."""
         return self.APP_ENV.lower() == "development"
+
+    @property
+    def hsts_header_value(self) -> str:
+        """Construct Strict-Transport-Security header value (Phase 6.1-C, FINDING-08)."""
+        parts = [f"max-age={self.HSTS_MAX_AGE_SECONDS}"]
+        if self.HSTS_INCLUDE_SUBDOMAINS:
+            parts.append("includeSubDomains")
+        if self.HSTS_PRELOAD:
+            parts.append("preload")
+        return "; ".join(parts)
 
 
 @lru_cache

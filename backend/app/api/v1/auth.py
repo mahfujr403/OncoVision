@@ -2,16 +2,21 @@
 
 Routers only receive requests and delegate to services; no business logic
 lives here.
+
+Phase 6.1-D: Authentication Rate Limiting (ADR-044 / FINDING-05)
+Enforces in-memory sliding window rate limits on /login and /register before
+expensive cryptographic and database operations.
 """
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.constants.app import TAG_AUTH
 from app.core.config import settings
 from app.dependencies.auth import get_current_active_user
 from app.dependencies.services import get_auth_service
+from app.llm.rate_limiter import RateLimiter
 from app.models.user import User
 from app.schemas.auth import (
     LoginRequest,
@@ -27,12 +32,26 @@ from app.utils.response import success_response
 
 router = APIRouter(prefix="/auth", tags=[TAG_AUTH])
 
+# Dedicated, independent sliding window rate limiters (Phase 6.1-D)
+_login_rate_limiter = RateLimiter()
+_register_rate_limiter = RateLimiter()
+
+
+def _extract_client_ip(request: Request) -> str:
+    """Extract client IP address reliably, preferring X-Forwarded-For when behind a proxy."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
 
 def _client_context(request: Request) -> dict[str, str | None]:
     """Extract device name, IP address, and user agent from a request."""
     return {
         "device_name": request.headers.get("X-Device-Name"),
-        "ip_address": request.client.host if request.client else None,
+        "ip_address": _extract_client_ip(request),
         "user_agent": request.headers.get("User-Agent"),
     }
 
@@ -50,9 +69,50 @@ def _access_token_expires_in() -> int:
 )
 async def register(
     payload: RegisterRequest,
+    request: Request,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     """Register a new user account."""
+    client_ip = _extract_client_ip(request)
+    normalized_email = payload.email.strip().lower()
+
+    # Rate limiting enforcement (in-memory sliding window)
+    ip_key = f"register:ip:{client_ip}"
+    email_key = f"register:email:{normalized_email}"
+
+    ip_remaining = _register_rate_limiter.get_remaining(
+        ip_key,
+        max_requests=settings.AUTH_REGISTER_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    email_remaining = _register_rate_limiter.get_remaining(
+        email_key,
+        max_requests=settings.AUTH_REGISTER_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS,
+    )
+
+    if ip_remaining <= 0 or email_remaining <= 0:
+        retry_after = max(
+            _register_rate_limiter.get_retry_after(ip_key, settings.AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS),
+            _register_rate_limiter.get_retry_after(email_key, settings.AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many authentication requests. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    await _register_rate_limiter.check_rate_limit(
+        ip_key,
+        max_requests=settings.AUTH_REGISTER_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    await _register_rate_limiter.check_rate_limit(
+        email_key,
+        max_requests=settings.AUTH_REGISTER_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS,
+    )
+
     user = await auth_service.register(payload)
     response_data = RegisterResponse(user=UserResponse.model_validate(user))
     return success_response(
@@ -69,6 +129,47 @@ async def login(
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     """Authenticate a user and issue an access/refresh token pair."""
+    client_ip = _extract_client_ip(request)
+    normalized_email = payload.email.strip().lower()
+
+    # Rate limiting enforcement (in-memory sliding window)
+    # Checks both IP-level and account-level to prevent single-dimension bypass
+    ip_key = f"ip:{client_ip}"
+    pair_key = f"pair:{client_ip}:{normalized_email}"
+
+    ip_remaining = _login_rate_limiter.get_remaining(
+        ip_key,
+        max_requests=settings.AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    pair_remaining = _login_rate_limiter.get_remaining(
+        pair_key,
+        max_requests=settings.AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    )
+
+    if ip_remaining <= 0 or pair_remaining <= 0:
+        retry_after = max(
+            _login_rate_limiter.get_retry_after(ip_key, settings.AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS),
+            _login_rate_limiter.get_retry_after(pair_key, settings.AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many authentication requests. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    await _login_rate_limiter.check_rate_limit(
+        ip_key,
+        max_requests=settings.AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    await _login_rate_limiter.check_rate_limit(
+        pair_key,
+        max_requests=settings.AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    )
+
     context = _client_context(request)
     user, access_token, refresh_token = await auth_service.login(
         email=payload.email,

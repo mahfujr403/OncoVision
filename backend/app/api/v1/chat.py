@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -25,10 +25,12 @@ router = APIRouter(prefix="/chat", tags=[TAG_AI_CHAT])
 async def prediction_chat_endpoint(
     prediction_id: uuid.UUID,
     request: ChatMessageRequest,
+    raw_request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Chat about a specific prediction."""
+    request_id = getattr(raw_request.state, "request_id", None) or raw_request.headers.get("X-Request-ID")
     service = ChatService(db)
     try:
         result = await service.prediction_chat(
@@ -36,7 +38,8 @@ async def prediction_chat_endpoint(
             prediction_id=prediction_id,
             message=request.message,
             conversation_id=request.conversation_id,
-            language=request.language
+            language=request.language,
+            request_id=request_id,
         )
         return success_response(data=result, message="Message sent successfully")
     except ValueError as e:
@@ -44,7 +47,7 @@ async def prediction_chat_endpoint(
     except Exception as e:
         logger.error("Error in prediction chat endpoint: %s", e, exc_info=True)
         return error_response(
-            message=f"An error occurred: {str(e)}",
+            message="An error occurred while processing the request. Please try again.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -52,17 +55,20 @@ async def prediction_chat_endpoint(
 @router.post("/knowledge", response_model=dict[str, Any])
 async def knowledge_chat_endpoint(
     request: ChatMessageRequest,
+    raw_request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """RAG-powered knowledge chat."""
+    request_id = getattr(raw_request.state, "request_id", None) or raw_request.headers.get("X-Request-ID")
     service = ChatService(db)
     try:
         result = await service.knowledge_chat(
             user_id=current_user.id,
             message=request.message,
             conversation_id=request.conversation_id,
-            language=request.language
+            language=request.language,
+            request_id=request_id,
         )
         return success_response(data=result, message="Message sent successfully")
     except ValueError as e:
@@ -70,9 +76,10 @@ async def knowledge_chat_endpoint(
     except Exception as e:
         logger.error("Error in knowledge chat endpoint: %s", e, exc_info=True)
         return error_response(
-            message=f"An error occurred: {str(e)}",
+            message="An error occurred while processing the request. Please try again.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
 
 
 @router.get("/history/{conversation_id}", response_model=dict[str, Any])
@@ -83,10 +90,10 @@ async def get_chat_history(
 ) -> dict[str, Any]:
     """Get the chat history for a specific conversation."""
     repo = ChatRepository(db)
-    messages = await repo.get_conversation(conversation_id)
+    messages = await repo.get_conversation(conversation_id, user_id=current_user.id)
     
-    if messages and messages[0].user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if not messages:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
     details = [
         ChatMessageDetail.model_validate(msg) for msg in messages

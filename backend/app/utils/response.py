@@ -62,6 +62,7 @@ def error_response(
     status_code: int = status.HTTP_400_BAD_REQUEST,
     errors: Any | None = None,
     request_id: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> CustomORJSONResponse:
     """
     Build a standardized error JSON response.
@@ -79,4 +80,5 @@ def error_response(
     return CustomORJSONResponse(
         content=payload,
         status_code=status_code,
+        headers=headers,
     )

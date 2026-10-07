@@ -24,28 +24,35 @@ from app.llm.prompts import (
     PREDICTION_CHAT_SYSTEM_PROMPT,
     PREDICTION_CHAT_USER_PROMPT_TEMPLATE,
 )
+from app.history.summary import PredictionHistorySummary
 from app.models.chat_message import ChatMessage
 from app.models.prediction_history import PredictionHistoryRecord
+from app.rag.classifier import QueryScopeClassifier
 from app.rag.embeddings import EmbeddingService
-from app.rag.retriever import RAGRetriever
+from app.rag.generator import GroundedRAGGenerator
+from app.rag.observability import RAGTelemetryContext
+from app.rag.retriever import RAGRetriever, RetrievedContext
+from app.rag.schemas import GroundedAnswer
 from app.repositories.chat_repository import ChatRepository
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 _MEDICAL_DISCLAIMER = (
-    "This information is AI-generated for educational purposes only. "
-    "It is not medical advice or a diagnosis. Always consult a qualified "
-    "healthcare professional for clinical decisions."
+    "This information is AI-generated for educational and research purposes only. "
+    "It is not medical advice, a pathological diagnosis, or a treatment recommendation. "
+    "Always consult a qualified oncologist or board-certified pathologist for clinical decisions."
 )
 
 
 class ChatService:
-    """Service for handling prediction-specific and RAG knowledge chats."""
+    """Service for handling prediction-specific and RAG knowledge chats (Phase 4)."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.repo = ChatRepository(session)
+        self.classifier = QueryScopeClassifier()
+        self.generator = GroundedRAGGenerator()
 
     async def _check_rate_limit(self, user_id: uuid.UUID) -> None:
         """Raise ``ValueError`` if the user has exceeded the rate limit."""
@@ -70,8 +77,15 @@ class ChatService:
         message: str,
         conversation_id: uuid.UUID | None,
         language: str = "en",
+        request_id: str | None = None,
     ) -> dict[str, Any]:
         """Handle a chat message about a specific prediction result."""
+        telemetry = RAGTelemetryContext(
+            request_id=request_id,
+            chat_type="prediction",
+            query=message,
+            language=language,
+        )
         await self._check_rate_limit(user_id)
 
         # Verify the prediction exists and belongs to this user (matches id or request_id)
@@ -87,7 +101,18 @@ class ChatService:
         if prediction is None:
             raise ValueError("Prediction not found or access denied.")
 
-        conv_id = conversation_id or uuid.uuid4()
+        if conversation_id is not None:
+            conv_meta = await self.repo.get_conversation_metadata(conversation_id)
+            if (
+                conv_meta is None
+                or conv_meta["user_id"] != user_id
+                or conv_meta["chat_type"] != "prediction"
+                or conv_meta["prediction_id"] != prediction.id
+            ):
+                raise ValueError("Conversation not found or access denied.")
+            conv_id = conversation_id
+        else:
+            conv_id = uuid.uuid4()
 
         # Persist the user message using the verified prediction.id
         user_msg = ChatMessage(
@@ -100,25 +125,29 @@ class ChatService:
         )
         await self.repo.create(user_msg)
 
-        # Build context from the prediction record
-        class_probs = ""
+        # Extract immutable PredictionHistorySummary from record
+        pred_summary: PredictionHistorySummary | None = None
         if prediction.summary and isinstance(prediction.summary, dict):
-            probs = prediction.summary.get("class_probabilities", {})
-            if probs:
-                class_probs = json.dumps(probs, indent=2)
+            try:
+                pred_summary = PredictionHistorySummary.model_validate(prediction.summary)
+            except Exception as pe:
+                logger.debug("Could not parse prediction.summary into PredictionHistorySummary: %s", pe)
 
-        prediction_context = (
-            f"Predicted Class: {prediction.predicted_class}\n"
-            f"Confidence: {round((prediction.confidence or 0) * 100, 2)}%\n"
-            f"Model Agreement: {round((prediction.agreement_ratio or 0) * 100, 2)}%\n"
-            f"Participating Models: {prediction.participating_models}\n"
-            f"Class Probabilities:\n{class_probs}"
-        )
+        if pred_summary is None:
+            # Fallback construct minimal immutable summary from row fields
+            pred_summary = PredictionHistorySummary(
+                predicted_class=prediction.predicted_class,
+                confidence=prediction.confidence or 0.0,
+                agreement_ratio=prediction.agreement_ratio or 0.0,
+                participating_models=[],
+                successful_models=[],
+                failed_models=[],
+            )
 
         # Build chat history string with rollback safety
         chat_history = ""
         try:
-            history_records = await self.repo.get_conversation(conv_id, limit=20)
+            history_records = await self.repo.get_conversation(conv_id, user_id=user_id, limit=20)
             chat_history = "\n".join(
                 f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
             )
@@ -129,27 +158,70 @@ class ChatService:
             except Exception:
                 pass
 
-        # Assemble the prompt
-        prompt = PREDICTION_CHAT_USER_PROMPT_TEMPLATE.format(
-            prediction_context=prediction_context,
+        # Check deterministic safety boundary before retrieval (Phase 5.3)
+        pre_safety = self.generator.safety.evaluate_query(message, has_prediction=True)
+        retrieved_context = None
+
+        if pre_safety.requires_deterministic_refusal:
+            scope = self.classifier.classify(message)
+            retrieved_context = RetrievedContext(
+                chunks=[],
+                query_scope=scope,
+                reason="safety_refusal",
+            )
+        else:
+            # Retrieve relevant histopathology knowledge for this predicted class
+            try:
+                embedding_service = EmbeddingService(
+                    get_gemini_client(
+                        api_key=settings.GOOGLE_API_KEY,
+                        model_name=settings.LLM_MODEL,
+                    )
+                )
+                retriever = RAGRetriever(
+                    session=self.session,
+                    embedding_service=embedding_service,
+                    classifier=self.classifier,
+                    safety_evaluator=self.generator.safety,
+                )
+                retrieval_query = f"{prediction.predicted_class} histopathology {message}"
+                retrieved_context = await retriever.retrieve_context(
+                    query=retrieval_query,
+                    top_k=settings.RAG_TOP_K,
+                    similarity_threshold=settings.RAG_SIMILARITY_THRESHOLD,
+                    telemetry=telemetry,
+                )
+            except Exception as re_err:
+                logger.warning("Knowledge retrieval failed for prediction chat: %s", re_err)
+                scope = self.classifier.classify(message)
+                retrieved_context = RetrievedContext(
+                    chunks=[],
+                    query_scope=scope,
+                    reason="retrieval_exception",
+                )
+
+        # Generate grounded response enforcing prediction & safety boundaries
+        grounded_answer = await self.generator.generate_grounded_answer(
+            query=message,
+            context=retrieved_context,
+            prediction_summary=pred_summary,
             chat_history=chat_history,
-            user_message=message,
+            language=language,
+            telemetry=telemetry,
         )
 
-        # Call the LLM
-        client = get_gemini_client(
-            api_key=settings.GOOGLE_API_KEY,
-            model_name=settings.LLM_MODEL,
-        )
-        lang_instruction = (
-            f"\n\nPlease respond in {'Bangla' if language == 'bn' else 'English'}."
-        )
-        response_text = await client.generate(
-            prompt=prompt,
-            system_instruction=PREDICTION_CHAT_SYSTEM_PROMPT + lang_instruction,
-            temperature=settings.LLM_TEMPERATURE,
-            max_output_tokens=settings.LLM_MAX_TOKENS,
-        )
+        sources = [
+            {
+                "title": doc.source_title or doc.topic,
+                "source": doc.source,
+                "relevance": round(doc.similarity, 4),
+                "url": doc.source_url,
+                "tier": doc.source_tier,
+                "citation": doc.citation,
+                "document_title": doc.document_title,
+            }
+            for doc in retrieved_context.chunks
+        ] if grounded_answer.grounded else []
 
         # Persist the assistant response using verified prediction.id with rollback safety
         try:
@@ -158,8 +230,9 @@ class ChatService:
                 user_id=user_id,
                 prediction_id=prediction.id,
                 role="assistant",
-                content=response_text,
+                content=grounded_answer.answer,
                 chat_type="prediction",
+                sources={"sources": sources, "citations": [c.model_dump() for c in grounded_answer.citations]},
             )
             await self.repo.create(assistant_msg)
         except Exception as e:
@@ -169,10 +242,23 @@ class ChatService:
             except Exception:
                 pass
 
+        scope_dict = None
+        if grounded_answer.scope:
+            scope_dict = {
+                "domain": grounded_answer.scope.domain.value if grounded_answer.scope.domain else None,
+                "intent": grounded_answer.scope.intent.value,
+                "class_scopes": [cs.value for cs in grounded_answer.scope.class_scopes],
+            }
+
         return {
-            "response": response_text,
+            "response": grounded_answer.answer,
             "conversation_id": str(conv_id),
-            "disclaimer": _MEDICAL_DISCLAIMER,
+            "sources": sources,
+            "citations": [c.model_dump() for c in grounded_answer.citations],
+            "grounded": grounded_answer.grounded,
+            "scope": scope_dict,
+            "disclaimer": grounded_answer.disclaimer,
+            "request_id": telemetry.request_id,
         }
 
     # ------------------------------------------------------------------
@@ -185,11 +271,28 @@ class ChatService:
         message: str,
         conversation_id: uuid.UUID | None,
         language: str = "en",
+        request_id: str | None = None,
     ) -> dict[str, Any]:
         """Handle a general cancer knowledge question via RAG retrieval."""
+        telemetry = RAGTelemetryContext(
+            request_id=request_id,
+            chat_type="knowledge",
+            query=message,
+            language=language,
+        )
         await self._check_rate_limit(user_id)
 
-        conv_id = conversation_id or uuid.uuid4()
+        if conversation_id is not None:
+            conv_meta = await self.repo.get_conversation_metadata(conversation_id)
+            if (
+                conv_meta is None
+                or conv_meta["user_id"] != user_id
+                or conv_meta["chat_type"] != "knowledge"
+            ):
+                raise ValueError("Conversation not found or access denied.")
+            conv_id = conversation_id
+        else:
+            conv_id = uuid.uuid4()
 
         # Persist the user message
         user_msg = ChatMessage(
@@ -202,11 +305,11 @@ class ChatService:
         )
         await self.repo.create(user_msg)
 
-        # Build chat history string with rollback safety first so we can support conversational context
+        # Build chat history string with rollback safety
         chat_history = ""
         last_user_query = ""
         try:
-            history_records = await self.repo.get_conversation(conv_id, limit=8)
+            history_records = await self.repo.get_conversation(conv_id, user_id=user_id, limit=8)
             if history_records:
                 chat_history = "\n".join(
                     f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
@@ -231,59 +334,68 @@ class ChatService:
         if needs_context and last_user_query:
             retrieval_query = f"{last_user_query} {message}"
 
-        # RAG retrieval with graceful fallback
-        retrieved_docs = []
-        try:
-            embedding_service = EmbeddingService(
-                get_gemini_client(
-                    api_key=settings.GOOGLE_API_KEY,
-                    model_name=settings.LLM_MODEL,
+        # Check deterministic safety boundary before retrieval (Phase 5.3)
+        pre_safety = self.generator.safety.evaluate_query(message, has_prediction=False)
+        retrieved_context: RetrievedContext | None = None
+
+        if pre_safety.requires_deterministic_refusal:
+            scope = self.classifier.classify(retrieval_query)
+            retrieved_context = RetrievedContext(
+                chunks=[],
+                query_scope=scope,
+                reason="safety_refusal",
+            )
+        else:
+            # Two-stage RAG retrieval with QueryScopeClassifier
+            try:
+                embedding_service = EmbeddingService(
+                    get_gemini_client(
+                        api_key=settings.GOOGLE_API_KEY,
+                        model_name=settings.LLM_MODEL,
+                    )
                 )
-            )
-            retriever = RAGRetriever(
-                session=self.session,
-                embedding_service=embedding_service,
-            )
-            retrieved_docs = await retriever.retrieve(
-                query=retrieval_query,
-                top_k=settings.RAG_TOP_K,
-                similarity_threshold=settings.RAG_SIMILARITY_THRESHOLD,
-            )
-            retrieved_context = retriever.format_context(retrieved_docs)
-        except Exception as e:
-            logger.warning("RAG retrieval failed, falling back to general LLM response: %s", e)
-            retrieved_context = "No relevant context found."
+                retriever = RAGRetriever(
+                    session=self.session,
+                    embedding_service=embedding_service,
+                    classifier=self.classifier,
+                    safety_evaluator=self.generator.safety,
+                )
+                retrieved_context = await retriever.retrieve_context(
+                    query=retrieval_query,
+                    top_k=settings.RAG_TOP_K,
+                    similarity_threshold=settings.RAG_SIMILARITY_THRESHOLD,
+                    telemetry=telemetry,
+                )
+            except Exception as e:
+                logger.warning("RAG retrieval failed: %s", e)
+                scope = self.classifier.classify(retrieval_query)
+                retrieved_context = RetrievedContext(
+                    chunks=[],
+                    query_scope=scope,
+                    reason="retrieval_exception",
+                )
+
+        # Grounded generation with deterministic safety enforcement and citations
+        grounded_answer = await self.generator.generate_grounded_answer(
+            query=message,
+            context=retrieved_context,
+            chat_history=chat_history,
+            language=language,
+            telemetry=telemetry,
+        )
 
         sources = [
             {
-                "title": doc.topic,
+                "title": doc.source_title or doc.topic,
                 "source": doc.source,
                 "relevance": round(doc.similarity, 4),
+                "url": doc.source_url,
+                "tier": doc.source_tier,
+                "citation": doc.citation,
+                "document_title": doc.document_title,
             }
-            for doc in retrieved_docs
-        ]
-
-        # Assemble the prompt
-        prompt = KNOWLEDGE_CHAT_USER_PROMPT_TEMPLATE.format(
-            retrieved_context=retrieved_context,
-            chat_history=chat_history,
-            user_message=message,
-        )
-
-        # Call the LLM
-        client = get_gemini_client(
-            api_key=settings.GOOGLE_API_KEY,
-            model_name=settings.LLM_MODEL,
-        )
-        lang_instruction = (
-            f"\n\nPlease respond in {'Bangla' if language == 'bn' else 'English'}."
-        )
-        response_text = await client.generate(
-            prompt=prompt,
-            system_instruction=KNOWLEDGE_CHAT_SYSTEM_PROMPT + lang_instruction,
-            temperature=settings.LLM_TEMPERATURE,
-            max_output_tokens=settings.LLM_MAX_TOKENS,
-        )
+            for doc in retrieved_context.chunks
+        ] if grounded_answer.grounded else []
 
         # Persist the assistant response with rollback safety
         try:
@@ -292,9 +404,9 @@ class ChatService:
                 user_id=user_id,
                 prediction_id=None,
                 role="assistant",
-                content=response_text,
+                content=grounded_answer.answer,
                 chat_type="knowledge",
-                sources={"sources": sources},
+                sources={"sources": sources, "citations": [c.model_dump() for c in grounded_answer.citations]},
             )
             await self.repo.create(assistant_msg)
         except Exception as e:
@@ -304,9 +416,23 @@ class ChatService:
             except Exception:
                 pass
 
+        scope_dict = None
+        if grounded_answer.scope:
+            scope_dict = {
+                "domain": grounded_answer.scope.domain.value if grounded_answer.scope.domain else None,
+                "intent": grounded_answer.scope.intent.value,
+                "class_scopes": [cs.value for cs in grounded_answer.scope.class_scopes],
+            }
+
         return {
-            "response": response_text,
+            "response": grounded_answer.answer,
             "conversation_id": str(conv_id),
             "sources": sources,
-            "disclaimer": _MEDICAL_DISCLAIMER,
+            "citations": [c.model_dump() for c in grounded_answer.citations],
+            "grounded": grounded_answer.grounded,
+            "scope": scope_dict,
+            "disclaimer": grounded_answer.disclaimer,
+            "request_id": telemetry.request_id,
         }
+
+

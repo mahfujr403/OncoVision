@@ -106,6 +106,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         message=str(exc.detail),
         status_code=exc.status_code,
         request_id=request_id,
+        headers=exc.headers,
     )
 
 

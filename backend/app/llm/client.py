@@ -37,6 +37,53 @@ _DEPRECATED_MODELS = {
 }
 
 
+def is_retryable_llm_error(e: Exception) -> bool:
+    """Classify whether an exception represents a transient failure that can be retried (Phase 5.3)."""
+    if isinstance(e, (asyncio.TimeoutError, TimeoutError)):
+        return True
+
+    err_str = str(e).lower()
+
+    # Deterministic non-retryable errors
+    non_retryable_indicators = [
+        "400",
+        "invalid_argument",
+        "401",
+        "unauthenticated",
+        "403",
+        "permission_denied",
+        "safety",
+        "blocked",
+        "harm_category",
+        "content_filter",
+    ]
+    if any(ind in err_str for ind in non_retryable_indicators):
+        return False
+
+    # Transient retryable errors
+    retryable_indicators = [
+        "429",
+        "resource_exhausted",
+        "quota",
+        "500",
+        "internal",
+        "502",
+        "bad gateway",
+        "503",
+        "unavailable",
+        "504",
+        "deadline_exceeded",
+        "connection",
+        "remotedisconnected",
+        "connection reset",
+    ]
+    if any(ind in err_str for ind in retryable_indicators):
+        return True
+
+    # Default: do not retry unknown client-side errors
+    return False
+
+
 class GeminiClient:
     """Async client for interacting with the Gemini API."""
 
@@ -135,6 +182,15 @@ class GeminiClient:
                                     models_to_try.append(rec_model)
                         # Break retry loop immediately and try next model
                         break
+
+                    if not is_retryable_llm_error(e):
+                        logger.warning(
+                            "Deterministic non-retryable error with %s: %s",
+                            model,
+                            e,
+                        )
+                        break
+
                     if attempt < retries - 1:
                         await asyncio.sleep(2 ** attempt)
 
@@ -190,6 +246,9 @@ class GeminiClient:
                     )
                     if is_model_unavail:
                         break
+                    if not is_retryable_llm_error(e):
+                        logger.warning("Deterministic non-retryable error with stream model %s: %s", model, e)
+                        break
                     if attempt < retries - 1:
                         await asyncio.sleep(2 ** attempt)
 
@@ -208,9 +267,13 @@ class GeminiClient:
             for attempt in range(retries):
                 try:
                     config = types.EmbedContentConfig(output_dimensionality=768)
+                    contents = [
+                        types.Content(parts=[types.Part.from_text(text=t)])
+                        for t in texts
+                    ]
                     response = await self.client.aio.models.embed_content(
                         model=emb_model,
-                        contents=texts,
+                        contents=contents,
                         config=config,
                     )
                     return [embedding.values for embedding in response.embeddings]
@@ -226,6 +289,9 @@ class GeminiClient:
                         e,
                     )
                     if is_model_unavail:
+                        break
+                    if not is_retryable_llm_error(e):
+                        logger.warning("Deterministic non-retryable error with embedding model %s: %s", emb_model, e)
                         break
                     if attempt < retries - 1:
                         await asyncio.sleep(2 ** attempt)

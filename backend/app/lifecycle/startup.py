@@ -65,32 +65,35 @@ async def run_startup() -> None:
         except Exception as mig_err:
             logger.warning("Auto-migration skipped or failed: %s", mig_err)
 
-        # Ensure developer info and platform info are ingested in knowledge base
-        try:
-            from app.models.knowledge_embedding import KnowledgeEmbedding
-            from app.database.session import AsyncSessionLocal
-            from sqlalchemy import select
-            async with AsyncSessionLocal() as db_session:
-                has_dev_info = await db_session.scalar(
-                    select(KnowledgeEmbedding.id).where(KnowledgeEmbedding.topic == 'developer_info').limit(1)
-                )
-                if not has_dev_info and settings.GOOGLE_API_KEY:
-                    logger.info("Developer info missing from knowledge base, running auto-ingestion...")
-                    from app.rag.embeddings import EmbeddingService
-                    from app.rag.ingestion import DocumentIngestionPipeline
-                    from app.llm.client import get_gemini_client
-                    from pathlib import Path
-                    
-                    llm_client = get_gemini_client(settings.GOOGLE_API_KEY, settings.LLM_MODEL)
-                    emb_svc = EmbeddingService(llm_client)
-                    pipeline = DocumentIngestionPipeline(emb_svc)
-                    
-                    kb_dir = Path(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rag", "knowledge_base"))
-                    if kb_dir.exists():
-                        await pipeline.ingest_directory(kb_dir, db_session)
-                        logger.info("Knowledge base auto-sync completed successfully on startup.")
-        except Exception as kb_err:
-            logger.warning("Knowledge base auto-sync skipped: %s", kb_err)
+        # Auto-ingestion on startup is disabled by default to prevent blocking startup (Phase 2)
+        if settings.AUTO_INGEST_ON_STARTUP and settings.GOOGLE_API_KEY:
+            try:
+                from app.models.knowledge_embedding import KnowledgeEmbedding
+                from app.database.session import AsyncSessionLocal
+                from sqlalchemy import select
+                async with AsyncSessionLocal() as db_session:
+                    has_dev_info = await db_session.scalar(
+                        select(KnowledgeEmbedding.id).where(KnowledgeEmbedding.topic == 'developer_info').limit(1)
+                    )
+                    if not has_dev_info:
+                        logger.info("Developer info missing from knowledge base, running startup auto-ingestion...")
+                        from app.rag.embeddings import EmbeddingService
+                        from app.rag.ingestion import DocumentIngestionPipeline
+                        from app.llm.client import get_gemini_client
+                        from pathlib import Path
+                        
+                        llm_client = get_gemini_client(settings.GOOGLE_API_KEY, settings.LLM_MODEL)
+                        emb_svc = EmbeddingService(llm_client)
+                        pipeline = DocumentIngestionPipeline(emb_svc)
+                        
+                        kb_dir = Path(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rag", "knowledge_base"))
+                        if kb_dir.exists():
+                            await pipeline.ingest_directory(kb_dir, db_session)
+                            logger.info("Knowledge base auto-sync completed successfully on startup.")
+            except Exception as kb_err:
+                logger.warning("Knowledge base auto-sync skipped: %s", kb_err)
+        else:
+            logger.info("Knowledge base startup auto-ingestion is disabled (AUTO_INGEST_ON_STARTUP=False).")
     except Exception:
         logger.error(
             "Database connection check failed. Authentication and other "

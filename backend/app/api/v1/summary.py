@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Any
 
@@ -13,6 +14,8 @@ from app.schemas.chat import SummaryRequest, SummaryResponse
 from app.services.llm_summary_service import LLMSummaryService
 from app.utils.response import success_response, error_response
 from app.constants.app import TAG_AI_SUMMARY
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/predictions", tags=[TAG_AI_SUMMARY])
 
@@ -36,7 +39,11 @@ async def generate_summary(
     except ValueError as e:
         return error_response(message=str(e), status_code=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        return error_response(message=f"An error occurred: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error("Error generating prediction summary: %s", e, exc_info=True)
+        return error_response(
+            message="An error occurred while generating the summary. Please try again.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @router.get("/{prediction_id}/summary", response_model=dict[str, Any])
@@ -58,4 +65,8 @@ async def get_summary(
     except ValueError as e:
         return error_response(message=str(e), status_code=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        return error_response(message=f"An error occurred: {str(e)}", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error("Error retrieving prediction summary: %s", e, exc_info=True)
+        return error_response(
+            message="An error occurred while retrieving the summary. Please try again.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

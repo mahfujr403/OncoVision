@@ -4,7 +4,10 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.core.settings import get_settings
+from app.rag.schemas import Citation
 
 
 class SourceReference(BaseModel):
@@ -12,13 +15,26 @@ class SourceReference(BaseModel):
     title: str
     source: str
     relevance: float
+    url: str | None = None
+    tier: int | None = None
 
 
 class ChatMessageRequest(BaseModel):
     """Request schema for an incoming chat message."""
-    message: str = Field(..., min_length=1)
+    message: str = Field(..., min_length=1, max_length=2000)
     conversation_id: uuid.UUID | None = None
-    language: str = 'en'
+    language: str = Field(default="en", max_length=10)
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, v: str) -> str:
+        trimmed = v.strip()
+        if not trimmed:
+            raise ValueError("Message cannot be empty or whitespace only.")
+        max_len = get_settings().CHAT_MAX_MESSAGE_LENGTH
+        if len(v) > max_len:
+            raise ValueError(f"Message exceeds maximum allowed length of {max_len} characters.")
+        return trimmed
 
 
 class ChatMessageResponse(BaseModel):
@@ -27,6 +43,9 @@ class ChatMessageResponse(BaseModel):
     conversation_id: uuid.UUID
     sources: list[SourceReference] | None = None
     disclaimer: str
+    grounded: bool | None = None
+    citations: list[Citation] | None = None
+    scope: dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
