@@ -39,7 +39,7 @@ from app.rag.prompts import (
     build_grounded_user_prompt,
     format_grounded_context_sources,
 )
-from app.rag.retriever import RetrievedContext
+from app.rag.retriever import RetrievedContext, RetrievedDocument
 from app.rag.safety import (
     BIOMARKER_BOUNDARY_GUIDANCE,
     DIAGNOSIS_REFUSAL_MESSAGE,
@@ -52,6 +52,229 @@ from app.rag.safety import (
 from app.rag.schemas import Citation, GroundedAnswer
 
 logger = logging.getLogger(__name__)
+
+# Stopwords and reporting terms excluded from claim-evidence lexical matching
+GENERIC_AND_MEDICAL_STOPWORDS: set[str] = {
+    # Standard English stopwords
+    "a", "about", "above", "after", "again", "against", "all", "am", "an", "and",
+    "any", "are", "aren't", "as", "at", "be", "because", "been", "before", "being",
+    "below", "between", "both", "but", "by", "can", "cannot", "could", "couldn't",
+    "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during",
+    "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't",
+    "have", "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here",
+    "here's", "hers", "herself", "him", "himself", "his", "how", "how's", "i",
+    "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's",
+    "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself",
+    "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other", "ought",
+    "our", "ours", "ourselves", "out", "over", "own", "same", "shan't", "she",
+    "she'd", "she'll", "she's", "should", "shouldn't", "so", "some", "such",
+    "than", "that", "that's", "the", "their", "theirs", "them", "themselves",
+    "then", "there", "there's", "these", "they", "they'd", "they'll", "they're",
+    "they've", "this", "those", "through", "to", "too", "under", "until", "up",
+    "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were",
+    "weren't", "what", "what's", "when", "when's", "where", "where's", "which",
+    "while", "who", "who's", "whom", "why", "why's", "with", "won't", "would",
+    "wouldn't", "you", "you'd", "you'll", "you're", "you've", "your", "yours",
+    "yourself", "yourselves", "s", "t", "d", "ll", "m", "re", "ve",
+    # Reporting verbs and discourse adverbs
+    "also", "generally", "commonly", "often", "frequently", "typically", "usually",
+    "primarily", "mainly", "specifically", "especially", "largely", "rarely",
+    "exhibits", "presents", "shows", "demonstrates", "include", "includes", "including",
+    "states", "describes", "defines", "defined", "characterized", "identifies", "identified",
+    "according", "per", "based", "found", "seen", "noted", "reported", "associated",
+    "indicates", "supports", "suggests", "considered", "known", "well", "may",
+    "might", "must", "can", "will", "could", "would", "shall", "yes", "no",
+    # Generic medical terminology that provides zero discriminative evidence
+    "patient", "patients", "cancer", "cancers", "tumor", "tumors", "tumour", "tumours",
+    "neoplasm", "neoplasms", "malignancy", "malignancies", "treatment", "treatments",
+    "therapy", "therapies", "disease", "diseases", "clinical", "clinically", "health",
+    "condition", "conditions", "study", "studies", "common", "generic", "medical",
+    "terminology", "cell", "cells", "cellular", "tissue", "tissues", "finding",
+    "findings", "result", "results", "report", "reports", "case", "cases",
+    "type", "types", "care", "doctor", "doctors", "medicine", "medicines",
+    "physician", "physicians", "pathologist", "pathologists", "sample", "samples",
+    "specimen", "specimens", "biopsy", "biopsies", "feature", "features",
+    "evidence", "context", "information", "data", "source", "sources", "lineage",
+    "growth", "grow", "grows", "growing",
+    "verify", "verifies", "verified", "verifying",
+    "detail", "details", "refer", "refers", "reference", "references",
+    "model", "models", "prediction", "predictions", "confidence", "consistent",
+    "tool", "tools", "assistive", "assist", "diagnosis", "diagnoses", "diagnostic", "diagnostics",
+}
+
+# Institutional attribution patterns to check against retrieved documents
+INSTITUTIONAL_ATTRIBUTION_RULES: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"\bWHO\b"), "World Health Organization (WHO)"),
+    (re.compile(r"\bWorld\s+Health\s+Organization\b", re.IGNORECASE), "World Health Organization"),
+    (re.compile(r"\b(?:NCI\s+guidelines?|National\s+Cancer\s+Institute\s+guidelines?)\b", re.IGNORECASE), "NCI guidelines"),
+    (re.compile(r"\b(?:NCI|National\s+Cancer\s+Institute)\b"), "National Cancer Institute (NCI)"),
+    (re.compile(r"\bCDC\b"), "CDC"),
+    (re.compile(r"\bCenters\s+for\s+Disease\s+Control\b", re.IGNORECASE), "Centers for Disease Control"),
+    (re.compile(r"\bFDA\b"), "FDA"),
+    (re.compile(r"\bFood\s+and\s+Drug\s+Administration\b", re.IGNORECASE), "Food and Drug Administration"),
+    (re.compile(r"\bNCCN\b"), "NCCN"),
+    (re.compile(r"\bNational\s+Comprehensive\s+Cancer\s+Network\b", re.IGNORECASE), "NCCN"),
+    (re.compile(r"\bASCO\b"), "ASCO"),
+    (re.compile(r"\bAmerican\s+Society\s+of\s+Clinical\s+Oncology\b", re.IGNORECASE), "ASCO"),
+    (re.compile(r"\b(?:clinical\s+guidelines?|oncology\s+guidelines?|practice\s+guidelines?|per\s+guidelines|according\s+to\s+guidelines|guidelines\s+state|guidelines\s+recommend)\b", re.IGNORECASE), "clinical guidelines"),
+]
+
+META_REFERENCE_TERMS: set[str] = {
+    "see", "refer", "refers", "reference", "references", "info", "information", "details", "detail", "more"
+}
+
+
+def extract_salient_terms(text: str) -> set[str]:
+    """Extract lowercased salient content terms excluding stopwords and numbers."""
+    clean = re.sub(r"\[[^\]]+\]", " ", text)
+    clean = re.sub(r"https?://[^\s)\]]+", " ", clean)
+    tokens = re.findall(r"\b[a-zA-Z0-9_-]{2,}\b", clean.lower())
+    return {t for t in tokens if t not in GENERIC_AND_MEDICAL_STOPWORDS and not t.isdigit()}
+
+
+def check_institutional_attribution(
+    sentence: str, docs: list[RetrievedDocument]
+) -> tuple[bool, str | None]:
+    """Verify that any organizational attribution in the sentence is explicitly grounded in cited docs."""
+    combined_doc_text = " ".join([
+        f"{d.content} {d.document_title or ''} {d.source_title or ''} {d.source or ''}"
+        for d in docs
+    ])
+    for pattern, name in INSTITUTIONAL_ATTRIBUTION_RULES:
+        if pattern.search(sentence):
+            if not pattern.search(combined_doc_text):
+                return False, f"unsupported institutional attribution to '{name}'"
+    return True, None
+
+
+def check_claim_to_evidence(
+    sentence: str,
+    docs: list[RetrievedDocument],
+    prediction_summary: PredictionHistorySummary | None = None,
+) -> tuple[bool, str | None]:
+    """Verify meaningful salient content term overlap between claim sentence and cited documents."""
+    claim_terms = extract_salient_terms(sentence)
+    if not claim_terms:
+        # Check if sentence is a meta-reference to the source (e.g. "See [S1] for more info")
+        lower_sent = sentence.lower()
+        tokens = set(re.findall(r"\b[a-z]+\b", lower_sent))
+        if tokens & META_REFERENCE_TERMS:
+            return True, None
+        return False, "insufficient salient terms in claim to verify evidence"
+
+    doc_parts = [f"{d.content} {d.document_title or ''}" for d in docs]
+    if prediction_summary and prediction_summary.predicted_class:
+        doc_parts.append(prediction_summary.predicted_class.replace("_", " "))
+    combined_doc_text = " ".join(doc_parts).lower()
+    doc_terms = extract_salient_terms(combined_doc_text)
+
+    overlap = claim_terms & doc_terms
+    if len(overlap) < len(claim_terms):
+        for ct in claim_terms - overlap:
+            for dt in doc_terms:
+                if (len(ct) >= 5 and (ct in dt or dt in ct)) or (len(ct) >= 6 and len(dt) >= 6 and ct[:5] == dt[:5]):
+                    overlap.add(ct)
+                    break
+
+    ratio = len(overlap) / len(claim_terms)
+    is_valid = len(overlap) >= 1 and (len(overlap) >= 2 or ratio >= 0.33)
+    if not is_valid:
+        return False, f"claim terms {claim_terms} have insufficient overlap with evidence (overlap: {overlap})"
+    return True, None
+
+
+def validate_and_filter_generated_response(
+    raw_response: str,
+    source_map: dict[str, RetrievedDocument],
+    prediction_summary: PredictionHistorySummary | None = None,
+) -> tuple[str, list[str], int, str | None]:
+    """Perform sentence-level verification of citation tokens, attributions, and evidence entailment.
+
+    Returns:
+        (clean_answer, valid_citation_ids, unsupported_count, primary_refusal_reason)
+    """
+    lines = raw_response.split("\n")
+    units: list[str] = []
+    for line in lines:
+        line_str = line.strip()
+        if not line_str:
+            continue
+        sub_sents = re.split(r'(?<=[.!?])\s+(?=[A-Z0-9*#\-])', line_str)
+        for s in sub_sents:
+            s_clean = s.strip()
+            if s_clean:
+                units.append(s_clean)
+
+    retained_units: list[str] = []
+    retained_citation_ids: set[str] = set()
+    unsupported_count = 0
+    primary_failure_reason: str | None = None
+
+    for unit in units:
+        bracket_citations: list[str] = []
+        for bracket_content in re.findall(r"\[([^\]]+)\]", unit):
+            for match in re.finditer(r"\bS\d+\b", bracket_content):
+                bracket_citations.append(match.group(0))
+
+        def _clean_bracket(match: re.Match) -> str:
+            content = match.group(1)
+            tokens = re.findall(r"\bS\d+\b", content)
+            valid = [t for t in tokens if t in source_map]
+            return f"[{', '.join(valid)}]" if valid else ""
+
+        if not bracket_citations:
+            attr_ok, attr_err = check_institutional_attribution(unit, [])
+            if not attr_ok:
+                unsupported_count += 1
+                if not primary_failure_reason:
+                    primary_failure_reason = "unsupported_attribution"
+                continue
+            clean_unit = re.sub(r"\[([^\]]+)\]", _clean_bracket, unit)
+            clean_unit = re.sub(r"[ \t]+", " ", clean_unit).strip()
+            if clean_unit:
+                retained_units.append(clean_unit)
+            continue
+
+        valid_cids = [cid for cid in bracket_citations if cid in source_map]
+        invalid_cids = [cid for cid in bracket_citations if cid not in source_map]
+
+        if invalid_cids:
+            unsupported_count += len(invalid_cids)
+            if not primary_failure_reason:
+                primary_failure_reason = "citation_validation_failure"
+            if not valid_cids:
+                # All citations in this unit were invalid ([S99] etc.)
+                continue
+
+        cited_docs = [source_map[cid] for cid in valid_cids]
+
+        attr_ok, attr_err = check_institutional_attribution(unit, cited_docs)
+        if not attr_ok:
+            unsupported_count += 1
+            if not primary_failure_reason:
+                primary_failure_reason = "unsupported_attribution"
+            continue
+
+        ev_ok, ev_err = check_claim_to_evidence(unit, cited_docs, prediction_summary=prediction_summary)
+        if not ev_ok:
+            unsupported_count += 1
+            if not primary_failure_reason:
+                primary_failure_reason = "unsupported_claim_entailment"
+            continue
+
+        clean_unit = re.sub(r"\[([^\]]+)\]", _clean_bracket, unit)
+        clean_unit = re.sub(r"[ \t]+", " ", clean_unit).strip()
+        if clean_unit:
+            retained_units.append(clean_unit)
+            for cid in valid_cids:
+                retained_citation_ids.add(cid)
+
+    sorted_cids = sorted(
+        list(retained_citation_ids),
+        key=lambda x: int(x[1:]) if x[1:].isdigit() else 9999,
+    )
+    cleaned_text = "\n".join(retained_units).strip()
+    return cleaned_text, sorted_cids, unsupported_count, primary_failure_reason
 
 
 class GroundedRAGGenerator:
@@ -324,71 +547,15 @@ class GroundedRAGGenerator:
             )
 
         # -------------------------------------------------------------
-        # 5. Citation Extraction, Validation, and Provenance Mapping
+        # 5. Immediate Post-generation Medical Safety & Prediction Immutability Check
+        # (Preserve Phase 6 fail-closed boundaries: direct diagnosis, prescriptions,
+        # staging/biomarker claims from H&E alone, classifier overrides, prompt leaks)
         # -------------------------------------------------------------
-        cit_start = time.perf_counter()
-        found_tokens: list[str] = []
-        for bracket_content in re.findall(r"\[([^\]]+)\]", raw_response):
-            for match in re.finditer(r"\bS\d+\b", bracket_content):
-                found_tokens.append(match.group(0))
+        pre_clean_for_safety = re.sub(r'https?://[^\s]+', '', raw_response)
+        pre_clean_for_safety = re.sub(r'\[\s*(?:SYSTEM|SOURCE|Ref\s*\d+|\d+)\s*\]', '', pre_clean_for_safety, flags=re.IGNORECASE)
 
-        unique_cids = sorted(
-            list(set(found_tokens)),
-            key=lambda x: int(x[1:]) if x[1:].isdigit() else 9999,
-        )
-
-        valid_citations: list[Citation] = []
-        unsupported_count = 0
-
-        # Check for citation mismatch (tokens like [S99] not present in context)
-        for cid in unique_cids:
-            if cid in source_map:
-                doc = source_map[cid]
-                valid_citations.append(
-                    Citation(
-                        source_id=cid,
-                        document_id=doc.document_id or "unknown",
-                        document_title=doc.document_title or doc.topic or "Medical Document",
-                        source_title=doc.source_title or doc.source or "OncoVision Medical Knowledge Base",
-                        source_url=doc.source_url or "",
-                        source_tier=doc.source_tier,
-                        domain=doc.domain,
-                    )
-                )
-            else:
-                unsupported_count += 1
-
-        # Clean citations: only retain valid citations in brackets, remove fabricated ones ([S99], [SYSTEM], etc.)
-        def _clean_bracket(match: re.Match) -> str:
-            content = match.group(1)
-            tokens = re.findall(r"\bS\d+\b", content)
-            valid = [t for t in tokens if t in source_map]
-            if valid:
-                return f"[{', '.join(valid)}]"
-            return ""
-
-        clean_answer = re.sub(r"\[([^\]]+)\]", _clean_bracket, raw_response)
-
-        # Sanitize any raw external URLs embedded directly in answer text
-        # (trusted URLs must come from Citation metadata only)
-        clean_answer = re.sub(r"https?://[^\s)\]]+", "", clean_answer)
-        clean_answer = re.sub(r"\(\s*\)", "", clean_answer)
-        clean_answer = re.sub(r"[ \t]{2,}", " ", clean_answer)
-
-        telemetry.citation_validation_ms = round((time.perf_counter() - cit_start) * 1000, 2)
-        telemetry.record_event(
-            EVENT_CITATION_VALIDATION,
-            total_citations_found=len(unique_cids),
-            valid_citations_count=len(valid_citations),
-            unsupported_citations_stripped=unsupported_count,
-            citation_validation_ms=telemetry.citation_validation_ms,
-        )
-
-        # -------------------------------------------------------------
-        # 6. Post-generation Safety & Prediction Immutability Validation
-        # -------------------------------------------------------------
         is_safe, safety_violation = self.safety.validate_answer(
-            clean_answer,
+            pre_clean_for_safety,
             boundary=safety_eval.boundary,
             prediction_summary=prediction_summary,
         )
@@ -462,6 +629,46 @@ class GroundedRAGGenerator:
             )
 
         # -------------------------------------------------------------
+        # 6. Sentence-Level Citation Integrity, Attribution & Evidence Validation
+        # -------------------------------------------------------------
+        cit_start = time.perf_counter()
+        clean_answer, unique_cids, unsupported_count, primary_failure_reason = (
+            validate_and_filter_generated_response(
+                raw_response, source_map, prediction_summary=prediction_summary
+            )
+        )
+
+        valid_citations: list[Citation] = []
+        for cid in unique_cids:
+            doc = source_map[cid]
+            valid_citations.append(
+                Citation(
+                    source_id=cid,
+                    document_id=doc.document_id or "unknown",
+                    document_title=doc.document_title or doc.topic or "Medical Document",
+                    source_title=doc.source_title or doc.source or "OncoVision Medical Knowledge Base",
+                    source_url=doc.source_url or "",
+                    source_tier=doc.source_tier,
+                    domain=doc.domain,
+                )
+            )
+
+        # Sanitize any raw external URLs embedded directly in answer text
+        # (trusted URLs must come from Citation metadata only)
+        clean_answer = re.sub(r'https?://[^\s]+', '', clean_answer)
+        clean_answer = re.sub(r'[ \t]+', ' ', clean_answer)
+        clean_answer = re.sub(r'\n{3,}', '\n\n', clean_answer).strip()
+
+        telemetry.citation_validation_ms = round((time.perf_counter() - cit_start) * 1000, 2)
+        telemetry.record_event(
+            EVENT_CITATION_VALIDATION,
+            total_citations_found=len(unique_cids) + unsupported_count,
+            valid_citations_count=len(valid_citations),
+            unsupported_citations_stripped=unsupported_count,
+            citation_validation_ms=telemetry.citation_validation_ms,
+        )
+
+        # -------------------------------------------------------------
         # 7. Grounding Determination & Request Completion
         # -------------------------------------------------------------
         is_grounded = bool(
@@ -472,10 +679,20 @@ class GroundedRAGGenerator:
 
         fin_refusal_reason: str | None = None
         if not is_grounded:
-            if unsupported_count > 0 and not valid_citations:
+            if primary_failure_reason:
+                fin_refusal_reason = primary_failure_reason
+            elif unsupported_count > 0 and not valid_citations:
                 fin_refusal_reason = "citation_validation_failure"
             elif not valid_citations:
                 fin_refusal_reason = "unsupported_claims_without_citations"
+
+            # Fail closed: do not expose ungrounded / unsupported generated content
+            if not clean_answer.strip() or not valid_citations:
+                valid_citations = []
+                clean_answer = (
+                    "The available OncoVision knowledge base provides only limited information "
+                    "on this point, so I cannot make a reliable claim beyond the retrieved evidence."
+                )
 
         telemetry.finish(
             grounded=is_grounded,
