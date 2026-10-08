@@ -301,3 +301,51 @@ class DocumentMetadataExtractor:
             is_safety_policy=is_safety,
             claim_scope=claim_scope,
         )
+
+
+def is_meta_source_query(query: str) -> bool:
+    """Detect if a user query is asking for source attribution, references, or literature."""
+    lower = query.lower().strip()
+    patterns = [
+        r"\b(?:which|what|where)\s+(?:sources?|literature|references?|papers?|studies|citations?)\b",
+        r"\b(?:where\s+did\s+(?:this|the|your)\s+(?:information|data|knowledge|explanation)\s+come\s+from)\b",
+        r"\b(?:where\s+did\s+you\s+get\s+this\s+(?:information|data|knowledge|explanation))\b",
+        r"\b(?:what|which)\s+sources?\s+(?:did\s+you\s+use|were\s+used|support|supports)\b",
+        r"\b(?:show|list|cite|provide|give)\s+(?:me\s+)?(?:the\s+)?(?:sources?|literature|references?|papers?|citations?)\b",
+        r"\b(?:can\s+you\s+)?(?:cite|show|list)\s+(?:the\s+)?(?:sources?|references?|literature|papers?)\b",
+        r"\b(?:what|which)\s+literature\s+supports\s+(?:this|that|your|the)\b",
+        r"\bsources?\s+support(?:ing)?\s+(?:your\s+)?explanation\b",
+        r"\bwhat\s+(?:are\s+the\s+)?sources?\b",
+    ]
+    return any(re.search(pat, lower) for pat in patterns)
+
+
+def is_explicit_developer_query(query: str) -> bool:
+    """Detect if a user query explicitly asks about the developer, author, creator, or project background."""
+    if not query or not query.strip():
+        return False
+    lower = query.lower().strip()
+
+    # Exclude adversarial checks asking if medical info/data came from developer
+    if re.search(
+        r"\b(?:is\s+this|was\s+this|did\s+this)\s+(?:information|data|knowledge|answer|explanation)?\s*(?:come\s+)?from\s+(?:the\s+)?(?:developer|author|mahfuj)\b",
+        lower,
+    ):
+        return False
+    if re.search(
+        r"\b(?:developer|author|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio)\s+(?:as\s+a\s+source|as\s+evidence|for\s+medical)\b",
+        lower,
+    ):
+        return False
+
+    patterns = [
+        r"\bwho\s+(?:developed|created|built|designed|authored|made)\s+(?:this|oncovision|the\s+platform|the\s+system|the\s+app|the\s+model|the\s+models)\b",
+        r"\bwho\s+is\s+(?:the\s+)?(?:developer|creator|author|builder|architect|engineer|maker)\b",
+        r"\b(?:what\s+is|what's|give\s+me|show\s+me|tell\s+me)\s+(?:the\s+)?(?:developer|author|creator)'?s?\s+(?:github|google\s+scholar|portfolio|email|contact|profile|website|linkedin|details)\b",
+        r"\b(?:how\s+can\s+i|how\s+to)\s+contact\s+(?:the\s+)?(?:developer|author|creator)\b",
+        r"\btell\s+me\s+about\s+(?:the\s+)?(?:developer|project\s+author|creator|author)\b",
+        r"\b(?:tell\s+me\s+about|who\s+is)\s+(?:md\.?\s*)?mahfujur\s+rahman\b",
+        r"\bdeveloper\s+(?:contact|profile|portfolio|bio|biography|information|info)\b",
+        r"\bwho\s+(?:runs|maintains|owns)\s+(?:oncovision|this\s+project)\b",
+    ]
+    return any(re.search(pat, lower) for pat in patterns)

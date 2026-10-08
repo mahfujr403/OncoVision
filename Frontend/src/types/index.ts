@@ -417,6 +417,63 @@ export interface ChatMessageResponse {
   disclaimer: string;
 }
 
+export type StreamStatusStage =
+  | 'starting'
+  | 'retrieving'
+  | 'sources_ready'
+  | 'synthesizing'
+  | 'validating'
+  | 'completed';
+
+export interface StreamStatusEvent {
+  stage: StreamStatusStage;
+  message: string;
+}
+
+export interface StreamSourceItem {
+  source_id: string;
+  title: string;
+  source?: string;
+  relevance?: number;
+  tier?: number;
+  url?: string;
+}
+
+export interface StreamSourcesEvent {
+  sources: StreamSourceItem[];
+}
+
+export interface StreamCitation {
+  source_id: string;
+  document_id: string;
+  document_title: string;
+  source_title: string;
+  source_url: string;
+  source_tier?: number;
+  domain?: string | null;
+}
+
+export interface StreamDoneEvent {
+  conversation_id: string;
+  grounded: boolean;
+  citations: StreamCitation[];
+  disclaimer: string;
+  request_id?: string;
+}
+
+export interface StreamErrorEvent {
+  error_type: string;
+  message: string;
+}
+
+export interface ChatStreamCallbacks {
+  onStatus?: (status: StreamStatusEvent) => void;
+  onSources?: (sources: StreamSourcesEvent) => void;
+  onDelta?: (deltaText: string) => void;
+  onDone?: (doneData: StreamDoneEvent) => void;
+  onError?: (error: StreamErrorEvent) => void;
+}
+
 export interface ChatMessageDetail {
   id: string;
   role: 'user' | 'assistant';

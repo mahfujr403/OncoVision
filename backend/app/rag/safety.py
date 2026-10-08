@@ -30,6 +30,8 @@ class SafetyBoundary(str, Enum):
     CLASSIFIER = "classifier_boundary"
     INJECTION = "prompt_injection_boundary"
     PREDICTION_OVERRIDE = "prediction_conflict"
+    VISUAL_EVIDENCE = "visual_evidence_boundary"
+    DEVELOPER_ATTRIBUTION = "developer_attribution_boundary"
 
 
 class SafetyEvaluation(BaseModel):
@@ -70,7 +72,39 @@ BIOMARKER_BOUNDARY_GUIDANCE = (
 CLASSIFIER_BOUNDARY_GUIDANCE = (
     "The OncoVision classifier output represents automated histopathological image feature extraction "
     "and triage assistance for research and clinical decision support. It is not a standalone diagnostic "
-    "confirmation and must always be correlated with full clinical, radiological, and surgical pathology review."
+    "confirmation and must always be correlated with full clinical, radiological, and surgical pathology review. "
+    "The assistant does not have access to image-level visual or interpretability evidence in this chat context, "
+    "so it cannot identify which microscopic structures caused the prediction. Explain using available prediction metadata "
+    "and general medical knowledge without inventing image-specific causal morphology."
+)
+
+VISUAL_EVIDENCE_BOUNDARY_GUIDANCE = (
+    "The OncoVision assistant is a text-based clinical knowledge assistant and does not receive "
+    "or inspect slide pixels, visual embeddings, or interpretability heatmaps. "
+    "Do not claim direct visual observation of microscopic structures in the slide (e.g., 'the slide shows glandular differentiation'), "
+    "and do not infer visual contents from filenames. "
+    "Clearly state that you do not have image-level visual evidence to identify specific microscopic structures, "
+    "while safely explaining general disease class histology and classifier metadata."
+)
+
+VISUAL_EVIDENCE_REFUSAL_MESSAGE = (
+    "I do not have access to image-level visual evidence or microscopic slide inspection in this assistant context, "
+    "so I cannot confirm or identify specific microscopic structures in that slide. "
+    "I can explain the general histological features associated with the predicted class and the classifier result."
+)
+
+DEVELOPER_ATTRIBUTION_BOUNDARY_GUIDANCE = (
+    "Medical and histopathological knowledge must ONLY be attributed to verified medical literature "
+    "and knowledge base sources ([S1], [S2]...). NEVER attribute medical findings, cancer definitions, "
+    "or pathology criteria to the developer, author, GitHub, Google Scholar, personal portfolio, or system metadata. "
+    "If asked whether medical findings come from the developer's GitHub, Google Scholar, or portfolio, "
+    "clarify that medical information is grounded strictly in peer-reviewed medical literature and institutional clinical sources, "
+    "not developer profiles or repositories, while identifying the actual retrieved medical sources."
+)
+
+DEVELOPER_ATTRIBUTION_REFUSAL_MESSAGE = (
+    "Medical information in OncoVision is grounded strictly in peer-reviewed medical literature and verified "
+    "institutional clinical sources, not developer profiles, personal websites, GitHub repositories, or Google Scholar citations."
 )
 
 INJECTION_REFUSAL_MESSAGE = (
@@ -94,7 +128,9 @@ class SafetyEvaluator:
 
     # Patterns indicating prompt injection, instruction override, or credential/prompt leakage attempts
     _INJECTION_PATTERNS = [
-        r"\b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+)?(?:previous|prior|above|system)\s+(?:instructions?|rules?|directives?|prompts?)\b",
+        r"\b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+)?(?:previous|prior|above|system|medical|safety|assistant|citation)?\s*(?:instructions?|rules?|directives?|prompts?|limitations?|boundaries?|policies?)\b",
+        r"\b(?:ignore|disregard|override|bypass)\s+(?:the\s+)?(?:citation|source|attribution)\s+(?:rules?|requirements?|standards?)\b",
+        r"\bcite\s+(?:my|the\s+developer'?s?)\s+(?:github|portfolio|google\s+scholar|repo|website)\s+as\s+(?:the|a)?\s*(?:medical|clinical)?\s*source\b",
         r"\b(?:reveal|show|dump|print|display|output|tell|repeat)\s+(?:me\s+)?(?:the\s+|your\s+|all\s+|hidden\s+)?(?:system\s+prompt|prompt\s+template|system\s+instructions?|api\s*keys?|database\s*(?:url|credentials?|passwords?))\b",
         r"\b(?:what\s+is\s+your|give\s+me\s+the|tell\s+me\s+the|show\s+me\s+the)\s+(?:hidden\s+)?(?:database\s*(?:url|credentials?|passwords?)|api\s*keys?)\b",
         r"\b(?:override|disregard|bypass|change|replace)\s+(?:the\s+)?(?:classifier|model|prediction)\s*(?:result|output|class)?\b",
@@ -102,6 +138,13 @@ class SafetyEvaluator:
         r"\btreat\s+this\s+(?:document|text|context|input)\s+as\s+(?:your\s+)?(?:new\s+)?system\s+instruction\b",
         r"\bcall\s+(?:an?\s+)?external\s+tool\b",
         r"\bact\s+as\s+(?:dan|unrestricted|jailbroken|an?\s+unfiltered|an?\s+unbounded)\b",
+    ]
+
+    # Patterns asking about developer/GitHub/Google Scholar source attribution (Test C)
+    _DEVELOPER_SOURCE_PATTERNS = [
+        r"\b(?:from|in|on|via)\s+(?:the\s+)?(?:developer|author|mahfujur|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio|website|repo)\b",
+        r"\b(?:is\s+this|was\s+this|did\s+this)\s+(?:information|data|knowledge|answer|explanation)?\s*(?:come\s+)?from\s+(?:the\s+)?(?:developer|author|mahfujur|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio|website|repo)\b",
+        r"\b(?:developer|author|mahfujur|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio)\s+(?:as\s+a\s+source|as\s+evidence|for\s+medical)\b",
     ]
 
     # Patterns indicating personal diagnosis requests
@@ -128,8 +171,8 @@ class SafetyEvaluator:
     # Patterns indicating TNM staging inference from histopathology image
     _STAGING_PATTERNS = [
         r"\bwhat\s+stage\s+is\s+(?:my\s+cancer|this\s+cancer)\s+based\s+on\s+this\s+image\b",
-        r"\bcan\s+(?:you|this\s+image|the\s+ai|this\s+system)\s+(?:determine|predict|give)\s+(?:the\s+)?(?:tnm|stage|staging)\b",
-        r"\bcan\s+this\s+image\s+determine\s+tnm\s+stage\b",
+        r"\bcan\s+(?:you|this\s+image|the\s+ai|this\s+system)\s+(?:determine|predict|give|tell)\s+(?:the\s+|my\s+|patient\s+)?(?:cancer\s+)?(?:tnm|stage|staging)\b",
+        r"\bcan\s+this\s+image\s+determine\s+(?:my\s+)?(?:cancer\s+)?(?:stage|staging|tnm)\b",
         r"\bwhat\s+is\s+the\s+tnm\s+stage\s+from\s+this\s+image\b",
     ]
 
@@ -145,6 +188,19 @@ class SafetyEvaluator:
         r"\bwhy\s+did\s+the\s+model\s+predict\b",
         r"\bexplain\s+the\s+(?:model['’]?s\s+)?prediction\b",
         r"\bwhy\s+is\s+(?:the\s+prediction|it\s+predicted)\b",
+    ]
+
+    # Patterns demanding direct visual observation or asking what structures are seen in an image
+    _VISUAL_EVIDENCE_PATTERNS = [
+        r"\bwhat\s+(?:exact\s+)?microscopic\s+structures?\s+do\s+you\s+see\b",
+        r"\bwhat\s+(?:structures?|features?)\s+do\s+you\s+see\s+in\s+[\w\.\-]+\b",
+        r"\bdoes\s+this\s+(?:slide|image|biopsy)\s+(?:contain|show|have)\s+(?:mucin|glandular|acinar|papillary)\b",
+        r"\bdo\s+you\s+see\s+(?:acinar|papillary|glandular|mucin)\b",
+        r"\bconfirm\s+that\s+(?:glandular|mucin|acinar|papillary|microscopic)\s+structures?\s+are\s+visible\b",
+        r"\bpretend\s+(?:you\s+can\s+see|to\s+see)\s+(?:the\s+)?(?:slide|image)\b",
+        r"\bvisually\s+(?:confirmed|confirm|inspect|observe)\b",
+        r"\bfilename\s+is\s+[\w\.\-]+\s*,?\s*so\s+confirm\b",
+        r"\bwhat\s+microscopic\s+features\s+did\s+(?:it|the\s+model)\s+definitely\s+detect\b",
     ]
 
     def evaluate_query(
@@ -174,6 +230,25 @@ class SafetyEvaluator:
                     requires_deterministic_refusal=True,
                     refusal_message=INJECTION_REFUSAL_MESSAGE,
                     is_educational_only=False,
+                )
+
+        # Check explicit hallucination or injection requests to fake visual access
+        if re.search(r"\bpretend\s+(?:you\s+can\s+see|to\s+see)\s+(?:the\s+)?(?:slide|image)\b", lower_q) or re.search(r"\b(?:ignore|bypass).*\bvisually\s+confirm", lower_q):
+            return SafetyEvaluation(
+                boundary=SafetyBoundary.VISUAL_EVIDENCE,
+                requires_deterministic_refusal=True,
+                refusal_message=VISUAL_EVIDENCE_REFUSAL_MESSAGE,
+                is_educational_only=False,
+            )
+
+        # Check developer source attribution inquiry (Test C)
+        for pattern in self._DEVELOPER_SOURCE_PATTERNS:
+            if re.search(pattern, lower_q):
+                return SafetyEvaluation(
+                    boundary=SafetyBoundary.DEVELOPER_ATTRIBUTION,
+                    requires_deterministic_refusal=False,
+                    boundary_guidance=DEVELOPER_ATTRIBUTION_BOUNDARY_GUIDANCE,
+                    is_educational_only=True,
                 )
 
         # 1. Personal Diagnosis Boundary
@@ -235,6 +310,16 @@ class SafetyEvaluator:
                     boundary=SafetyBoundary.CLASSIFIER,
                     requires_deterministic_refusal=False,
                     boundary_guidance=CLASSIFIER_BOUNDARY_GUIDANCE,
+                    is_educational_only=True,
+                )
+
+        # 6. Visual Evidence & Microscopic Observation Boundary
+        for pattern in self._VISUAL_EVIDENCE_PATTERNS:
+            if re.search(pattern, lower_q):
+                return SafetyEvaluation(
+                    boundary=SafetyBoundary.VISUAL_EVIDENCE,
+                    requires_deterministic_refusal=False,
+                    boundary_guidance=VISUAL_EVIDENCE_BOUNDARY_GUIDANCE,
                     is_educational_only=True,
                 )
 
@@ -379,5 +464,39 @@ class SafetyEvaluator:
                         or f"sample is {other_cls}" in lower_ans
                     ):
                         return False, f"Generated answer claims conflicting class '{other_cls}' against authoritative prediction '{pred_class}'"
+
+        # 9. Visual Evidence Hallucination Claims (Protected Boundary 10)
+        visual_claim_regexes = [
+            r"\b(?:i\s+see|i\s+can\s+see|i\s+observe)\s+(?:[\w\s]{0,25}\s+)?(?:in\s+this\s+(?:image|slide|biopsy)|microscopic|glandular|mucin|acinar|papillary|tumor|cells|structures)\b",
+            r"\bthe\s+(?:slide|image|biopsy)\s+(?:exhibits?|shows?|demonstrates?|contains?)\s+(?:[\w\s]{0,20}\s+)?(?:glandular|mucin|acinar|papillary)\b",
+            r"\bthere\s+is\s+(?:[\w\s]{0,20}\s+)?(?:glandular\s+differentiation|mucin|acinar\s+structures?|papillary\s+structures?)\s+in\s+the\s+(?:image|slide|biopsy)\b",
+            r"\bmucin\s+is\s+(?:visible|seen|observed|detected|present)\s+in\s+the\s+(?:image|slide|biopsy)\b",
+            r"\bacinar\s+structures\s+are\s+(?:present|seen|observed|visible)\s+in\s+the\s+(?:image|slide|biopsy)\b",
+            r"\bpapillary\s+structures\s+are\s+(?:seen|observed|present|visible)\s+in\s+the\s+(?:image|slide|biopsy)\b",
+            r"\b(?:high\s+confidence|prediction)\s+(?:stems\s+from|is\s+driven\s+by)\s+clear\s+microscopic\b",
+            r"\bstem(?:s)?\s+from\s+clear\s+microscopic\s+(?:glandular|differentiation|mucin)\b",
+            r"\bdetected\s+(?:key\s+)?malignant\s+structures\s+in\s+the\s+histopathology\s+image\b",
+            r"\bidentifying\s+(?:key\s+)?malignant\s+structures\s+in\s+the\s+histopathology\s+image\b",
+            r"\bobserved\s+in\s+the\s+histopathology\s+slide\b",
+            r"\bthe\s+tumor\s+(?:in\s+this\s+(?:image|slide)\s+)?exhibits\b",
+            r"\bthe\s+microscopic\s+(?:image|slide)\s+contains\b",
+            r"\b(?:i\s+)?visually\s+(?:confirmed?|observed?|inspected?|detected?)\b",
+            r"\bconfirm(?:s|ed|ing)?\s+that\s+(?:glandular|mucin|acinar|papillary|microscopic)\s+(?:structures?|differentiation)\s+(?:is|are)\s+visible\b",
+        ]
+        for v_reg in visual_claim_regexes:
+            if re.search(v_reg, lower_ans):
+                return False, "Generated answer claims unverified direct visual observation of microscopic slide features without visual pipeline input."
+
+        # 10. Developer Metadata Laundering (Medical claims attributed to developer)
+        affirmative_dev_patterns = [
+            r"\b(?:according\s+to|per|as\s+stated\s+by|based\s+on)\s+(?:the\s+)?(?:developer|author|md\.?\s*mahfujur\s+rahman|mahfujur\s+rahman)'?s?\s*(?:github|google\s+scholar|portfolio|website|repo|profile)?\s*,\s*(?:the\s+)?(?:cancer|tumor|adenocarcinoma|carcinoma|lung|colon|cells?|mucin|ttf-1|p40)\b",
+            r"\b(?:from|sourced\s+from|derived\s+from|grounded\s+in)\s+(?:the\s+)?(?:developer|author|mahfujur|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio|repo)\b",
+            r"\b(?:developer|author|mahfujur|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio)\s+(?:states|confirms|proves|shows|supports|describes)\s+(?:that\s+)?(?:lung|colon|cancer|adenocarcinoma|carcinoma|tumor)\b",
+        ]
+        for ad_pat in affirmative_dev_patterns:
+            if re.search(ad_pat, lower_ans):
+                # Ensure this is not a negative disclaimer (e.g. "is not from the developer's github")
+                if not re.search(r"\b(?:not|never|neither|no|cannot|without)\b.{1,40}\b(?:developer|github|google\s+scholar)\b", lower_ans):
+                    return False, "Generated answer impermissibly attributes medical facts to developer metadata or repositories."
 
         return True, None

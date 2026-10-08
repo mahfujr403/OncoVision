@@ -39,13 +39,16 @@ from app.rag.prompts import (
     build_grounded_user_prompt,
     format_grounded_context_sources,
 )
+from app.rag.provenance import is_explicit_developer_query, is_meta_source_query
 from app.rag.retriever import RetrievedContext, RetrievedDocument
 from app.rag.safety import (
     BIOMARKER_BOUNDARY_GUIDANCE,
+    DEVELOPER_ATTRIBUTION_REFUSAL_MESSAGE,
     DIAGNOSIS_REFUSAL_MESSAGE,
     PREDICTION_CONFLICT_MESSAGE,
     STAGING_BOUNDARY_GUIDANCE,
     TREATMENT_REFUSAL_MESSAGE,
+    VISUAL_EVIDENCE_REFUSAL_MESSAGE,
     SafetyBoundary,
     SafetyEvaluator,
 )
@@ -119,8 +122,107 @@ INSTITUTIONAL_ATTRIBUTION_RULES: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\b(?:clinical\s+guidelines?|oncology\s+guidelines?|practice\s+guidelines?|per\s+guidelines|according\s+to\s+guidelines|guidelines\s+state|guidelines\s+recommend)\b", re.IGNORECASE), "clinical guidelines"),
 ]
 
+# Developer attribution patterns (strictly prohibited as medical sources)
+DEVELOPER_ATTRIBUTION_RULES: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"\b(?:according\s+to|per|based\s+on|from|in|as\s+stated\s+by)\s+(?:the\s+)?(?:developer|author|mahfujur|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio|website|repo|profile)\b", re.IGNORECASE), "developer repository/profile"),
+    (re.compile(r"\b(?:developer|author|mahfujur|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio|website|repo)\s+(?:states|shows|confirms|reports|describes|indicates|supports|proves|notes)\b", re.IGNORECASE), "developer repository/profile"),
+    (re.compile(r"\b(?:according\s+to|per|as\s+stated\s+by)\s+(?:the\s+)?(?:developer|author|md\.?\s*mahfujur\s+rahman|mahfujur\s+rahman)\b", re.IGNORECASE), "developer personal attribution"),
+    (re.compile(r"\b(?:grounded\s+in|sourced\s+from|derived\s+from|attributed\s+to)\s+(?:the\s+)?(?:developer|author|mahfujur|mahfuj)'?s?\s+(?:github|google\s+scholar|portfolio|repo)\b", re.IGNORECASE), "developer repository/profile"),
+]
+
+# Unrequested developer / portfolio promotional boilerplate patterns
+DEVELOPER_PROMOTIONAL_PATTERNS: list[re.Pattern] = [
+    re.compile(r"\b(?:contact|reach\s+out\s+to|email)\s+(?:the\s+)?(?:developer|author|creator|me)\b", re.IGNORECASE),
+    re.compile(r"\b(?:for\s+inquiries|for\s+questions|for\s+collaboration|for\s+more\s+information),?\s+(?:contact|visit|reach|email|see)\b", re.IGNORECASE),
+    re.compile(r"\bmahfujr403(?:@gmail\.com)?\b", re.IGNORECASE),
+    re.compile(r"\b\+8801771431724\b"),
+    re.compile(r"\b(?:visit|check\s+out|view|see)\s+(?:the|my)?\s*(?:developer'?s?|author'?s?)?\s*(?:portfolio|github|google\s+scholar|repo|linkedin)\b", re.IGNORECASE),
+    re.compile(r"\b(?:developer|author|creator)'?s?\s+(?:portfolio|github|google\s+scholar|profile|linkedin|website)\b", re.IGNORECASE),
+    re.compile(r"\b(?:google\s+scholar\s+profile|github\s+profile|portfolio\s+website)\b", re.IGNORECASE),
+    re.compile(r"\b(?:developed|created|authored|designed|built)\s+by\s+(?:md\.?\s*mahfujur\s+rahman|mahfujur\s+rahman|mahfuj)\b", re.IGNORECASE),
+    re.compile(r"\b(?:creator|lead\s+developer|lead\s+author|author|developer)\s*(?::|-)\s*(?:md\.?\s*mahfujur\s+rahman|mahfujur\s+rahman)\b", re.IGNORECASE),
+    re.compile(r"\bmd\.?\s*mahfujur\s+rahman\b", re.IGNORECASE),
+    re.compile(r"\b(?:oncovision\s+ai\s+was\s+(?:designed|architected|developed|created)\s+by)\b", re.IGNORECASE),
+    re.compile(r"\b(?:for\s+more\s+(?:information|details|code),?\s+(?:visit|see|check|go\s+to))\b", re.IGNORECASE),
+]
+
+DEVELOPER_URL_PATTERNS: list[re.Pattern] = [
+    re.compile(r"https?://(?:www\.)?github\.com/mahfujr403[^\s)\]]*", re.IGNORECASE),
+    re.compile(r"https?://(?:www\.)?md-mahfujur-rahman\.vercel\.app[^\s)\]]*", re.IGNORECASE),
+    re.compile(r"https?://(?:www\.)?linkedin\.com/in/mahfujr403[^\s)\]]*", re.IGNORECASE),
+    re.compile(r"https?://scholar\.google\.com/citations[^\s)\]]*", re.IGNORECASE),
+]
+
+AUTHORITATIVE_MEDICAL_DOMAINS: tuple[str, ...] = (
+    "ncbi.nlm.nih.gov",
+    "cancer.gov",
+    "cap.org",
+    "nih.gov",
+    "who.int",
+    "pubmed.ncbi.nlm.nih.gov",
+    "pmc.ncbi.nlm.nih.gov",
+    "doi.org",
+    "openstax.org",
+    "sciencedirect.com",
+    "springer.com",
+    "nejm.org",
+    "thelancet.com",
+    "jamanetwork.com",
+    "nature.com",
+    "bmj.com",
+    "ascopubs.org",
+    "nccn.org",
+    "cdc.gov",
+    "fda.gov",
+)
+
+
+def is_developer_boilerplate_unit(unit: str) -> bool:
+    """Check if a text unit contains unrequested developer promotional or contact boilerplate."""
+    lower = unit.lower()
+    # Always preserve explicit negative disclaimers (e.g. "is not from the developer's GitHub")
+    if re.search(
+        r"\b(?:not|never|neither|no|cannot|without|does\s+not)\b.{1,50}\b(?:developer|github|google\s+scholar|portfolio)\b",
+        lower,
+    ):
+        return False
+    # Check developer URL patterns
+    for url_pat in DEVELOPER_URL_PATTERNS:
+        if url_pat.search(unit):
+            return True
+    # Check promotional text patterns
+    for promo_pat in DEVELOPER_PROMOTIONAL_PATTERNS:
+        if promo_pat.search(unit):
+            return True
+    return False
+
+
+def is_medical_source_url(url: str, source_map: dict[str, RetrievedDocument]) -> bool:
+    """Check if a URL belongs to a retrieved medical document or an authoritative medical domain."""
+    clean_url = url.strip().rstrip(".,;!?:)]").lower()
+    for doc in source_map.values():
+        if doc.source_url and clean_url.rstrip("/") in doc.source_url.lower().rstrip("/"):
+            return True
+        if doc.source_url and doc.source_url.lower().rstrip("/") in clean_url:
+            return True
+    for domain in AUTHORITATIVE_MEDICAL_DOMAINS:
+        if domain in clean_url:
+            return True
+    return False
+
 META_REFERENCE_TERMS: set[str] = {
-    "see", "refer", "refers", "reference", "references", "info", "information", "details", "detail", "more"
+    "see", "refer", "refers", "reference", "references", "info", "information",
+    "details", "detail", "more", "source", "sources", "grounded", "support",
+    "supports", "supporting", "literature", "retrieved", "referenced", "paper",
+    "papers", "derived", "cited", "citing", "overview", "provenance",
+}
+
+DISCOURSE_META_TERMS: set[str] = {
+    "discussed", "above", "knowledge", "explanation", "following", "summary",
+    "outlined", "provided", "support", "supports", "supporting", "listed",
+    "question", "answer", "query", "literature", "source", "sources", "grounded",
+    "provenance", "derived", "cited", "overview", "documents", "evidence",
+    "retrieved", "referenced", "context", "findings", "statements", "material",
 }
 
 
@@ -135,7 +237,16 @@ def extract_salient_terms(text: str) -> set[str]:
 def check_institutional_attribution(
     sentence: str, docs: list[RetrievedDocument]
 ) -> tuple[bool, str | None]:
-    """Verify that any organizational attribution in the sentence is explicitly grounded in cited docs."""
+    """Verify that any organizational attribution in the sentence is explicitly grounded in cited docs
+    and that no medical facts are attributed to developer metadata."""
+    # 1. Developer attribution check (absolute prohibition for medical claims)
+    for dev_pattern, dev_name in DEVELOPER_ATTRIBUTION_RULES:
+        if dev_pattern.search(sentence):
+            # Allow explicit negative disclaimers (e.g. "is not from the developer's GitHub")
+            if not re.search(r"\b(?:not|never|neither|no|cannot|without)\b.{1,40}\b(?:developer|github|google\s+scholar)\b", sentence, re.IGNORECASE):
+                return False, f"forbidden medical attribution to developer metadata '{dev_name}'"
+
+    # 2. Institutional attribution check against cited documents
     combined_doc_text = " ".join([
         f"{d.content} {d.document_title or ''} {d.source_title or ''} {d.source or ''}"
         for d in docs
@@ -153,16 +264,22 @@ def check_claim_to_evidence(
     prediction_summary: PredictionHistorySummary | None = None,
 ) -> tuple[bool, str | None]:
     """Verify meaningful salient content term overlap between claim sentence and cited documents."""
+    lower_sent = sentence.lower()
+    tokens = set(re.findall(r"\b[a-z]+\b", lower_sent))
+    is_meta_ref = bool(tokens & META_REFERENCE_TERMS)
+
     claim_terms = extract_salient_terms(sentence)
     if not claim_terms:
         # Check if sentence is a meta-reference to the source (e.g. "See [S1] for more info")
-        lower_sent = sentence.lower()
-        tokens = set(re.findall(r"\b[a-z]+\b", lower_sent))
-        if tokens & META_REFERENCE_TERMS:
+        if is_meta_ref:
             return True, None
         return False, "insufficient salient terms in claim to verify evidence"
 
-    doc_parts = [f"{d.content} {d.document_title or ''}" for d in docs]
+    # If the sentence is a pure meta-reference/provenance statement describing sources without clinical claims
+    if is_meta_ref and not (claim_terms - DISCOURSE_META_TERMS):
+        return True, None
+
+    doc_parts = [f"{d.content} {d.document_title or ''} {d.source_title or ''}" for d in docs]
     if prediction_summary and prediction_summary.predicted_class:
         doc_parts.append(prediction_summary.predicted_class.replace("_", " "))
     combined_doc_text = " ".join(doc_parts).lower()
@@ -187,6 +304,7 @@ def validate_and_filter_generated_response(
     raw_response: str,
     source_map: dict[str, RetrievedDocument],
     prediction_summary: PredictionHistorySummary | None = None,
+    query: str = "",
 ) -> tuple[str, list[str], int, str | None]:
     """Perform sentence-level verification of citation tokens, attributions, and evidence entailment.
 
@@ -199,7 +317,7 @@ def validate_and_filter_generated_response(
         line_str = line.strip()
         if not line_str:
             continue
-        sub_sents = re.split(r'(?<=[.!?])\s+(?=[A-Z0-9*#\-])', line_str)
+        sub_sents = re.split(r'(?<!\bMd\.)(?<!\bDr\.)(?<!\be\.g\.)(?<!\bi\.e\.)(?<!\bvs\.)(?<!\bet al\.)(?<=[.!?])\s+(?=[A-Z0-9*#\-])', line_str)
         for s in sub_sents:
             s_clean = s.strip()
             if s_clean:
@@ -210,7 +328,13 @@ def validate_and_filter_generated_response(
     unsupported_count = 0
     primary_failure_reason: str | None = None
 
+    is_explicit_dev = is_explicit_developer_query(query)
+
     for unit in units:
+        # If this is an ordinary medical/classifier query, suppress developer boilerplate units
+        if not is_explicit_dev and is_developer_boilerplate_unit(unit):
+            continue
+
         bracket_citations: list[str] = []
         for bracket_content in re.findall(r"\[([^\]]+)\]", unit):
             for match in re.finditer(r"\bS\d+\b", bracket_content):
@@ -227,9 +351,12 @@ def validate_and_filter_generated_response(
             if not attr_ok:
                 unsupported_count += 1
                 if not primary_failure_reason:
-                    primary_failure_reason = "unsupported_attribution"
+                    primary_failure_reason = "developer_source_laundering" if (attr_err and "developer metadata" in attr_err) else "unsupported_attribution"
                 continue
             clean_unit = re.sub(r"\[([^\]]+)\]", _clean_bracket, unit)
+            if not is_explicit_dev:
+                for dev_url_pat in DEVELOPER_URL_PATTERNS:
+                    clean_unit = dev_url_pat.sub("", clean_unit)
             clean_unit = re.sub(r"[ \t]+", " ", clean_unit).strip()
             if clean_unit:
                 retained_units.append(clean_unit)
@@ -252,7 +379,7 @@ def validate_and_filter_generated_response(
         if not attr_ok:
             unsupported_count += 1
             if not primary_failure_reason:
-                primary_failure_reason = "unsupported_attribution"
+                primary_failure_reason = "developer_source_laundering" if (attr_err and "developer metadata" in attr_err) else "unsupported_attribution"
             continue
 
         ev_ok, ev_err = check_claim_to_evidence(unit, cited_docs, prediction_summary=prediction_summary)
@@ -263,6 +390,9 @@ def validate_and_filter_generated_response(
             continue
 
         clean_unit = re.sub(r"\[([^\]]+)\]", _clean_bracket, unit)
+        if not is_explicit_dev:
+            for dev_url_pat in DEVELOPER_URL_PATTERNS:
+                clean_unit = dev_url_pat.sub("", clean_unit)
         clean_unit = re.sub(r"[ \t]+", " ", clean_unit).strip()
         if clean_unit:
             retained_units.append(clean_unit)
@@ -368,6 +498,8 @@ class GroundedRAGGenerator:
                     f"({round(prediction_summary.confidence * 100, 1)}% confidence). "
                     "Please review the prediction details or consult a qualified pathologist."
                 )
+            elif refusal_reason == SafetyBoundary.VISUAL_EVIDENCE.value and not safety_eval.refusal_message:
+                refusal_message = VISUAL_EVIDENCE_REFUSAL_MESSAGE
 
             return GroundedAnswer(
                 answer=refusal_message,
@@ -395,10 +527,16 @@ class GroundedRAGGenerator:
 
         if not grounding_decision.is_eligible:
             if grounding_decision.decision_reason == "empty_retrieval":
-                refusal_text = (
-                    "I don't have enough relevant information in the current OncoVision knowledge base "
-                    "to answer that reliably."
-                )
+                if is_meta_source_query(query):
+                    refusal_text = (
+                        "No supporting medical source context is currently available for this query, "
+                        "so no literature sources can be cited."
+                    )
+                else:
+                    refusal_text = (
+                        "I don't have enough relevant information in the current OncoVision knowledge base "
+                        "to answer that reliably."
+                    )
                 refusal_reason = "no_relevant_knowledge_found"
             else:
                 refusal_text = (
@@ -546,6 +684,305 @@ class GroundedRAGGenerator:
                 request_id=telemetry.request_id,
             )
 
+        return self._validate_and_finalize_grounded_answer(
+            raw_response=raw_response,
+            source_map=source_map,
+            safety_eval=safety_eval,
+            grounding_decision=grounding_decision,
+            prediction_summary=prediction_summary,
+            query=query,
+            context=context,
+            telemetry=telemetry,
+        )
+
+    async def generate_grounded_stream(
+        self,
+        query: str,
+        context: RetrievedContext,
+        prediction_summary: PredictionHistorySummary | None = None,
+        chat_history: str = "",
+        language: str = "en",
+        request_id: str | None = None,
+        telemetry: RAGTelemetryContext | None = None,
+        raw_request: Any | None = None,
+    ) -> GroundedAnswer:
+        """Generate a grounded, citation-backed response via Gemini streaming with server-side buffering and validation."""
+        if telemetry is None:
+            telemetry = RAGTelemetryContext(
+                request_id=request_id,
+                chat_type="direct",
+                query=query,
+                language=language,
+            )
+
+        if hasattr(context, "classification_latency_ms"):
+            telemetry.classification_ms = context.classification_latency_ms
+        if hasattr(context, "retrieval_latency_ms"):
+            telemetry.retrieval_ms = context.retrieval_latency_ms
+
+        telemetry.retrieved_chunks = len(context.chunks)
+        if context.query_scope:
+            telemetry.domain = context.query_scope.domain.value if context.query_scope.domain else None
+            telemetry.intent = context.query_scope.intent.value
+
+        if context.chunks:
+            sims = [c.similarity for c in context.chunks if c.similarity is not None]
+            telemetry.top_similarity = max(sims) if sims else 0.0
+            telemetry.mean_similarity = round(sum(sims) / len(sims), 4) if sims else 0.0
+
+        request_intent = telemetry.intent or "unknown"
+        request_domain = telemetry.domain or "unknown"
+
+        # 1. Deterministic Pre-generation Safety Evaluation
+        s_start = time.perf_counter()
+        safety_eval = self.safety.evaluate_query(
+            query=query,
+            has_prediction=prediction_summary is not None,
+        )
+        telemetry.safety_ms = round((time.perf_counter() - s_start) * 1000, 2)
+
+        if safety_eval.requires_deterministic_refusal:
+            telemetry.safety_refused = True
+            refusal_reason = safety_eval.boundary.value if safety_eval.boundary else "safety_refusal"
+            telemetry.refusal_reason = refusal_reason
+            telemetry.error_category = RAGErrorCategory.SAFETY_REFUSAL.value
+
+            telemetry.record_event(
+                EVENT_SAFETY_REFUSAL,
+                boundary=refusal_reason,
+                safety_ms=telemetry.safety_ms,
+                intent=request_intent,
+                has_prediction=prediction_summary is not None,
+                skipped_gemini=True,
+            )
+            telemetry.finish(
+                grounded=False,
+                citations=0,
+                refusal_reason=refusal_reason,
+                error_category=RAGErrorCategory.SAFETY_REFUSAL.value,
+            )
+
+            refusal_message = safety_eval.refusal_message or "Request refused by safety policy."
+            if refusal_reason == "prediction_conflict" and prediction_summary and prediction_summary.predicted_class:
+                refusal_message = (
+                    f"The generated response could not be verified against the authoritative classifier prediction. "
+                    f"The recorded classification remains {prediction_summary.predicted_class} "
+                    f"({round(prediction_summary.confidence * 100, 1)}% confidence). "
+                    "Please review the prediction details or consult a qualified pathologist."
+                )
+            elif refusal_reason == SafetyBoundary.VISUAL_EVIDENCE.value and not safety_eval.refusal_message:
+                refusal_message = VISUAL_EVIDENCE_REFUSAL_MESSAGE
+
+            return GroundedAnswer(
+                answer=refusal_message,
+                citations=[],
+                grounded=False,
+                refusal_reason=refusal_reason,
+                scope=context.query_scope,
+                latency_ms=telemetry.total_latency_ms,
+                latencies=telemetry.get_latency_breakdown(),
+                request_id=telemetry.request_id,
+            )
+
+        # 2. Deterministic Grounding & Relevance Evaluation
+        g_start = time.perf_counter()
+        grounding_decision = self.grounding.evaluate(
+            query=query,
+            context=context,
+            safety_eval=safety_eval,
+        )
+        telemetry.grounding_ms = round((time.perf_counter() - g_start) * 1000, 2)
+        telemetry.top_similarity = grounding_decision.top_similarity
+        telemetry.mean_similarity = grounding_decision.mean_similarity
+
+        if not grounding_decision.is_eligible:
+            if grounding_decision.decision_reason == "empty_retrieval":
+                if is_meta_source_query(query):
+                    refusal_text = (
+                        "No supporting medical source context is currently available for this query, "
+                        "so no literature sources can be cited."
+                    )
+                else:
+                    refusal_text = (
+                        "I don't have enough relevant information in the current OncoVision knowledge base "
+                        "to answer that reliably."
+                    )
+                refusal_reason = "no_relevant_knowledge_found"
+            else:
+                refusal_text = (
+                    "The available OncoVision knowledge base provides only limited information on this point, "
+                    "so I can't make a reliable claim beyond the retrieved evidence."
+                )
+                refusal_reason = grounding_decision.decision_reason
+
+            telemetry.refusal_reason = refusal_reason
+            telemetry.record_event(
+                EVENT_GROUNDING_REJECTED,
+                decision_reason=grounding_decision.decision_reason,
+                top_similarity=grounding_decision.top_similarity,
+                mean_similarity=grounding_decision.mean_similarity,
+                threshold_applied=grounding_decision.threshold_applied,
+                grounding_ms=telemetry.grounding_ms,
+                skipped_gemini=True,
+            )
+            telemetry.finish(
+                grounded=False,
+                citations=0,
+                refusal_reason=refusal_reason,
+            )
+
+            return GroundedAnswer(
+                answer=refusal_text,
+                citations=[],
+                grounded=False,
+                refusal_reason=refusal_reason,
+                scope=context.query_scope,
+                latency_ms=telemetry.total_latency_ms,
+                latencies=telemetry.get_latency_breakdown(),
+                request_id=telemetry.request_id,
+            )
+
+        telemetry.record_event(
+            EVENT_GROUNDING_ACCEPTED,
+            decision_reason=grounding_decision.decision_reason,
+            top_similarity=grounding_decision.top_similarity,
+            mean_similarity=grounding_decision.mean_similarity,
+            threshold_applied=grounding_decision.threshold_applied,
+            domain_compatible=grounding_decision.domain_compatible,
+            class_compatible=grounding_decision.class_compatible,
+            grounding_ms=telemetry.grounding_ms,
+        )
+
+        # 3. Prompt Construction
+        context_text, source_map = format_grounded_context_sources(context.chunks)
+        user_prompt = build_grounded_user_prompt(
+            user_message=query,
+            retrieved_context_text=context_text,
+            prediction_summary=prediction_summary,
+            chat_history=chat_history,
+            safety_guidance=safety_eval.boundary_guidance,
+            language=language,
+        )
+
+        # 4. Async Gemini Streaming Generation with Server-Side Buffering
+        client = self.llm_client or get_gemini_client(
+            api_key=self.settings.GOOGLE_API_KEY,
+            model_name=self.settings.RAG_GENERATION_MODEL,
+        )
+
+        telemetry.skipped_gemini = False
+        telemetry.generation_model = self.settings.RAG_GENERATION_MODEL
+        telemetry.record_event(
+            EVENT_GENERATION_STARTED,
+            model=self.settings.RAG_GENERATION_MODEL,
+            context_chunks=len(context.chunks),
+        )
+
+        chunk_buffer: list[str] = []
+        gen_start = time.perf_counter()
+        try:
+            stream_iter = client.generate_stream(
+                prompt=user_prompt,
+                system_instruction=GROUNDED_RAG_SYSTEM_PROMPT,
+                temperature=self.settings.RAG_GENERATION_TEMPERATURE,
+                max_output_tokens=self.settings.RAG_GENERATION_MAX_OUTPUT_TOKENS,
+            )
+            async for chunk in stream_iter:
+                if raw_request and await raw_request.is_disconnected():
+                    logger.info("Client disconnected during LLM stream generation. Aborting.")
+                    raise asyncio.CancelledError()
+                if chunk:
+                    chunk_buffer.append(chunk)
+
+            raw_response = "".join(chunk_buffer)
+            telemetry.generation_ms = round((time.perf_counter() - gen_start) * 1000, 2)
+            telemetry.record_event(
+                EVENT_GENERATION_COMPLETED,
+                model=self.settings.RAG_GENERATION_MODEL,
+                generation_ms=telemetry.generation_ms,
+                response_length=len(raw_response),
+            )
+        except asyncio.CancelledError:
+            telemetry.generation_ms = round((time.perf_counter() - gen_start) * 1000, 2)
+            logger.info("Grounded stream generation cancelled by client disconnect.")
+            raise
+        except asyncio.TimeoutError:
+            telemetry.generation_ms = round((time.perf_counter() - gen_start) * 1000, 2)
+            telemetry.error_category = RAGErrorCategory.GENERATION_TIMEOUT.value
+            telemetry.record_event(
+                EVENT_GENERATION_TIMEOUT,
+                model=self.settings.RAG_GENERATION_MODEL,
+                timeout_sec=self.settings.RAG_GENERATION_TIMEOUT,
+                generation_ms=telemetry.generation_ms,
+                error_category=RAGErrorCategory.GENERATION_TIMEOUT.value,
+            )
+            telemetry.finish(
+                grounded=False,
+                citations=0,
+                refusal_reason="generation_timeout",
+                error_category=RAGErrorCategory.GENERATION_TIMEOUT.value,
+            )
+            return GroundedAnswer(
+                answer="The request timed out while generating a grounded explanation. Please try again.",
+                citations=[],
+                grounded=False,
+                refusal_reason="generation_timeout",
+                scope=context.query_scope,
+                latency_ms=telemetry.total_latency_ms,
+                latencies=telemetry.get_latency_breakdown(),
+                request_id=telemetry.request_id,
+            )
+        except Exception as e:
+            telemetry.generation_ms = round((time.perf_counter() - gen_start) * 1000, 2)
+            telemetry.error_category = RAGErrorCategory.GENERATION_API_ERROR.value
+            logger.error("Gemini grounded stream generation failed: %s", e, exc_info=True)
+            telemetry.record_event(
+                EVENT_GENERATION_FAILED,
+                model=self.settings.RAG_GENERATION_MODEL,
+                generation_ms=telemetry.generation_ms,
+                error_category=RAGErrorCategory.GENERATION_API_ERROR.value,
+            )
+            telemetry.finish(
+                grounded=False,
+                citations=0,
+                refusal_reason="api_error",
+                error_category=RAGErrorCategory.GENERATION_API_ERROR.value,
+            )
+            return GroundedAnswer(
+                answer="A service error occurred while generating the explanation. Please try again.",
+                citations=[],
+                grounded=False,
+                refusal_reason="api_error",
+                scope=context.query_scope,
+                latency_ms=telemetry.total_latency_ms,
+                latencies=telemetry.get_latency_breakdown(),
+                request_id=telemetry.request_id,
+            )
+
+        return self._validate_and_finalize_grounded_answer(
+            raw_response=raw_response,
+            source_map=source_map,
+            safety_eval=safety_eval,
+            grounding_decision=grounding_decision,
+            prediction_summary=prediction_summary,
+            query=query,
+            context=context,
+            telemetry=telemetry,
+        )
+
+    def _validate_and_finalize_grounded_answer(
+        self,
+        raw_response: str,
+        source_map: dict[str, RetrievedDocument],
+        safety_eval: SafetyEvaluation,
+        grounding_decision: GroundingDecision,
+        prediction_summary: PredictionHistorySummary | None,
+        query: str,
+        context: RetrievedContext,
+        telemetry: RAGTelemetryContext,
+    ) -> GroundedAnswer:
+        """Execute post-generation medical safety, prediction immutability, citation integrity,
+        and grounding validation on the complete server-buffered response."""
         # -------------------------------------------------------------
         # 5. Immediate Post-generation Medical Safety & Prediction Immutability Check
         # (Preserve Phase 6 fail-closed boundaries: direct diagnosis, prescriptions,
@@ -587,6 +1024,12 @@ class GroundedRAGGenerator:
             elif safety_eval.boundary == SafetyBoundary.BIOMARKER or "biomarker" in str(safety_violation):
                 refusal_reason = SafetyBoundary.BIOMARKER.value
                 refusal_message = BIOMARKER_BOUNDARY_GUIDANCE
+            elif safety_eval.boundary == SafetyBoundary.VISUAL_EVIDENCE or "visual observation" in str(safety_violation):
+                refusal_reason = SafetyBoundary.VISUAL_EVIDENCE.value
+                refusal_message = VISUAL_EVIDENCE_REFUSAL_MESSAGE
+            elif safety_eval.boundary == SafetyBoundary.DEVELOPER_ATTRIBUTION or "developer metadata" in str(safety_violation):
+                refusal_reason = SafetyBoundary.DEVELOPER_ATTRIBUTION.value
+                refusal_message = DEVELOPER_ATTRIBUTION_REFUSAL_MESSAGE
             elif "leakage" in str(safety_violation):
                 refusal_reason = "security_leakage_prevented"
                 refusal_message = (
@@ -634,7 +1077,7 @@ class GroundedRAGGenerator:
         cit_start = time.perf_counter()
         clean_answer, unique_cids, unsupported_count, primary_failure_reason = (
             validate_and_filter_generated_response(
-                raw_response, source_map, prediction_summary=prediction_summary
+                raw_response, source_map, prediction_summary=prediction_summary, query=query
             )
         )
 
@@ -653,9 +1096,20 @@ class GroundedRAGGenerator:
                 )
             )
 
-        # Sanitize any raw external URLs embedded directly in answer text
-        # (trusted URLs must come from Citation metadata only)
-        clean_answer = re.sub(r'https?://[^\s]+', '', clean_answer)
+        # Sanitize raw external URLs embedded directly in answer text:
+        # Preserves legitimate medical source URLs, but strips developer or unverified external URLs
+        is_explicit_dev = is_explicit_developer_query(query)
+        if not is_explicit_dev:
+            def _filter_url(match: re.Match) -> str:
+                full_match = match.group(0)
+                clean_url = full_match.rstrip(".,;!?:)]")
+                trail = full_match[len(clean_url):]
+                if is_medical_source_url(clean_url, source_map):
+                    return full_match
+                return trail
+
+            clean_answer = re.sub(r'https?://[^\s]+', _filter_url, clean_answer)
+            clean_answer = re.sub(r'\[([^\]]*)\]\(\s*\)', r'\1', clean_answer)
         clean_answer = re.sub(r'[ \t]+', ' ', clean_answer)
         clean_answer = re.sub(r'\n{3,}', '\n\n', clean_answer).strip()
 
@@ -686,13 +1140,16 @@ class GroundedRAGGenerator:
             elif not valid_citations:
                 fin_refusal_reason = "unsupported_claims_without_citations"
 
-            # Fail closed: do not expose ungrounded / unsupported generated content
-            if not clean_answer.strip() or not valid_citations:
+            # Fail closed: do not expose ungrounded / unsupported generated content for medical queries
+            if not clean_answer.strip() or (not valid_citations and not is_explicit_dev):
                 valid_citations = []
-                clean_answer = (
-                    "The available OncoVision knowledge base provides only limited information "
-                    "on this point, so I cannot make a reliable claim beyond the retrieved evidence."
-                )
+                if fin_refusal_reason == "developer_source_laundering":
+                    clean_answer = DEVELOPER_ATTRIBUTION_REFUSAL_MESSAGE
+                else:
+                    clean_answer = (
+                        "The available OncoVision knowledge base provides only limited information "
+                        "on this point, so I cannot make a reliable claim beyond the retrieved evidence."
+                    )
 
         telemetry.finish(
             grounded=is_grounded,
@@ -710,4 +1167,3 @@ class GroundedRAGGenerator:
             latencies=telemetry.get_latency_breakdown(),
             request_id=telemetry.request_id,
         )
-

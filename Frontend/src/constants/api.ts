@@ -47,7 +47,9 @@ export const API_ENDPOINTS = {
   HEALTH: '/health',
   CHAT: {
     PREDICTION: (predictionId: string) => `/chat/prediction/${predictionId}`,
+    PREDICTION_STREAM: (predictionId: string) => `/chat/prediction/${predictionId}/stream`,
     KNOWLEDGE: '/chat/knowledge',
+    KNOWLEDGE_STREAM: '/chat/knowledge/stream',
     HISTORY: (conversationId: string) => `/chat/history/${conversationId}`,
   },
   SUMMARY: {

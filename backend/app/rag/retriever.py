@@ -31,6 +31,7 @@ from app.rag.classifier import (
     QueryScopeClassifier,
 )
 from app.rag.safety import SafetyEvaluator
+from app.rag.provenance import is_explicit_developer_query
 from app.rag.embeddings import EmbeddingService
 from app.rag.observability import (
     EVENT_RETRIEVAL_COMPLETED,
@@ -252,11 +253,13 @@ class RAGRetriever:
                 )
 
             # 2. Stage 1: Vector Search + SQL Metadata Filtering
+            is_explicit_dev = is_explicit_developer_query(query)
             candidates = await self._retrieve_candidates(
                 query_embedding=query_embedding,
                 query_scope=query_scope,
                 threshold=effective_threshold,
                 pool_size=effective_pool_size,
+                is_explicit_dev=is_explicit_dev,
             )
 
             if not candidates:
@@ -273,6 +276,7 @@ class RAGRetriever:
                         ),
                         threshold=effective_threshold,
                         pool_size=effective_pool_size,
+                        is_explicit_dev=is_explicit_dev,
                     )
 
             if not candidates:
@@ -370,16 +374,25 @@ class RAGRetriever:
         query_scope: QueryScope,
         threshold: float,
         pool_size: int,
+        is_explicit_dev: bool = False,
     ) -> list[tuple[KnowledgeEmbedding, float]]:
         """Query pgvector HNSW index with domain & policy constraints."""
         distance_expr = KnowledgeEmbedding.embedding.cosine_distance(query_embedding)
         similarity_expr = (1.0 - distance_expr).label("similarity")
 
-        # Base filters: Always isolate non-clinical developer/platform info
+        # Base filters: Always isolate non-clinical developer/platform info unless explicitly queried
         filters = [
-            KnowledgeEmbedding.topic.notin_(["developer_info", "platform_info"]),
             similarity_expr >= threshold,
         ]
+        if not is_explicit_dev:
+            filters.extend([
+                KnowledgeEmbedding.topic.notin_(["developer_info", "platform_info"]),
+                KnowledgeEmbedding.domain.notin_(["developer_info", "platform_info"]),
+                KnowledgeEmbedding.source.not_ilike("%developer_info%"),
+                KnowledgeEmbedding.source.not_ilike("%platform_info%"),
+                KnowledgeEmbedding.document_id.not_ilike("%developer%"),
+                KnowledgeEmbedding.document_id.not_ilike("%portfolio%"),
+            ])
 
         # Safety policy isolation: Only retrieve safety policy when specifically needed
         if not query_scope.requires_safety_context and query_scope.domain != QueryDomain.SAFETY_POLICY:

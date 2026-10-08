@@ -23,6 +23,7 @@ export interface ChatMessage {
   content: string;
   sources?: any[];
   created_at: string;
+  isLiveStream?: boolean;
 }
 
 export interface CaseContext {
@@ -47,6 +48,8 @@ export interface ChatPanelProps {
   caseContext?: CaseContext;
   backUrl?: string;
   onBack?: () => void;
+  currentStatus?: { stage: string; message: string } | null;
+  onStop?: () => void;
 }
 
 function getDiseaseBadgeVariant(
@@ -83,6 +86,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   caseContext,
   backUrl,
   onBack,
+  currentStatus,
+  onStop,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
@@ -97,7 +102,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   }, []);
 
-  // Track new assistant messages to stream them smoothly
+  // Track new non-streaming assistant messages to animate them smoothly
   useEffect(() => {
     if (isInitialMountRef.current) {
       messages.forEach((m) => seenMsgIdsRef.current.add(m.id));
@@ -109,7 +114,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     if (
       lastMsg &&
       lastMsg.role === 'assistant' &&
-      !seenMsgIdsRef.current.has(lastMsg.id)
+      !seenMsgIdsRef.current.has(lastMsg.id) &&
+      !lastMsg.isLiveStream
     ) {
       seenMsgIdsRef.current.add(lastMsg.id);
       setStreamingMsgId(lastMsg.id);
@@ -318,7 +324,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                           })
                         : undefined
                     }
-                    isStreaming={streamingMsgId === msg.id}
+                    isStreaming={msg.isLiveStream ? false : streamingMsgId === msg.id}
                     onStreamComplete={() => setStreamingMsgId(null)}
                     onStreamProgress={scrollToBottom}
                   />
@@ -329,16 +335,28 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2.5 bg-surface text-text-primary border border-border px-3.5 py-2.5 rounded-2xl rounded-tl-xs w-fit mt-2 ml-11 shadow-xs"
+                  className="flex items-center justify-between gap-3 bg-surface text-text-primary border border-border px-3.5 py-2.5 rounded-2xl rounded-tl-xs w-fit mt-2 ml-11 shadow-xs max-w-lg"
                   role="status"
                   aria-live="polite"
                 >
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" aria-hidden="true" />
-                  <span className="text-xs font-medium text-text-secondary tracking-wide">
-                    {isCaseDiscussion
-                      ? 'Analyzing model outputs & formulating clinical explanation…'
-                      : 'Retrieving literature evidence & generating response…'}
-                  </span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" aria-hidden="true" />
+                    <span className="text-xs font-medium text-text-secondary tracking-wide">
+                      {currentStatus?.message ||
+                        (isCaseDiscussion
+                          ? 'Analyzing model outputs & formulating clinical explanation…'
+                          : 'Retrieving literature evidence & generating response…')}
+                    </span>
+                  </div>
+                  {onStop && (
+                    <button
+                      onClick={onStop}
+                      type="button"
+                      className="text-[11px] font-semibold text-text-muted hover:text-red-500 transition-colors px-2 py-0.5 rounded border border-border-subtle hover:border-red-400/40 bg-surface-raised cursor-pointer shrink-0 ml-2"
+                    >
+                      Stop
+                    </button>
+                  )}
                 </motion.div>
               )}
             </div>

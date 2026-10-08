@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChatPanel, ChatMessage } from '@/features/chat';
-import { sendPredictionChat, generatePredictionSummary } from '@/api/services/chatService';
+import { streamPredictionChat, generatePredictionSummary } from '@/api/services/chatService';
+import type { StreamStatusEvent, StreamErrorEvent } from '@/types';
 import { usePredictionHistoryDetail } from '@/hooks/queries/usePredictionHistory';
 import { ROUTES } from '@/constants/routes';
 import { toast } from 'sonner';
@@ -19,10 +20,18 @@ export default function PredictionChatPage() {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [language, setLanguage] = useState<'en' | 'bn'>('en');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<StreamStatusEvent | null>(null);
   const [hasFetchedSummary, setHasFetchedSummary] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch underlying case evaluation record for context strip
   const { data: record } = usePredictionHistoryDetail(predictionId);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (!predictionId || hasFetchedSummary) return;
@@ -37,11 +46,12 @@ export default function PredictionChatPage() {
           role: 'assistant',
           content: response.summary_text,
           created_at: new Date().toISOString(),
+          isLiveStream: false,
         };
 
         setMessages([summaryMessage]);
         setHasFetchedSummary(true);
-      } catch (error) {
+      } catch {
         toast.error('Failed to generate initial case summary.');
       } finally {
         setIsLoading(false);
@@ -51,50 +61,158 @@ export default function PredictionChatPage() {
     fetchSummary();
   }, [predictionId, language, hasFetchedSummary]);
 
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+    setCurrentStatus(null);
+  };
+
   const handleSend = async (content: string) => {
     if (!predictionId) return;
 
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content,
+      created_at: new Date().toISOString(),
+    };
+
+    const assistantMsgId = crypto.randomUUID();
+    let accumulatedContent = '';
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+    setCurrentStatus({ stage: 'starting', message: 'Validating case context & query…' });
+
     try {
-      const userMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        content,
-        created_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
-      setIsLoading(true);
-
-      const response = await sendPredictionChat(predictionId, {
-        message: content,
-        conversation_id: conversationId,
-        language,
-      });
-
-      if (response.conversation_id && !conversationId) {
-        setConversationId(response.conversation_id);
-      }
-
-      const assistantMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: response.response,
-        sources: response.sources,
-        created_at: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+      await streamPredictionChat(
+        predictionId,
+        {
+          message: content,
+          conversation_id: conversationId,
+          language,
+        },
+        {
+          onStatus: (status) => {
+            setCurrentStatus(status);
+          },
+          onSources: (sourcesData) => {
+            setMessages((prev) => {
+              const existingIdx = prev.findIndex((m) => m.id === assistantMsgId);
+              if (existingIdx >= 0) {
+                const updated = [...prev];
+                updated[existingIdx] = {
+                  ...updated[existingIdx],
+                  sources: sourcesData.sources,
+                };
+                return updated;
+              }
+              return [
+                ...prev,
+                {
+                  id: assistantMsgId,
+                  role: 'assistant',
+                  content: accumulatedContent,
+                  sources: sourcesData.sources,
+                  created_at: new Date().toISOString(),
+                  isLiveStream: true,
+                },
+              ];
+            });
+          },
+          onDelta: (deltaText) => {
+            accumulatedContent += deltaText;
+            setMessages((prev) => {
+              const existingIdx = prev.findIndex((m) => m.id === assistantMsgId);
+              if (existingIdx >= 0) {
+                const updated = [...prev];
+                updated[existingIdx] = {
+                  ...updated[existingIdx],
+                  content: accumulatedContent,
+                  isLiveStream: true,
+                };
+                return updated;
+              }
+              return [
+                ...prev,
+                {
+                  id: assistantMsgId,
+                  role: 'assistant',
+                  content: accumulatedContent,
+                  created_at: new Date().toISOString(),
+                  isLiveStream: true,
+                },
+              ];
+            });
+          },
+          onDone: (doneData) => {
+            if (doneData.conversation_id && !conversationId) {
+              setConversationId(doneData.conversation_id);
+            }
+            setCurrentStatus(null);
+            setIsLoading(false);
+          },
+          onError: (err: StreamErrorEvent) => {
+            if (err.error_type === 'cancelled') {
+              toast.info('Generation cancelled.');
+              setMessages((prev) =>
+                prev.filter((m) => m.id !== assistantMsgId || m.content.trim().length > 0),
+              );
+            } else {
+              const errText = err.message || 'Case discussion assistant encountered an error.';
+              toast.error(errText);
+              setMessages((prev) => {
+                const existingIdx = prev.findIndex((m) => m.id === assistantMsgId);
+                if (existingIdx >= 0) {
+                  const updated = [...prev];
+                  updated[existingIdx] = {
+                    ...updated[existingIdx],
+                    content: accumulatedContent
+                      ? `${accumulatedContent}\n\n[${errText}]`
+                      : errText,
+                    isLiveStream: false,
+                  };
+                  return updated;
+                }
+                return [
+                  ...prev,
+                  {
+                    id: assistantMsgId,
+                    role: 'assistant',
+                    content: errText,
+                    created_at: new Date().toISOString(),
+                    isLiveStream: false,
+                  },
+                ];
+              });
+            }
+            setCurrentStatus(null);
+            setIsLoading(false);
+          },
+        },
+        abortController.signal,
+      );
     } catch (error: any) {
-      const errText = error?.message || 'Case discussion assistant encountered an error. Please retry.';
-      toast.error(errText);
-      const errorMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: errText,
-        created_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      if (error?.name === 'AbortError') {
+        toast.info('Generation cancelled.');
+      } else {
+        const errText =
+          error?.message || 'Case discussion assistant encountered an error. Please retry.';
+        toast.error(errText);
+      }
     } finally {
       setIsLoading(false);
+      setCurrentStatus(null);
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -113,6 +231,8 @@ export default function PredictionChatPage() {
         messages={messages}
         onSend={handleSend}
         isLoading={isLoading}
+        currentStatus={currentStatus}
+        onStop={handleStop}
         title={predictionId ? `Case Discussion: #${predictionId.slice(0, 8)}` : 'Case Discussion'}
         subtitle="Report-scoped discussion grounded in computational pathology evaluation"
         language={language}

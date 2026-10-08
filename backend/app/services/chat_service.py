@@ -8,10 +8,12 @@ via ``ChatRepository.count_user_messages_in_window``.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import re
 import uuid
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +33,7 @@ from app.rag.classifier import QueryScopeClassifier
 from app.rag.embeddings import EmbeddingService
 from app.rag.generator import GroundedRAGGenerator
 from app.rag.observability import RAGTelemetryContext
+from app.rag.provenance import is_explicit_developer_query, is_meta_source_query
 from app.rag.retriever import RAGRetriever, RetrievedContext
 from app.rag.schemas import GroundedAnswer
 from app.repositories.chat_repository import ChatRepository
@@ -139,18 +142,20 @@ class ChatService:
                 predicted_class=prediction.predicted_class,
                 confidence=prediction.confidence or 0.0,
                 agreement_ratio=prediction.agreement_ratio or 0.0,
-                participating_models=[],
+                participating_models=0,
                 successful_models=[],
                 failed_models=[],
             )
 
         # Build chat history string with rollback safety
         chat_history = ""
+        past_user_msgs: list[str] = []
         try:
             history_records = await self.repo.get_conversation(conv_id, user_id=user_id, limit=20)
             chat_history = "\n".join(
                 f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
             )
+            past_user_msgs = [m.content for m in history_records if m.role == "user" and m.content != message]
         except Exception as e:
             logger.warning("Failed to fetch chat history: %s", e)
             try:
@@ -184,7 +189,14 @@ class ChatService:
                     classifier=self.classifier,
                     safety_evaluator=self.generator.safety,
                 )
-                retrieval_query = f"{prediction.predicted_class} histopathology {message}"
+                if is_meta_source_query(message):
+                    if past_user_msgs:
+                        retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria {past_user_msgs[-1]}"
+                    else:
+                        retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria morphology classification"
+                else:
+                    retrieval_query = f"{prediction.predicted_class} histopathology {message}"
+
                 retrieved_context = await retriever.retrieve_context(
                     query=retrieval_query,
                     top_k=settings.RAG_TOP_K,
@@ -324,22 +336,37 @@ class ChatService:
             except Exception:
                 pass
 
-        # Context-aware RAG retrieval query for multi-turn follow-ups
-        retrieval_query = message
-        lower_msg = message.lower()
-        needs_context = (
-            len(message.split()) <= 6
-            or any(kw in lower_msg for kw in ["him", "his", "he", "developer", "creator", "contact", "email", "github", "linkedin", "portfolio", "reach", "provide", "give", "who", "it", "they"])
-        )
-        if needs_context and last_user_query:
-            retrieval_query = f"{last_user_query} {message}"
+        # Context-aware RAG retrieval query for multi-turn follow-ups and meta-source inquiries
+        if is_meta_source_query(message):
+            if last_user_query:
+                retrieval_query = last_user_query
+            else:
+                retrieval_query = ""
+        elif is_explicit_developer_query(message):
+            retrieval_query = message
+        else:
+            retrieval_query = message
+            lower_msg = message.lower()
+            needs_context = (
+                len(message.split()) <= 6
+                or any(kw in lower_msg for kw in ["him", "his", "he", "reach", "provide", "give", "it", "they"])
+            )
+            if needs_context and last_user_query:
+                retrieval_query = f"{last_user_query} {message}"
 
         # Check deterministic safety boundary before retrieval (Phase 5.3)
         pre_safety = self.generator.safety.evaluate_query(message, has_prediction=False)
         retrieved_context: RetrievedContext | None = None
 
-        if pre_safety.requires_deterministic_refusal:
-            scope = self.classifier.classify(retrieval_query)
+        if is_meta_source_query(message) and not last_user_query:
+            scope = self.classifier.classify(message)
+            retrieved_context = RetrievedContext(
+                chunks=[],
+                query_scope=scope,
+                reason="no_previous_medical_context",
+            )
+        elif pre_safety.requires_deterministic_refusal:
+            scope = self.classifier.classify(retrieval_query or message)
             retrieved_context = RetrievedContext(
                 chunks=[],
                 query_scope=scope,
@@ -435,4 +462,597 @@ class ChatService:
             "request_id": telemetry.request_id,
         }
 
+    # ------------------------------------------------------------------
+    # Streaming endpoints implementation (Two-Phase Verified SSE)
+    # ------------------------------------------------------------------
 
+    async def stream_prediction_chat(
+        self,
+        user_id: uuid.UUID,
+        prediction_id: uuid.UUID,
+        message: str,
+        conversation_id: uuid.UUID | None,
+        language: str = "en",
+        request_id: str | None = None,
+        raw_request: Any | None = None,
+    ) -> AsyncGenerator[dict[str, str], None]:
+        """Stream a prediction chat response via Two-Phase Verified SSE."""
+        telemetry = RAGTelemetryContext(
+            request_id=request_id,
+            chat_type="prediction",
+            query=message,
+            language=language,
+        )
+
+        try:
+            await self._check_rate_limit(user_id)
+        except ValueError as e:
+            yield {
+                "event": "error",
+                "data": json.dumps({"code": "rate_limit_exceeded", "message": str(e)}),
+            }
+            return
+
+        stmt = select(PredictionHistoryRecord).where(
+            or_(
+                PredictionHistoryRecord.id == prediction_id,
+                PredictionHistoryRecord.request_id == str(prediction_id),
+            ),
+            PredictionHistoryRecord.user_id == user_id,
+        )
+        result = await self.session.execute(stmt)
+        prediction = result.scalar_one_or_none()
+        if prediction is None:
+            yield {
+                "event": "error",
+                "data": json.dumps({"code": "not_found", "message": "Prediction not found or access denied."}),
+            }
+            return
+
+        if conversation_id is not None:
+            conv_meta = await self.repo.get_conversation_metadata(conversation_id)
+            if (
+                conv_meta is None
+                or conv_meta["user_id"] != user_id
+                or conv_meta["chat_type"] != "prediction"
+                or conv_meta["prediction_id"] != prediction.id
+            ):
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"code": "access_denied", "message": "Conversation not found or access denied."}),
+                }
+                return
+            conv_id = conversation_id
+        else:
+            conv_id = uuid.uuid4()
+
+        # Persist user message
+        user_msg = ChatMessage(
+            conversation_id=conv_id,
+            user_id=user_id,
+            prediction_id=prediction.id,
+            role="user",
+            content=message,
+            chat_type="prediction",
+        )
+        await self.repo.create(user_msg)
+
+        # 1. Starting event
+        yield {
+            "event": "status",
+            "data": json.dumps({"stage": "starting", "message": "Initializing case discussion session..."}),
+        }
+
+        if raw_request and await raw_request.is_disconnected():
+            logger.info("Client disconnected early in stream_prediction_chat.")
+            return
+
+        pred_summary: PredictionHistorySummary | None = None
+        if prediction.summary and isinstance(prediction.summary, dict):
+            try:
+                pred_summary = PredictionHistorySummary.model_validate(prediction.summary)
+            except Exception as pe:
+                logger.debug("Could not parse prediction.summary: %s", pe)
+
+        if pred_summary is None:
+            pred_summary = PredictionHistorySummary(
+                predicted_class=prediction.predicted_class,
+                confidence=prediction.confidence or 0.0,
+                agreement_ratio=prediction.agreement_ratio or 0.0,
+                participating_models=0,
+                successful_models=[],
+                failed_models=[],
+            )
+
+        chat_history = ""
+        past_user_msgs: list[str] = []
+        try:
+            history_records = await self.repo.get_conversation(conv_id, user_id=user_id, limit=20)
+            chat_history = "\n".join(
+                f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
+            )
+            past_user_msgs = [m.content for m in history_records if m.role == "user" and m.content != message]
+        except Exception as e:
+            logger.warning("Failed to fetch chat history: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
+
+        pre_safety = self.generator.safety.evaluate_query(message, has_prediction=True)
+        retrieved_context: RetrievedContext | None = None
+
+        if pre_safety.requires_deterministic_refusal:
+            scope = self.classifier.classify(message)
+            retrieved_context = RetrievedContext(
+                chunks=[],
+                query_scope=scope,
+                reason="safety_refusal",
+            )
+        else:
+            yield {
+                "event": "status",
+                "data": json.dumps({"stage": "retrieving", "message": "Retrieving clinical evidence for this specimen..."}),
+            }
+            try:
+                embedding_service = EmbeddingService(
+                    get_gemini_client(
+                        api_key=settings.GOOGLE_API_KEY,
+                        model_name=settings.LLM_MODEL,
+                    )
+                )
+                retriever = RAGRetriever(
+                    session=self.session,
+                    embedding_service=embedding_service,
+                    classifier=self.classifier,
+                    safety_evaluator=self.generator.safety,
+                )
+                if is_meta_source_query(message):
+                    if past_user_msgs:
+                        retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria {past_user_msgs[-1]}"
+                    else:
+                        retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria morphology classification"
+                else:
+                    retrieval_query = f"{prediction.predicted_class} histopathology {message}"
+
+                retrieved_context = await retriever.retrieve_context(
+                    query=retrieval_query,
+                    top_k=settings.RAG_TOP_K,
+                    similarity_threshold=settings.RAG_SIMILARITY_THRESHOLD,
+                    telemetry=telemetry,
+                )
+            except Exception as re_err:
+                logger.warning("Knowledge retrieval failed for stream prediction chat: %s", re_err)
+                scope = self.classifier.classify(message)
+                retrieved_context = RetrievedContext(
+                    chunks=[],
+                    query_scope=scope,
+                    reason="retrieval_exception",
+                )
+
+        # 2. Emit sources event
+        sources_payload = [
+            {
+                "source_id": f"S{i+1}",
+                "title": doc.source_title or doc.topic,
+                "source": doc.source,
+                "relevance": round(doc.similarity, 4),
+                "url": doc.source_url,
+                "tier": doc.source_tier,
+                "citation": doc.citation,
+                "document_title": doc.document_title,
+            }
+            for i, doc in enumerate(retrieved_context.chunks)
+        ]
+        yield {
+            "event": "sources",
+            "data": json.dumps({"sources": sources_payload}),
+        }
+
+        # 3. Synthesizing event
+        yield {
+            "event": "status",
+            "data": json.dumps({"stage": "synthesizing", "message": "Synthesizing grounded explanation with citation verification..."}),
+        }
+
+        try:
+            grounded_answer = await self.generator.generate_grounded_stream(
+                query=message,
+                context=retrieved_context,
+                prediction_summary=pred_summary,
+                chat_history=chat_history,
+                language=language,
+                telemetry=telemetry,
+                raw_request=raw_request,
+            )
+        except asyncio.CancelledError:
+            logger.info("Generation cancelled during stream_prediction_chat.")
+            yield {
+                "event": "error",
+                "data": json.dumps({"error_type": "cancelled", "code": "cancelled", "message": "Generation was cancelled."}),
+            }
+            return
+        except TimeoutError:
+            logger.warning("Generation timed out during stream_prediction_chat.")
+            yield {
+                "event": "error",
+                "data": json.dumps({"error_type": "generation_timeout", "code": "generation_timeout", "message": "The medical AI service timed out while generating a response. Please try again."}),
+            }
+            return
+        except Exception as gen_err:
+            logger.error("Error during generate_grounded_stream: %s", gen_err, exc_info=True)
+            yield {
+                "event": "error",
+                "data": json.dumps({"error_type": "server_error", "code": "server_error", "message": "An error occurred while generating the explanation."}),
+            }
+            return
+
+        if raw_request and await raw_request.is_disconnected():
+            logger.info("Client disconnected before persistence in stream_prediction_chat.")
+            return
+
+        # 4. Validating event
+        yield {
+            "event": "status",
+            "data": json.dumps({"stage": "validating", "message": "Validating clinical boundaries and citations..."}),
+        }
+
+        sources = [
+            {
+                "title": doc.source_title or doc.topic,
+                "source": doc.source,
+                "relevance": round(doc.similarity, 4),
+                "url": doc.source_url,
+                "tier": doc.source_tier,
+                "citation": doc.citation,
+                "document_title": doc.document_title,
+            }
+            for doc in retrieved_context.chunks
+        ] if grounded_answer.grounded else []
+
+        # 5. Persist assistant message ONLY after successful validation
+        try:
+            assistant_msg = ChatMessage(
+                conversation_id=conv_id,
+                user_id=user_id,
+                prediction_id=prediction.id,
+                role="assistant",
+                content=grounded_answer.answer,
+                chat_type="prediction",
+                sources={"sources": sources, "citations": [c.model_dump() for c in grounded_answer.citations]},
+            )
+            await self.repo.create(assistant_msg)
+        except Exception as pe:
+            logger.warning("Failed to persist assistant message in stream_prediction_chat: %s", pe)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
+
+        # 6. Completed status event
+        yield {
+            "event": "status",
+            "data": json.dumps({"stage": "completed", "message": "Clinical verification complete."}),
+        }
+
+        # 7. Emit validated deltas
+        words = re.findall(r'\S+\s*', grounded_answer.answer)
+        if not words:
+            yield {"event": "delta", "data": json.dumps({"text": grounded_answer.answer})}
+        else:
+            batch_size = 4
+            for i in range(0, len(words), batch_size):
+                if raw_request and await raw_request.is_disconnected():
+                    return
+                chunk_text = "".join(words[i : i + batch_size])
+                yield {"event": "delta", "data": json.dumps({"text": chunk_text})}
+                await asyncio.sleep(0.015)
+
+        scope_dict = None
+        if grounded_answer.scope:
+            scope_dict = {
+                "domain": grounded_answer.scope.domain.value if grounded_answer.scope.domain else None,
+                "intent": grounded_answer.scope.intent.value,
+                "class_scopes": [cs.value for cs in grounded_answer.scope.class_scopes],
+            }
+
+        # 8. Done event with complete verified response metadata
+        yield {
+            "event": "done",
+            "data": json.dumps({
+                "conversation_id": str(conv_id),
+                "sources": sources,
+                "citations": [c.model_dump() for c in grounded_answer.citations],
+                "grounded": grounded_answer.grounded,
+                "scope": scope_dict,
+                "disclaimer": grounded_answer.disclaimer,
+                "request_id": telemetry.request_id,
+            }),
+        }
+
+    async def stream_knowledge_chat(
+        self,
+        user_id: uuid.UUID,
+        message: str,
+        conversation_id: uuid.UUID | None,
+        language: str = "en",
+        request_id: str | None = None,
+        raw_request: Any | None = None,
+    ) -> AsyncGenerator[dict[str, str], None]:
+        """Stream a knowledge chat response via Two-Phase Verified SSE."""
+        telemetry = RAGTelemetryContext(
+            request_id=request_id,
+            chat_type="knowledge",
+            query=message,
+            language=language,
+        )
+
+        try:
+            await self._check_rate_limit(user_id)
+        except ValueError as e:
+            yield {
+                "event": "error",
+                "data": json.dumps({"code": "rate_limit_exceeded", "message": str(e)}),
+            }
+            return
+
+        if conversation_id is not None:
+            conv_meta = await self.repo.get_conversation_metadata(conversation_id)
+            if (
+                conv_meta is None
+                or conv_meta["user_id"] != user_id
+                or conv_meta["chat_type"] != "knowledge"
+            ):
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"code": "access_denied", "message": "Conversation not found or access denied."}),
+                }
+                return
+            conv_id = conversation_id
+        else:
+            conv_id = uuid.uuid4()
+
+        # Persist user message
+        user_msg = ChatMessage(
+            conversation_id=conv_id,
+            user_id=user_id,
+            prediction_id=None,
+            role="user",
+            content=message,
+            chat_type="knowledge",
+        )
+        await self.repo.create(user_msg)
+
+        # 1. Starting event
+        yield {
+            "event": "status",
+            "data": json.dumps({"stage": "starting", "message": "Initializing knowledge chat session..."}),
+        }
+
+        if raw_request and await raw_request.is_disconnected():
+            logger.info("Client disconnected early in stream_knowledge_chat.")
+            return
+
+        chat_history = ""
+        last_user_query = ""
+        try:
+            history_records = await self.repo.get_conversation(conv_id, user_id=user_id, limit=8)
+            if history_records:
+                chat_history = "\n".join(
+                    f"{msg.role.capitalize()}: {msg.content}" for msg in history_records
+                )
+                past_user_msgs = [m.content for m in history_records if m.role == "user" and m.content != message]
+                if past_user_msgs:
+                    last_user_query = past_user_msgs[-1]
+        except Exception as e:
+            logger.warning("Failed to fetch chat history: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
+
+        if is_meta_source_query(message):
+            if last_user_query:
+                retrieval_query = last_user_query
+            else:
+                retrieval_query = ""
+        elif is_explicit_developer_query(message):
+            retrieval_query = message
+        else:
+            retrieval_query = message
+            lower_msg = message.lower()
+            needs_context = (
+                len(message.split()) <= 6
+                or any(kw in lower_msg for kw in ["him", "his", "he", "reach", "provide", "give", "it", "they"])
+            )
+            if needs_context and last_user_query:
+                retrieval_query = f"{last_user_query} {message}"
+
+        pre_safety = self.generator.safety.evaluate_query(message, has_prediction=False)
+        retrieved_context: RetrievedContext | None = None
+
+        if is_meta_source_query(message) and not last_user_query:
+            scope = self.classifier.classify(message)
+            retrieved_context = RetrievedContext(
+                chunks=[],
+                query_scope=scope,
+                reason="no_previous_medical_context",
+            )
+        elif pre_safety.requires_deterministic_refusal:
+            scope = self.classifier.classify(retrieval_query or message)
+            retrieved_context = RetrievedContext(
+                chunks=[],
+                query_scope=scope,
+                reason="safety_refusal",
+            )
+        else:
+            yield {
+                "event": "status",
+                "data": json.dumps({"stage": "retrieving", "message": "Retrieving clinical evidence from knowledge base..."}),
+            }
+            try:
+                embedding_service = EmbeddingService(
+                    get_gemini_client(
+                        api_key=settings.GOOGLE_API_KEY,
+                        model_name=settings.LLM_MODEL,
+                    )
+                )
+                retriever = RAGRetriever(
+                    session=self.session,
+                    embedding_service=embedding_service,
+                    classifier=self.classifier,
+                    safety_evaluator=self.generator.safety,
+                )
+                retrieved_context = await retriever.retrieve_context(
+                    query=retrieval_query,
+                    top_k=settings.RAG_TOP_K,
+                    similarity_threshold=settings.RAG_SIMILARITY_THRESHOLD,
+                    telemetry=telemetry,
+                )
+            except Exception as e:
+                logger.warning("RAG retrieval failed for stream knowledge chat: %s", e)
+                scope = self.classifier.classify(retrieval_query)
+                retrieved_context = RetrievedContext(
+                    chunks=[],
+                    query_scope=scope,
+                    reason="retrieval_exception",
+                )
+
+        # 2. Emit sources event
+        sources_payload = [
+            {
+                "source_id": f"S{i+1}",
+                "title": doc.source_title or doc.topic,
+                "source": doc.source,
+                "relevance": round(doc.similarity, 4),
+                "url": doc.source_url,
+                "tier": doc.source_tier,
+                "citation": doc.citation,
+                "document_title": doc.document_title,
+            }
+            for i, doc in enumerate(retrieved_context.chunks)
+        ]
+        yield {
+            "event": "sources",
+            "data": json.dumps({"sources": sources_payload}),
+        }
+
+        # 3. Synthesizing event
+        yield {
+            "event": "status",
+            "data": json.dumps({"stage": "synthesizing", "message": "Synthesizing grounded explanation with citation verification..."}),
+        }
+
+        try:
+            grounded_answer = await self.generator.generate_grounded_stream(
+                query=message,
+                context=retrieved_context,
+                chat_history=chat_history,
+                language=language,
+                telemetry=telemetry,
+                raw_request=raw_request,
+            )
+        except asyncio.CancelledError:
+            logger.info("Generation cancelled during stream_knowledge_chat.")
+            yield {
+                "event": "error",
+                "data": json.dumps({"error_type": "cancelled", "code": "cancelled", "message": "Generation was cancelled."}),
+            }
+            return
+        except TimeoutError:
+            logger.warning("Generation timed out during stream_knowledge_chat.")
+            yield {
+                "event": "error",
+                "data": json.dumps({"error_type": "generation_timeout", "code": "generation_timeout", "message": "The medical AI service timed out while generating a response. Please try again."}),
+            }
+            return
+        except Exception as gen_err:
+            logger.error("Error during generate_grounded_stream: %s", gen_err, exc_info=True)
+            yield {
+                "event": "error",
+                "data": json.dumps({"error_type": "server_error", "code": "server_error", "message": "An error occurred while generating the explanation."}),
+            }
+            return
+
+        if raw_request and await raw_request.is_disconnected():
+            logger.info("Client disconnected before persistence in stream_knowledge_chat.")
+            return
+
+        # 4. Validating event
+        yield {
+            "event": "status",
+            "data": json.dumps({"stage": "validating", "message": "Validating clinical boundaries and citations..."}),
+        }
+
+        sources = [
+            {
+                "title": doc.source_title or doc.topic,
+                "source": doc.source,
+                "relevance": round(doc.similarity, 4),
+                "url": doc.source_url,
+                "tier": doc.source_tier,
+                "citation": doc.citation,
+                "document_title": doc.document_title,
+            }
+            for doc in retrieved_context.chunks
+        ] if grounded_answer.grounded else []
+
+        # 5. Persist assistant message ONLY after successful validation
+        try:
+            assistant_msg = ChatMessage(
+                conversation_id=conv_id,
+                user_id=user_id,
+                prediction_id=None,
+                role="assistant",
+                content=grounded_answer.answer,
+                chat_type="knowledge",
+                sources={"sources": sources, "citations": [c.model_dump() for c in grounded_answer.citations]},
+            )
+            await self.repo.create(assistant_msg)
+        except Exception as e:
+            logger.warning("Failed to persist assistant response in stream_knowledge_chat: %s", e)
+            try:
+                await self.session.rollback()
+            except Exception:
+                pass
+
+        # 6. Completed status event
+        yield {
+            "event": "status",
+            "data": json.dumps({"stage": "completed", "message": "Clinical verification complete."}),
+        }
+
+        # 7. Emit validated deltas
+        words = re.findall(r'\S+\s*', grounded_answer.answer)
+        if not words:
+            yield {"event": "delta", "data": json.dumps({"text": grounded_answer.answer})}
+        else:
+            batch_size = 4
+            for i in range(0, len(words), batch_size):
+                if raw_request and await raw_request.is_disconnected():
+                    return
+                chunk_text = "".join(words[i : i + batch_size])
+                yield {"event": "delta", "data": json.dumps({"text": chunk_text})}
+                await asyncio.sleep(0.015)
+
+        scope_dict = None
+        if grounded_answer.scope:
+            scope_dict = {
+                "domain": grounded_answer.scope.domain.value if grounded_answer.scope.domain else None,
+                "intent": grounded_answer.scope.intent.value,
+                "class_scopes": [cs.value for cs in grounded_answer.scope.class_scopes],
+            }
+
+        # 8. Done event with complete verified response metadata
+        yield {
+            "event": "done",
+            "data": json.dumps({
+                "conversation_id": str(conv_id),
+                "sources": sources,
+                "citations": [c.model_dump() for c in grounded_answer.citations],
+                "grounded": grounded_answer.grounded,
+                "scope": scope_dict,
+                "disclaimer": grounded_answer.disclaimer,
+                "request_id": telemetry.request_id,
+            }),
+        }
