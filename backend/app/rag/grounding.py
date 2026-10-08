@@ -230,11 +230,12 @@ class GroundingEvaluator:
             and query_scope.intent == QueryIntent.GENERAL_KNOWLEDGE
         )
 
-        min_required_threshold = (
-            self.settings.RAG_STRONG_GROUNDING_SIMILARITY
-            if is_unclassified_query
-            else self.settings.RAG_MIN_GROUNDING_SIMILARITY
-        )
+        if is_dev_query:
+            min_required_threshold = self.settings.RAG_SIMILARITY_THRESHOLD
+        elif is_unclassified_query:
+            min_required_threshold = self.settings.RAG_STRONG_GROUNDING_SIMILARITY
+        else:
+            min_required_threshold = self.settings.RAG_MIN_GROUNDING_SIMILARITY
 
         if top_sim < min_required_threshold:
             reason = "out_of_domain_query" if is_unclassified_query else "insufficient_similarity"
