@@ -525,6 +525,30 @@ class GroundedRAGGenerator:
         telemetry.top_similarity = grounding_decision.top_similarity
         telemetry.mean_similarity = grounding_decision.mean_similarity
 
+        if grounding_decision.decision_reason == "conversational_greeting":
+            is_bn = bool(re.search(r"[\u0980-\u09FF]", query))
+            greeting_text = (
+                "হ্যালো! আমি অনকোভিশন ক্লিনিক্যাল এআই সহকারী (OncoVision Clinical Assistant)। "
+                "আমি ফুসফুস ও কোলন ক্যান্সারের হিস্টোপ্যাথলজিক্যাল প্যাটার্ন, টিস্যু ক্লাসিফিকেশন এবং প্যাথলজি সংক্রান্ত তথ্য প্রদানে সাহায্য করতে পারি। "
+                "আজ আপনাকে কীভাবে সাহায্য করতে পারি?"
+                if is_bn
+                else
+                "Hello! I am OncoVision's Clinical Knowledge Assistant. I specialize in histopathological "
+                "analysis and educational evidence for lung and colon tissue classifications. "
+                "How can I assist you with clinical knowledge or pathology characteristics today?"
+            )
+            telemetry.finish(grounded=True, citations=0, refusal_reason=None)
+            return GroundedAnswer(
+                answer=greeting_text,
+                citations=[],
+                grounded=True,
+                refusal_reason=None,
+                scope=context.query_scope,
+                latency_ms=telemetry.total_latency_ms,
+                latencies=telemetry.get_latency_breakdown(),
+                request_id=telemetry.request_id,
+            )
+
         if not grounding_decision.is_eligible:
             if grounding_decision.decision_reason == "empty_retrieval":
                 if is_meta_source_query(query):
@@ -794,6 +818,30 @@ class GroundedRAGGenerator:
         telemetry.grounding_ms = round((time.perf_counter() - g_start) * 1000, 2)
         telemetry.top_similarity = grounding_decision.top_similarity
         telemetry.mean_similarity = grounding_decision.mean_similarity
+
+        if grounding_decision.decision_reason == "conversational_greeting":
+            is_bn = bool(re.search(r"[\u0980-\u09FF]", query))
+            greeting_text = (
+                "হ্যালো! আমি অনকোভিশন ক্লিনিক্যাল এআই সহকারী (OncoVision Clinical Assistant)। "
+                "আমি ফুসফুস ও কোলন ক্যান্সারের হিস্টোপ্যাথলজিক্যাল প্যাটার্ন, টিস্যু ক্লাসিফিকেশন এবং প্যাথলজি সংক্রান্ত তথ্য প্রদানে সাহায্য করতে পারি। "
+                "আজ আপনাকে কীভাবে সাহায্য করতে পারি?"
+                if is_bn
+                else
+                "Hello! I am OncoVision's Clinical Knowledge Assistant. I specialize in histopathological "
+                "analysis and educational evidence for lung and colon tissue classifications. "
+                "How can I assist you with clinical knowledge or pathology characteristics today?"
+            )
+            telemetry.finish(grounded=True, citations=0, refusal_reason=None)
+            return GroundedAnswer(
+                answer=greeting_text,
+                citations=[],
+                grounded=True,
+                refusal_reason=None,
+                scope=context.query_scope,
+                latency_ms=telemetry.total_latency_ms,
+                latencies=telemetry.get_latency_breakdown(),
+                request_id=telemetry.request_id,
+            )
 
         if not grounding_decision.is_eligible:
             if grounding_decision.decision_reason == "empty_retrieval":
@@ -1127,7 +1175,7 @@ class GroundedRAGGenerator:
         # -------------------------------------------------------------
         is_grounded = bool(
             grounding_decision.is_eligible
-            and valid_citations
+            and (valid_citations or is_explicit_dev)
             and len(clean_answer.strip()) > 0
         )
 

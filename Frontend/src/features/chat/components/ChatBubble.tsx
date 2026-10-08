@@ -7,6 +7,8 @@ export interface ChatBubbleSource {
   title: string;
   source: string;
   relevance: number;
+  url?: string;
+  document_title?: string;
 }
 
 export interface ChatBubbleProps {
@@ -261,27 +263,42 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {sources.map((source, idx) => (
-                      <a
-                        key={idx}
-                        href={source.source}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group inline-flex items-center gap-1.5 text-xs bg-surface hover:bg-surface-raised text-text-primary border border-border hover:border-primary/40 px-2.5 py-1.5 rounded-lg transition-colors shadow-2xs"
-                        aria-label={`Source reference: ${source.title} (${source.source})`}
-                      >
-                        <span className="font-mono text-[10px] text-primary font-bold">[{idx + 1}]</span>
-                        <span className="truncate max-w-[220px] text-[11px] font-medium text-text-primary group-hover:text-primary transition-colors">
-                          {source.title}
-                        </span>
-                        {source.relevance != null && (
-                          <span className="font-mono text-[10px] tabular-nums text-text-muted">
-                            ({Math.round(source.relevance * 100)}%)
+                    {sources.map((source, idx) => {
+                      const getSourceUrl = (): string => {
+                        if (source.url && (source.url.startsWith('http://') || source.url.startsWith('https://'))) {
+                          return source.url;
+                        }
+                        const cleanPath = (source.source || '').replace(/\\/g, '/');
+                        if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+                          return cleanPath;
+                        }
+                        return `https://github.com/mahfujr403/OncoVision/blob/main/${cleanPath}`;
+                      };
+
+                      const displayTitle = source.document_title || (source.title ? source.title.replace(/_/g, ' ') : 'Medical Evidence');
+
+                      return (
+                        <a
+                          key={idx}
+                          href={getSourceUrl()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group inline-flex items-center gap-1.5 text-xs bg-surface hover:bg-surface-raised text-text-primary border border-border hover:border-primary/40 px-2.5 py-1.5 rounded-lg transition-colors shadow-2xs"
+                          aria-label={`Source reference: ${displayTitle} (${source.source})`}
+                        >
+                          <span className="font-mono text-[10px] text-primary font-bold">[{idx + 1}]</span>
+                          <span className="truncate max-w-[220px] text-[11px] font-medium text-text-primary group-hover:text-primary transition-colors capitalize">
+                            {displayTitle}
                           </span>
-                        )}
-                        <ExternalLink size={10} className="text-text-muted group-hover:text-primary transition-colors shrink-0" />
-                      </a>
-                    ))}
+                          {source.relevance != null && (
+                            <span className="font-mono text-[10px] tabular-nums text-text-muted">
+                              ({Math.round(source.relevance * 100)}%)
+                            </span>
+                          )}
+                          <ExternalLink size={10} className="text-text-muted group-hover:text-primary transition-colors shrink-0" />
+                        </a>
+                      );
+                    })}
                   </div>
                 </div>
               )}

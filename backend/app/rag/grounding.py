@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.settings import Settings, get_settings
 from app.rag.classifier import ClassScope, QueryDomain, QueryIntent, QueryScope
+from app.rag.provenance import is_explicit_developer_query
 from app.rag.retriever import RetrievedContext
 from app.rag.safety import SafetyEvaluation
 
@@ -138,6 +139,16 @@ class GroundingEvaluator:
             "clinical_explanation",
             "safety_policy",
         },
+        QueryDomain.DEVELOPER_INFO: {
+            "developer_info",
+            "platform_info",
+            "classifier_context",
+        },
+        QueryDomain.PLATFORM_INFO: {
+            "platform_info",
+            "developer_info",
+            "classifier_context",
+        },
     }
 
     def __init__(self, settings: Settings | None = None) -> None:
@@ -150,6 +161,24 @@ class GroundingEvaluator:
         safety_eval: SafetyEvaluation | None = None,
     ) -> GroundingDecision:
         """Evaluate retrieval relevance and return a deterministic GroundingDecision."""
+        # 0. Gate: Conversational Greetings & Assistant Identity
+        query_scope = context.query_scope or QueryScope(
+            domain=None,
+            confidence=0.0,
+            intent=QueryIntent.GENERAL_KNOWLEDGE,
+        )
+        if query_scope.intent == QueryIntent.CONVERSATIONAL:
+            return GroundingDecision(
+                is_eligible=True,
+                decision_reason="conversational_greeting",
+                top_similarity=1.0,
+                mean_similarity=1.0,
+                domain_compatible=True,
+                class_compatible=True,
+                threshold_applied=0.0,
+                details={"gate": "conversational_greeting"},
+            )
+
         # 1. Gate: Pre-generation Safety Refusal
         if safety_eval and safety_eval.requires_deterministic_refusal:
             reason = safety_eval.boundary.value if safety_eval.boundary else "safety_refusal"
@@ -187,21 +216,17 @@ class GroundingEvaluator:
         top_sim = max(sims) if sims else 0.0
         mean_sim = (sum(sims) / len(sims)) if sims else 0.0
 
-        query_scope = context.query_scope or QueryScope(
-            domain=None,
-            confidence=0.0,
-            intent=QueryIntent.GENERAL_KNOWLEDGE,
-        )
-
         # 3. Gate: Unclassified / Out-of-Domain Query Gate
         # If the query had no medical domain, no explicit class match, and no safety context,
         # it is an out-of-scope non-medical question (e.g. recipes, programming, math, capital cities).
         # In a dense vector space, background similarities for such queries hover around 0.55-0.65.
         # They must be evaluated against the strict strong grounding threshold (default 0.82).
+        is_dev_query = is_explicit_developer_query(query)
         is_unclassified_query = (
             query_scope.domain is None
             and not query_scope.requires_safety_context
             and not query_scope.class_scopes
+            and not is_dev_query
             and query_scope.intent == QueryIntent.GENERAL_KNOWLEDGE
         )
 
@@ -231,7 +256,7 @@ class GroundingEvaluator:
 
         # 4. Gate: Domain Compatibility Check
         domain_compatible = True
-        if query_scope.domain is not None:
+        if query_scope.domain is not None and not is_dev_query:
             allowed_chunk_domains = self._DOMAIN_COMPATIBILITY_MAP.get(query_scope.domain, set())
             retrieved_domains = {c.domain for c in context.chunks if c.domain}
             if allowed_chunk_domains and not (retrieved_domains & allowed_chunk_domains):

@@ -12,6 +12,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from app.rag.provenance import is_explicit_developer_query
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +28,8 @@ class QueryDomain(str, Enum):
     CLINICAL_EXPLANATION = "clinical_explanation"
     CLASSIFIER_CONTEXT = "classifier_context"
     SAFETY_POLICY = "safety_policy"
+    DEVELOPER_INFO = "developer_info"
+    PLATFORM_INFO = "platform_info"
 
 
 class ClassScope(str, Enum):
@@ -51,6 +55,7 @@ class QueryIntent(str, Enum):
     TREATMENT = "treatment"
     CLASSIFIER_EXPLANATION = "classifier_explanation"
     SAFETY_BOUNDARY = "safety_boundary"
+    CONVERSATIONAL = "conversational"
 
 
 class QueryScope(BaseModel):
@@ -150,12 +155,27 @@ class QueryScopeClassifier:
 
     def _detect_intent(self, q: str, requires_safety: bool) -> QueryIntent:
         """Classify retrieval question intent."""
+        # Conversational greetings & assistant identity
+        conversational_patterns = [
+            r"^(hi|hello|hey|greetings|good (morning|afternoon|evening))\b",
+            r"^(who are you|what can you do|how can you help|tell me about yourself|help me|what are you)\b",
+            r"^(কে আপনি|আপনি কে|হ্যালো|হাই|নমস্কার|কেমন আছেন)\b",
+        ]
+        if any(re.search(pat, q) for pat in conversational_patterns):
+            has_clinical_keywords = any(kw in q for kw in [
+                "cancer", "tumor", "lung", "colon", "adenocarcinoma", "squamous", "tissue", "biopsy", "ihc", "mutation",
+                "ক্যান্সার", "ফুসফুস", "কোলন", "হিস্টোপ্যাথলজি"
+            ])
+            if not has_clinical_keywords:
+                return QueryIntent.CONVERSATIONAL
+
         # Comparison patterns
         if any(
             re.search(pat, q)
             for pat in [
                 r"\b(difference between|different from|differ from|differ\b|versus|vs\.?|compare|distinguish between)\b",
                 r"\bhow (do|are|is)\b.*\b(different|differ)\b",
+                r"\b(পার্থক্য|তুলনা)\b",
             ]
         ):
             return QueryIntent.COMPARISON
@@ -198,14 +218,21 @@ class QueryScopeClassifier:
             for pat in [
                 r"\b(histology|histological|histopathology|morphology|microscopic|crypts?|lepidic|cribriform|budding|acinar|papillary|intercellular bridges|keratin pearl)\b",
                 r"\b(h&e|hematoxylin|eosin|biopsy|cellular|features?|characteristics?)\b",
+                r"\b(হিস্টোপ্যাথলজি|হিস্টোপ্যাথলজিক্যাল|বায়োপসি|টিস্যু|লক্ষণ)\b",
             ]
         ):
             return QueryIntent.HISTOPATHOLOGY
 
-        # Class explanation (e.g. "what is lung adenocarcinoma", "explain squamous cell carcinoma")
-        if re.search(r"^(what is|what are|explain|describe|tell me about)\b", q):
-            if any(kw in q for kw in ["squamous", "adenocarcinoma", "carcinoma", "benign", "colon", "lung", "tissue"]):
+        # Class explanation (e.g. "what is lung adenocarcinoma", "explain squamous cell carcinoma", Bengali explanations)
+        if re.search(r"^(what is|what are|explain|describe|tell me about)\b", q) or re.search(r"\b(লক্ষণ কি|লক্ষণ কী|চিহ্ন|কী|কি|ব্যাখ্যা)\b", q):
+            if any(kw in q for kw in ["squamous", "adenocarcinoma", "carcinoma", "benign", "colon", "lung", "tissue", "ক্যান্সার", "কোলন", "ফুসফুস", "টিস্যু"]):
                 return QueryIntent.CLASS_EXPLANATION
+
+        # Developer and platform inquiries
+        if is_explicit_developer_query(q):
+            return QueryIntent.CLASSIFIER_EXPLANATION
+        if any(w in q for w in ["what is oncovision", "about oncovision", "how does oncovision work", "oncovision features"]):
+            return QueryIntent.CLASSIFIER_EXPLANATION
 
         # General safety boundary
         if requires_safety:
@@ -298,20 +325,30 @@ class QueryScopeClassifier:
         ):
             return QueryDomain.LUNG
 
-        # Organ keywords
-        if any(w in q for w in ["colon", "colorectal", "bowel", "rectum", "rectal"]):
+        # Organ keywords (including Bengali)
+        has_colon = any(w in q for w in ["colon", "colorectal", "bowel", "rectum", "rectal", "কোলন", "কলোরেক্টাল", "মলাশয়", "বৃহদন্ত্র"])
+        has_lung = any(w in q for w in ["lung", "pulmonary", "bronchial", "pleural", "egfr", "p40", "ttf-1", "napsin", "ফুসফুস", "পালমোনারি", "শ্বাসনালী"])
+        if has_colon and has_lung:
+            return QueryDomain.COMPARISON
+        if has_colon:
             return QueryDomain.COLON
-        if any(w in q for w in ["lung", "pulmonary", "bronchial", "pleural", "egfr", "p40", "ttf-1", "napsin"]):
+        if has_lung:
             return QueryDomain.LUNG
 
         # General histopathology (no specific organ)
         if intent == QueryIntent.HISTOPATHOLOGY or any(
-            w in q for w in ["histopathology", "biopsy", "h&e", "staining", "pathology"]
+            w in q for w in ["histopathology", "biopsy", "h&e", "staining", "pathology", "হিস্টোপ্যাথলজি", "হিস্টোপ্যাথলজিক্যাল", "বায়োপসি", "টিস্যু"]
         ):
             return QueryDomain.HISTOPATHOLOGY
 
+        # Developer and platform inquiries
+        if is_explicit_developer_query(q):
+            return QueryDomain.DEVELOPER_INFO
+        if any(w in q for w in ["what is oncovision", "about oncovision", "how does oncovision work", "oncovision features", "who built", "system architecture"]):
+            return QueryDomain.PLATFORM_INFO
+
         # General oncology (e.g. "what is cancer", "tumor basics")
-        if any(w in q for w in ["cancer", "tumor", "oncology", "neoplasm", "carcinoma", "malignan"]):
+        if any(w in q for w in ["cancer", "tumor", "oncology", "neoplasm", "carcinoma", "malignan", "ক্যান্সার", "ক্যানসার", "টিউমার"]):
             return QueryDomain.GENERAL_ONCOLOGY
 
         return None
@@ -326,6 +363,12 @@ class QueryScopeClassifier:
         requires_safety: bool,
     ) -> float:
         """Calculate explainable classification confidence score between 0.0 and 1.0."""
+        if intent == QueryIntent.CONVERSATIONAL:
+            return 0.99
+        if is_explicit_developer_query(norm_query):
+            return 0.98
+        if domain in {QueryDomain.DEVELOPER_INFO, QueryDomain.PLATFORM_INFO}:
+            return 0.98
         if explicit_match and domain is not None:
             return 0.97
         if domain == QueryDomain.COMPARISON:
