@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, Brain, BookOpen, ExternalLink } from 'lucide-react';
+import { User, Brain, BookOpen, ExternalLink, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -145,6 +145,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   }, [content]);
 
   const [streamIndex, setStreamIndex] = useState<number>(() => (isStreaming ? 1 : words.length));
+  const [isSourcesExpanded, setIsSourcesExpanded] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isStreaming) {
@@ -235,89 +236,102 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             {isUser ? (
               <p className="whitespace-pre-wrap">{content}</p>
             ) : (
-              <div className="inline">
-                {renderMarkdown(visibleText)}
-                {isActivelyStreaming && (
-                  <span
-                    className="inline-block w-1.5 h-3.5 ml-1 bg-primary align-middle rounded-xs animate-pulse"
-                    role="status"
-                    aria-label="Generating response"
-                  />
+              <div>
+                <div className="inline">
+                  {renderMarkdown(visibleText)}
+                  {isActivelyStreaming && (
+                    <span
+                      className="inline-block w-1.5 h-3.5 ml-1 bg-primary align-middle rounded-xs animate-pulse"
+                      role="status"
+                      aria-label="Generating response"
+                    />
+                  )}
+                </div>
+
+                {/* References footnote integrated directly inside the response */}
+                {!isActivelyStreaming && sources && sources.length > 0 && (
+                  <div className="mt-3.5 pt-2.5 border-t border-border/40 text-xs">
+                    <div className="flex items-center justify-between">
+                      {sources.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsSourcesExpanded((prev) => !prev);
+                          }}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-text-muted hover:text-text-primary transition-colors cursor-pointer py-0.5 select-none"
+                          aria-expanded={isSourcesExpanded}
+                        >
+                          <BookOpen size={11} className="text-primary/70" />
+                          <span>References ({sources.length})</span>
+                          <ChevronDown
+                            size={11}
+                            className={cn(
+                              'transition-transform duration-200 text-text-muted',
+                              isSourcesExpanded && 'rotate-180 text-text-primary'
+                            )}
+                          />
+                        </button>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-text-muted">
+                          <BookOpen size={11} className="text-primary/70" />
+                          <span>References:</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {(sources.length === 1 || isSourcesExpanded) && (
+                      <ol className="mt-2 space-y-1.5 pl-0 list-none">
+                        {sources.map((source, idx) => {
+                          const book = source.source_title || source.title || 'Medical Literature';
+                          const section = source.document_title || source.topic || 'Clinical Reference';
+                          const rawUrl = source.url || (source as any).source_url;
+                          const isExternalUrl = Boolean(
+                            rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))
+                          );
+                          const url = isExternalUrl ? rawUrl : undefined;
+                          const formattedRef = source.citation || (
+                            url
+                              ? `{ ${book}, ${section} / ${url} }`
+                              : `{ ${book}, ${section} }`
+                          );
+
+                          return (
+                            <li
+                              key={idx}
+                              className="flex items-start gap-1.5 text-[11px] font-mono leading-relaxed text-text-secondary"
+                            >
+                              <span className="text-text-muted shrink-0 select-none">[{idx + 1}]</span>
+                              {url ? (
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-baseline gap-1 text-text-secondary hover:text-primary transition-colors underline decoration-border-subtle hover:decoration-primary break-all"
+                                  title={url}
+                                >
+                                  <span>{formattedRef}</span>
+                                  <ExternalLink size={10} className="shrink-0 text-text-muted hover:text-primary inline self-center" />
+                                </a>
+                              ) : (
+                                <span className="break-all">{formattedRef}</span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+                  </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Metadata: Sources & Timestamp */}
-          {!isActivelyStreaming && (
-            <div className={cn('flex flex-col gap-1.5 mt-1', isUser ? 'items-end' : 'items-start')}>
-              {/* Retrieved Sources Section */}
-              {sources && sources.length > 0 && (
-                <div className="flex flex-col gap-1.5 w-full mt-1.5 p-3 rounded-xl border border-border bg-surface-raised/40">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-text-secondary">
-                    <span className="flex items-center gap-1.5">
-                      <BookOpen size={12} className="text-primary" aria-hidden="true" />
-                      Retrieved Evidence &amp; Knowledge Sources ({sources.length})
-                    </span>
-                    <span className="text-[10px] font-mono text-text-muted">Grounded Literature</span>
-                  </div>
-
-                  <div className="flex flex-col gap-2 pt-1">
-                    {sources.map((source, idx) => {
-                      const book = source.source_title || source.title || 'Medical Literature';
-                      const section = source.document_title || source.topic || 'Clinical Reference';
-                      const rawUrl = source.url || (source as any).source_url;
-                      const isExternalUrl = Boolean(
-                        rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))
-                      );
-                      const url = isExternalUrl ? rawUrl : undefined;
-                      const formattedRef = source.citation || (
-                        url
-                          ? `{ ${book}, ${section} / ${url} }`
-                          : `{ ${book}, ${section} }`
-                      );
-
-                      if (url) {
-                        return (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group flex items-start justify-between gap-2 text-xs bg-surface hover:bg-surface-raised text-text-primary border border-border hover:border-primary/50 px-3 py-2 rounded-lg transition-all shadow-2xs"
-                            aria-label={`Source reference: ${formattedRef}`}
-                          >
-                            <div className="flex items-start gap-2 min-w-0 flex-1">
-                              <span className="font-mono text-[10px] text-primary font-bold shrink-0 mt-0.5">[{idx + 1}]</span>
-                              <span className="font-mono text-[11px] text-text-primary group-hover:text-primary transition-colors break-all leading-snug">
-                                {formattedRef}
-                              </span>
-                            </div>
-                            <ExternalLink size={12} className="text-text-muted group-hover:text-primary transition-colors shrink-0 mt-0.5" />
-                          </a>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-2 text-xs bg-surface text-text-primary border border-border px-3 py-2 rounded-lg shadow-2xs"
-                          aria-label={`Source reference: ${formattedRef}`}
-                        >
-                          <span className="font-mono text-[10px] text-primary font-bold shrink-0 mt-0.5">[{idx + 1}]</span>
-                          <span className="font-mono text-[11px] text-text-primary break-all leading-snug">
-                            {formattedRef}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {timestamp && (
-                <span className="text-[11px] font-mono text-text-muted px-1">{timestamp}</span>
-              )}
+          {/* Timestamp */}
+          {!isActivelyStreaming && timestamp && (
+            <div className={cn('flex mt-0.5', isUser ? 'justify-end' : 'justify-start')}>
+              <span className="text-[11px] font-mono text-text-muted px-1">{timestamp}</span>
             </div>
           )}
         </div>
