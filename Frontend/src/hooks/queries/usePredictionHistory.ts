@@ -19,5 +19,9 @@ export function usePredictionHistoryDetail(historyId: string | undefined) {
     queryFn: () => fetchPredictionHistoryDetail(historyId as string),
     enabled: Boolean(historyId),
     staleTime: STALE_TIME_MS,
+    retry: (failureCount, error: any) => {
+      if (error?.response?.status === 404 || error?.status === 404) return false;
+      return failureCount < 2;
+    },
   });
 }

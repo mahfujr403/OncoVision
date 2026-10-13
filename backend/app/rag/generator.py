@@ -20,6 +20,7 @@ from typing import Any
 
 from app.core.settings import get_settings
 from app.history.summary import PredictionHistorySummary
+from app.rag.classifier import QueryDomain, QueryIntent
 from app.llm.client import GeminiClient, get_gemini_client
 from app.rag.grounding import GroundingDecision, GroundingEvaluator
 from app.rag.observability import (
@@ -520,6 +521,7 @@ class GroundedRAGGenerator:
             query=query,
             context=context,
             safety_eval=safety_eval,
+            prediction_summary=prediction_summary,
         )
         telemetry.grounding_ms = round((time.perf_counter() - g_start) * 1000, 2)
         telemetry.top_similarity = grounding_decision.top_similarity
@@ -814,6 +816,7 @@ class GroundedRAGGenerator:
             query=query,
             context=context,
             safety_eval=safety_eval,
+            prediction_summary=prediction_summary,
         )
         telemetry.grounding_ms = round((time.perf_counter() - g_start) * 1000, 2)
         telemetry.top_similarity = grounding_decision.top_similarity
@@ -1202,9 +1205,16 @@ class GroundedRAGGenerator:
         # -------------------------------------------------------------
         # 7. Grounding Determination & Request Completion
         # -------------------------------------------------------------
+        is_classifier_eval = bool(
+            prediction_summary is not None
+            and (
+                (context.query_scope and context.query_scope.intent == QueryIntent.CLASSIFIER_EXPLANATION)
+                or (context.query_scope and context.query_scope.domain == QueryDomain.CLASSIFIER_CONTEXT)
+            )
+        )
         is_grounded = bool(
             grounding_decision.is_eligible
-            and (valid_citations or is_explicit_dev)
+            and (valid_citations or is_explicit_dev or is_classifier_eval)
             and len(clean_answer.strip()) > 0
         )
 
@@ -1218,7 +1228,7 @@ class GroundedRAGGenerator:
                 fin_refusal_reason = "unsupported_claims_without_citations"
 
             # Fail closed: do not expose ungrounded / unsupported generated content for medical queries
-            if not clean_answer.strip() or (not valid_citations and not is_explicit_dev):
+            if not clean_answer.strip() or (not valid_citations and not is_explicit_dev and not is_classifier_eval):
                 valid_citations = []
                 if fin_refusal_reason == "developer_source_laundering":
                     clean_answer = DEVELOPER_ATTRIBUTION_REFUSAL_MESSAGE

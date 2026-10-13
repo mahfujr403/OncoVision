@@ -23,6 +23,8 @@ from app.rag.provenance import is_explicit_developer_query
 from app.rag.retriever import RetrievedContext
 from app.rag.safety import SafetyEvaluation
 
+from app.history.summary import PredictionHistorySummary
+
 logger = logging.getLogger(__name__)
 
 
@@ -159,6 +161,7 @@ class GroundingEvaluator:
         query: str,
         context: RetrievedContext,
         safety_eval: SafetyEvaluation | None = None,
+        prediction_summary: PredictionHistorySummary | None = None,
     ) -> GroundingDecision:
         """Evaluate retrieval relevance and return a deterministic GroundingDecision."""
         # 0. Gate: Conversational Greetings & Assistant Identity
@@ -191,6 +194,39 @@ class GroundingEvaluator:
                 class_compatible=False,
                 threshold_applied=0.0,
                 details={"gate": "safety_refusal", "boundary": reason},
+            )
+
+        # Developer Inquiries: Authoritative platform & author identity is intrinsic
+        is_dev_query = is_explicit_developer_query(query)
+        if is_dev_query:
+            return GroundingDecision(
+                is_eligible=True,
+                decision_reason="developer_query",
+                top_similarity=1.0,
+                mean_similarity=1.0,
+                domain_compatible=True,
+                class_compatible=True,
+                threshold_applied=0.0,
+                details={"gate": "developer_inquiry"},
+            )
+
+        # Classifier Prediction & Certainty Queries: Grounded in authoritative prediction summary
+        if prediction_summary is not None and (
+            query_scope.intent == QueryIntent.CLASSIFIER_EXPLANATION
+            or query_scope.domain == QueryDomain.CLASSIFIER_CONTEXT
+        ):
+            sims = [chunk.similarity for chunk in context.chunks if chunk.similarity is not None]
+            top_sim = max(sims) if sims else 0.85
+            mean_sim = (sum(sims) / len(sims)) if sims else 0.85
+            return GroundingDecision(
+                is_eligible=True,
+                decision_reason="classifier_prediction_context",
+                top_similarity=round(top_sim, 4),
+                mean_similarity=round(mean_sim, 4),
+                domain_compatible=True,
+                class_compatible=True,
+                threshold_applied=0.0,
+                details={"gate": "prediction_summary_grounding"},
             )
 
         # 2. Gate: Empty Context / No Knowledge Found

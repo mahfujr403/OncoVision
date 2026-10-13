@@ -51,8 +51,25 @@ export default function PredictionChatPage() {
 
         setMessages([summaryMessage]);
         setHasFetchedSummary(true);
-      } catch {
-        toast.error('Failed to generate initial case summary.');
+      } catch (err: any) {
+        setHasFetchedSummary(true);
+        const is404 = err?.response?.status === 404 || err?.status === 404;
+        if (is404) {
+          toast.warning('Case evaluation record not found or expired.');
+          const fallbackMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content:
+              language === 'bn'
+                ? `এই কেস আইডি (${predictionId.slice(0, 8)}) সংক্রান্ত প্রিডিকশন হিস্ট্রি রেকর্ড সার্ভারে পাওয়া যায়নি। তবে আপনি ফুসফুস ও কোলন হিস্টোপ্যাথলজিক্যাল প্যাটার্ন, টিস্যু ক্লাসিফিকেশন বা সাধারণ প্যাথলজি বিষয়াবলী নিয়ে যে কোনো প্রশ্ন করতে পারেন।`
+                : `The evaluation record for case ID (${predictionId.slice(0, 8)}) was not found on the server or has expired. You can still discuss general histopathological classification criteria, cellular morphology, or clinical biomarkers.`,
+            created_at: new Date().toISOString(),
+            isLiveStream: false,
+          };
+          setMessages([fallbackMessage]);
+        } else {
+          toast.error('Failed to generate initial case summary.');
+        }
       } finally {
         setIsLoading(false);
       }

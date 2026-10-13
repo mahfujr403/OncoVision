@@ -205,10 +205,16 @@ class QueryScopeClassifier:
         ):
             return QueryIntent.IMMUNOHISTOCHEMISTRY
 
-        # Classifier explanation
-        if re.search(
-            r"\b(classifier|model output|confidence score|agreement ratio|ai model|prediction score)\b",
-            q,
+        # Classifier explanation & prediction certainty
+        if (
+            re.search(
+                r"\b(classifier|model output|confidence score|agreement ratio|ai model|prediction score|prediction confidence)\b",
+                q,
+            )
+            or re.search(
+                r"\b(?:are you sure|how sure|how confident|how accurate|why this prediction|explain this prediction|is this prediction|certainty|confidence|accuracy|model agreement|ensemble consensus|can i trust this prediction|is this reliable)\b",
+                q,
+            )
         ):
             return QueryIntent.CLASSIFIER_EXPLANATION
 
@@ -341,6 +347,10 @@ class QueryScopeClassifier:
         ):
             return QueryDomain.HISTOPATHOLOGY
 
+        # Classifier explanation and prediction context
+        if intent == QueryIntent.CLASSIFIER_EXPLANATION and not is_explicit_developer_query(q):
+            return QueryDomain.CLASSIFIER_CONTEXT
+
         # Developer and platform inquiries
         if is_explicit_developer_query(q):
             return QueryDomain.DEVELOPER_INFO
@@ -367,7 +377,7 @@ class QueryScopeClassifier:
             return 0.99
         if is_explicit_developer_query(norm_query):
             return 0.98
-        if domain in {QueryDomain.DEVELOPER_INFO, QueryDomain.PLATFORM_INFO}:
+        if domain in {QueryDomain.DEVELOPER_INFO, QueryDomain.PLATFORM_INFO, QueryDomain.CLASSIFIER_CONTEXT}:
             return 0.98
         if explicit_match and domain is not None:
             return 0.97

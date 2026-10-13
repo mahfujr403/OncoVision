@@ -281,6 +281,8 @@ class ChatService:
                         retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria {past_user_msgs[-1]}"
                     else:
                         retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria morphology classification"
+                elif is_explicit_developer_query(message):
+                    retrieval_query = message
                 else:
                     retrieval_query = f"{prediction.predicted_class} histopathology {message}"
 
@@ -685,6 +687,8 @@ class ChatService:
                         retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria {past_user_msgs[-1]}"
                     else:
                         retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria morphology classification"
+                elif is_explicit_developer_query(message):
+                    retrieval_query = message
                 else:
                     retrieval_query = f"{prediction.predicted_class} histopathology {message}"
 
