@@ -109,3 +109,11 @@ frontend/dist/
 *.tmp
 *.temp
 *.bak
+
+# =========================
+# Knowledge Base (Extracted)
+# =========================
+knowledge_base/oncovision_medical_knowledgebase_v3/
+knowledge_base/oncovision_knowledgebase_v2/
+!knowledge_base/*.zip
+

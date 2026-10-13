@@ -60,17 +60,22 @@ jobs:
               sys.exit(f"ERROR: Knowledge base archive not found: {zip_path}")
 
           dest_dir = Path("knowledge_base/oncovision_medical_knowledgebase_v3")
-          if dest_dir.exists():
-              sys.exit(f"ERROR: Destination directory already exists: {dest_dir}")
+          if dest_dir.is_dir() and any(dest_dir.iterdir()):
+              print(f"Knowledge base already present at {dest_dir}, skipping extraction.")
+              sys.exit(0)
 
           with zipfile.ZipFile(zip_path, "r") as zf:
               zf.extractall("knowledge_base")
 
           internal_dir = Path("knowledge_base/oncovision_knowledgebase_v2")
-          if not internal_dir.is_dir():
+          if internal_dir.is_dir():
+              if dest_dir.exists():
+                  import shutil
+                  shutil.rmtree(dest_dir)
+              internal_dir.rename(dest_dir)
+          elif not (dest_dir.is_dir() and any(dest_dir.iterdir())):
               sys.exit(f"ERROR: Expected archive directory not found: {internal_dir}")
 
-          internal_dir.rename(dest_dir)
           print(f"Successfully extracted knowledge base to {dest_dir}")
           EOF
 

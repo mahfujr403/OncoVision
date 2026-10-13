@@ -85,7 +85,8 @@ class TestQueryEmbeddingCache:
         cache.set("fast expiration query", vec)
         assert cache.get("fast expiration query") == vec
 
-        time.sleep(0.06)
+        # Sleep with sufficient headroom (100ms) to ensure expiration on all OS timer resolutions
+        time.sleep(0.1)
         assert cache.get("fast expiration query") is None
         assert cache.stats()["size"] == 0
 
