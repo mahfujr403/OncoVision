@@ -980,18 +980,28 @@ class GroundedRAGGenerator:
         chunk_buffer: list[str] = []
         gen_start = time.perf_counter()
         try:
-            stream_iter = client.generate_stream(
-                prompt=user_prompt,
-                system_instruction=GROUNDED_RAG_SYSTEM_PROMPT,
-                temperature=self.settings.RAG_GENERATION_TEMPERATURE,
-                max_output_tokens=self.settings.RAG_GENERATION_MAX_OUTPUT_TOKENS,
-            )
-            async for chunk in stream_iter:
-                if raw_request and await raw_request.is_disconnected():
-                    logger.info("Client disconnected during LLM stream generation. Aborting.")
-                    raise asyncio.CancelledError()
-                if chunk:
-                    chunk_buffer.append(chunk)
+            if hasattr(client, "generate_stream"):
+                stream_iter = client.generate_stream(
+                    prompt=user_prompt,
+                    system_instruction=GROUNDED_RAG_SYSTEM_PROMPT,
+                    temperature=self.settings.RAG_GENERATION_TEMPERATURE,
+                    max_output_tokens=self.settings.RAG_GENERATION_MAX_OUTPUT_TOKENS,
+                )
+                async for chunk in stream_iter:
+                    if raw_request and await raw_request.is_disconnected():
+                        logger.info("Client disconnected during LLM stream generation. Aborting.")
+                        raise asyncio.CancelledError()
+                    if chunk:
+                        chunk_buffer.append(chunk)
+            else:
+                raw_gen = await client.generate(
+                    prompt=user_prompt,
+                    system_instruction=GROUNDED_RAG_SYSTEM_PROMPT,
+                    temperature=self.settings.RAG_GENERATION_TEMPERATURE,
+                    max_output_tokens=self.settings.RAG_GENERATION_MAX_OUTPUT_TOKENS,
+                )
+                if raw_gen:
+                    chunk_buffer.append(raw_gen)
 
             raw_response = "".join(chunk_buffer)
             telemetry.generation_ms = round((time.perf_counter() - gen_start) * 1000, 2)

@@ -50,7 +50,7 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
@@ -281,7 +281,10 @@ class SQLAlchemyPredictionHistoryRepository(PredictionHistoryRepository):
             return None
 
         statement = select(PredictionHistoryRecord).where(
-            PredictionHistoryRecord.id == record_id,
+            or_(
+                PredictionHistoryRecord.id == record_id,
+                PredictionHistoryRecord.request_id == history_id,
+            ),
             PredictionHistoryRecord.user_id == owner_id,
         )
 
@@ -510,7 +513,10 @@ class SQLAlchemyPredictionHistoryRepository(PredictionHistoryRepository):
             return None
 
         statement = select(PredictionHistoryRecord).where(
-            PredictionHistoryRecord.id == record_id
+            or_(
+                PredictionHistoryRecord.id == record_id,
+                PredictionHistoryRecord.request_id == history_id,
+            )
         )
 
         result = await self._session.execute(statement)

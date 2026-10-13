@@ -220,6 +220,8 @@ class GeminiClient:
         last_exception = None
 
         for model in models_to_try:
+            if model in _DEPRECATED_MODELS:
+                continue
             retries = 2
             for attempt in range(retries):
                 try:
@@ -229,7 +231,8 @@ class GeminiClient:
                         config=config,
                     )
                     async for chunk in response:
-                        yield chunk.text
+                        if chunk.text:
+                            yield chunk.text
                     if model != self.model_name:
                         self.model_name = model
                     return
@@ -253,6 +256,18 @@ class GeminiClient:
                         await asyncio.sleep(2 ** attempt)
 
         if last_exception:
+            try:
+                full_text = await self.generate(
+                    prompt=prompt,
+                    system_instruction=system_instruction,
+                    temperature=temperature,
+                    max_output_tokens=max_output_tokens,
+                )
+                if full_text:
+                    yield full_text
+                    return
+            except Exception as fe:
+                logger.warning("Fallback generate also failed: %s", fe)
             raise last_exception
 
     async def embed(
