@@ -14,6 +14,7 @@ Principles:
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -227,6 +228,25 @@ class GroundingEvaluator:
                 class_compatible=True,
                 threshold_applied=0.0,
                 details={"gate": "prediction_summary_grounding"},
+            )
+
+        # Inquiries about a specific prediction when no prediction is loaded in the session
+        is_specific_pred_query = bool(
+            re.search(
+                r"\b(?:are you sure|how sure|how confident|why this prediction|explain this prediction|is this prediction|certainty of this|trust this prediction|confident about this|এই প্রেডিকশন|প্রেডিকশন সম্পর্কে নিশ্চিত)\b",
+                query.lower(),
+            )
+        )
+        if prediction_summary is None and is_specific_pred_query:
+            return GroundingDecision(
+                is_eligible=True,
+                decision_reason="no_active_prediction",
+                top_similarity=1.0,
+                mean_similarity=1.0,
+                domain_compatible=True,
+                class_compatible=True,
+                threshold_applied=0.0,
+                details={"gate": "no_active_prediction"},
             )
 
         # 2. Gate: Empty Context / No Knowledge Found

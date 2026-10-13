@@ -184,3 +184,30 @@ def test_generator_answers_developer_inquiry():
     assert ans.grounded is True
     assert "Md. Mahfujur Rahman" in ans.answer
     assert "The available OncoVision knowledge base provides only limited information" not in ans.answer
+
+
+def test_generator_explains_no_active_prediction_gracefully():
+    """When asked about prediction certainty without an active prediction, generator explains gracefully."""
+    q = "are you sure about this prediction?"
+    classifier = QueryScopeClassifier()
+    scope = classifier.classify(q)
+    context = RetrievedContext(
+        chunks=[],
+        query_scope=scope,
+        reason="no_relevant_knowledge_found",
+    )
+
+    mock_client = MagicMock()
+    generator = GroundedRAGGenerator(llm_client=mock_client)
+    ans = asyncio.run(
+        generator.generate_grounded_answer(
+            query=q,
+            context=context,
+            prediction_summary=None,
+        )
+    )
+
+    assert ans.grounded is True
+    assert "There is no active histopathology slide evaluation" in ans.answer
+    assert "The available OncoVision knowledge base provides only limited information" not in ans.answer
+

@@ -551,6 +551,30 @@ class GroundedRAGGenerator:
                 request_id=telemetry.request_id,
             )
 
+        if grounding_decision.decision_reason == "no_active_prediction":
+            is_bn = bool(re.search(r"[\u0980-\u09FF]", query))
+            no_pred_text = (
+                "এই চ্যাট সেশনে কোনো সক্রিয় হিস্টোপ্যাথলজিক্যাল স্লাইড মূল্যায়ন বা ক্লাসিফায়ার প্রেডিকশন যুক্ত নেই। "
+                "মডেলের নির্দিষ্ট প্রেডিকশন কনফিডেন্স, মডেল অ্যাগ্রিমেন্ট এবং হিস্টোলজিক্যাল ফলাফল বিশ্লেষণ করতে অনুগ্রহ করে "
+                "'New Prediction' থেকে একটি টিস্যু স্লাইড আপলোড করুন অথবা 'Prediction History' থেকে নির্দিষ্ট কেস ডিসকাশন ওপেন করুন।"
+                if is_bn
+                else
+                "There is no active histopathology slide evaluation or classifier prediction in this session. "
+                "To evaluate prediction certainty, ensemble confidence, and model agreement, please upload an H&E slide "
+                "in 'New Prediction' or open a specific evaluation record from 'Prediction History'."
+            )
+            telemetry.finish(grounded=True, citations=0, refusal_reason=None)
+            return GroundedAnswer(
+                answer=no_pred_text,
+                citations=[],
+                grounded=True,
+                refusal_reason=None,
+                scope=context.query_scope,
+                latency_ms=telemetry.total_latency_ms,
+                latencies=telemetry.get_latency_breakdown(),
+                request_id=telemetry.request_id,
+            )
+
         if not grounding_decision.is_eligible:
             if grounding_decision.decision_reason == "empty_retrieval":
                 if is_meta_source_query(query):
@@ -837,6 +861,30 @@ class GroundedRAGGenerator:
             telemetry.finish(grounded=True, citations=0, refusal_reason=None)
             return GroundedAnswer(
                 answer=greeting_text,
+                citations=[],
+                grounded=True,
+                refusal_reason=None,
+                scope=context.query_scope,
+                latency_ms=telemetry.total_latency_ms,
+                latencies=telemetry.get_latency_breakdown(),
+                request_id=telemetry.request_id,
+            )
+
+        if grounding_decision.decision_reason == "no_active_prediction":
+            is_bn = bool(re.search(r"[\u0980-\u09FF]", query))
+            no_pred_text = (
+                "এই চ্যাট সেশনে কোনো সক্রিয় হিস্টোপ্যাথলজিক্যাল স্লাইড মূল্যায়ন বা ক্লাসিফায়ার প্রেডিকশন যুক্ত নেই। "
+                "মডেলের নির্দিষ্ট প্রেডিকশন কনফিডেন্স, মডেল অ্যাগ্রিমেন্ট এবং হিস্টোলজিক্যাল ফলাফল বিশ্লেষণ করতে অনুগ্রহ করে "
+                "'New Prediction' থেকে একটি টিস্যু স্লাইড আপলোড করুন অথবা 'Prediction History' থেকে নির্দিষ্ট কেস ডিসকাশন ওপেন করুন।"
+                if is_bn
+                else
+                "There is no active histopathology slide evaluation or classifier prediction in this session. "
+                "To evaluate prediction certainty, ensemble confidence, and model agreement, please upload an H&E slide "
+                "in 'New Prediction' or open a specific evaluation record from 'Prediction History'."
+            )
+            telemetry.finish(grounded=True, citations=0, refusal_reason=None)
+            return GroundedAnswer(
+                answer=no_pred_text,
                 citations=[],
                 grounded=True,
                 refusal_reason=None,
