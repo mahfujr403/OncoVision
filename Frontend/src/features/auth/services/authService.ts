@@ -48,12 +48,15 @@ async function login(payload: LoginPayload): Promise<{ user: User; tokens: AuthT
         role: payload.email === 'recruiter@gmail.com' ? 'admin' : 'user',
         is_active: true,
         is_verified: true,
+        avatar_url: null,
+        last_login: null,
         created_at: new Date().toISOString(),
       };
       const mockTokens: AuthTokens = {
         access_token: 'demo_local_access_token',
         refresh_token: 'demo_local_refresh_token',
         token_type: 'bearer',
+        expires_in: 3600,
       };
       localStorage.setItem('oncovision_demo_user', JSON.stringify(mockUser));
       setTokens(mockTokens.access_token, mockTokens.refresh_token);

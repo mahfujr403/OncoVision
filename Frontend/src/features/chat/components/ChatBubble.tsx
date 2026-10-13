@@ -9,6 +9,10 @@ export interface ChatBubbleSource {
   relevance: number;
   url?: string;
   document_title?: string;
+  source_title?: string;
+  topic?: string;
+  citation?: string;
+  source_id?: string;
 }
 
 export interface ChatBubbleProps {

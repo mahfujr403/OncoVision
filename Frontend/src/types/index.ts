@@ -423,6 +423,7 @@ export type StreamStatusStage =
   | 'sources_ready'
   | 'synthesizing'
   | 'validating'
+  | 'grounding'
   | 'completed';
 
 export interface StreamStatusEvent {
@@ -455,10 +456,14 @@ export interface StreamCitation {
 
 export interface StreamDoneEvent {
   conversation_id: string;
-  grounded: boolean;
+  grounded?: boolean;
+  is_grounded?: boolean;
   citations: StreamCitation[];
-  disclaimer: string;
+  disclaimer?: string;
   request_id?: string;
+  message_id?: string;
+  sources?: any[];
+  metadata?: any;
 }
 
 export interface StreamErrorEvent {
