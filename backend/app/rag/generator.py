@@ -1129,29 +1129,53 @@ class GroundedRAGGenerator:
             )
         )
 
+        is_explicit_dev = is_explicit_developer_query(query)
+
         valid_citations: list[Citation] = []
-        for cid in unique_cids:
-            doc = source_map[cid]
-            book = doc.source_title or doc.document_title or "Medical Literature"
-            section = doc.document_title or doc.topic or "Clinical Reference"
-            url_part = f" / {doc.source_url}" if doc.source_url else ""
-            cit_disp = f"{{ {book}, {section}{url_part} }}" if book.lower() != section.lower() else f"{{ {book}{url_part} }}"
-            valid_citations.append(
-                Citation(
-                    source_id=cid,
-                    document_id=doc.document_id or "unknown",
-                    document_title=doc.document_title or doc.topic or "Medical Document",
-                    source_title=doc.source_title or doc.source or "OncoVision Medical Knowledge Base",
-                    source_url=doc.source_url or "",
-                    source_tier=doc.source_tier,
-                    domain=doc.domain,
-                    citation_display=cit_disp,
+        if not is_explicit_dev:
+            for cid in unique_cids:
+                doc = source_map[cid]
+                raw_url = (
+                    doc.source_url
+                    or getattr(doc, "url", None)
+                    or (doc.metadata.get("source_url") if hasattr(doc, "metadata") and doc.metadata else None)
+                    or (doc.metadata.get("url") if hasattr(doc, "metadata") and doc.metadata else None)
+                    or ""
+                ).strip()
+                if not (raw_url.startswith("http://") or raw_url.startswith("https://")):
+                    continue
+                book = (doc.source_title or doc.document_title or "").strip()
+                section = (doc.document_title or doc.topic or "").strip()
+                if not book:
+                    continue
+                url_part = f" / {raw_url}"
+                cit_disp = f"{{ {book}, {section}{url_part} }}" if section and book.lower() != section.lower() else f"{{ {book}{url_part} }}"
+                valid_citations.append(
+                    Citation(
+                        source_id=cid,
+                        document_id=doc.document_id or "unknown",
+                        document_title=section or book,
+                        source_title=book,
+                        source_url=raw_url,
+                        source_tier=doc.source_tier,
+                        domain=doc.domain,
+                        citation_display=cit_disp,
+                    )
                 )
-            )
+
+        # Sanitize citation tokens from answer text
+        if is_explicit_dev or not valid_citations:
+            clean_answer = re.sub(r'\[\s*S\d+(?:\s*,\s*S\d+)*\s*\]', '', clean_answer)
+        else:
+            valid_cids_set = {c.source_id for c in valid_citations}
+            def _clean_cids(match: re.Match) -> str:
+                tokens = re.findall(r'S\d+', match.group(0))
+                kept = [t for t in tokens if t in valid_cids_set]
+                return f"[{', '.join(kept)}]" if kept else ""
+            clean_answer = re.sub(r'\[\s*S\d+(?:\s*,\s*S\d+)*\s*\]', _clean_cids, clean_answer)
 
         # Sanitize raw external URLs embedded directly in answer text:
         # Preserves legitimate medical source URLs, but strips developer or unverified external URLs
-        is_explicit_dev = is_explicit_developer_query(query)
         if not is_explicit_dev:
             def _filter_url(match: re.Match) -> str:
                 full_match = match.group(0)

@@ -173,6 +173,39 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const isActivelyStreaming = isStreaming && streamIndex < words.length;
   const visibleText = isActivelyStreaming ? words.slice(0, streamIndex).join('') : content;
 
+  // Filter sources strictly for valid, clickable external URLs with proper publication titles
+  const validSources = useMemo(() => {
+    if (!sources || !Array.isArray(sources)) return [];
+    return sources.filter((s: any) => {
+      const rawUrl = (s.url || s.source_url || '').trim();
+      const isHttp = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+      if (!isHttp) return false;
+
+      const book = (s.source_title || s.title || '').trim().toLowerCase();
+      const invalidPlaceholders = [
+        'histopathology',
+        'lung cancer',
+        'colon cancer',
+        'general oncology',
+        'clinical reference',
+        'medical literature',
+        'histopathological concepts',
+        'lung pathology',
+        'colon pathology',
+        'internal',
+      ];
+      if (!book || invalidPlaceholders.includes(book)) return false;
+
+      return true;
+    });
+  }, [sources]);
+
+  const canShowReferences =
+    !isActivelyStreaming &&
+    !isStreaming &&
+    Boolean(visibleText && visibleText.trim().length > 0) &&
+    validSources.length > 0;
+
   const handleSkipStream = () => {
     if (isActivelyStreaming) {
       setStreamIndex(words.length);
@@ -248,11 +281,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   )}
                 </div>
 
-                {/* References footnote integrated directly inside the response */}
-                {!isActivelyStreaming && sources && sources.length > 0 && (
+                {/* References footnote: strictly rendered only when generation is finished, content exists, and verifiable clickable external URLs are present */}
+                {canShowReferences && (
                   <div className="mt-3.5 pt-2.5 border-t border-border/40 text-xs">
                     <div className="flex items-center justify-between">
-                      {sources.length > 1 ? (
+                      {validSources.length > 1 ? (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -263,7 +296,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                           aria-expanded={isSourcesExpanded}
                         >
                           <BookOpen size={11} className="text-primary/70" />
-                          <span>References ({sources.length})</span>
+                          <span>References ({validSources.length})</span>
                           <ChevronDown
                             size={11}
                             className={cn(
@@ -280,20 +313,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                       )}
                     </div>
 
-                    {(sources.length === 1 || isSourcesExpanded) && (
+                    {(validSources.length === 1 || isSourcesExpanded) && (
                       <ol className="mt-2 space-y-1.5 pl-0 list-none">
-                        {sources.map((source, idx) => {
+                        {validSources.map((source, idx) => {
                           const book = source.source_title || source.title || 'Medical Literature';
-                          const section = source.document_title || source.topic || 'Clinical Reference';
+                          const section = source.document_title || source.topic || '';
                           const rawUrl = source.url || (source as any).source_url;
-                          const isExternalUrl = Boolean(
-                            rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))
-                          );
-                          const url = isExternalUrl ? rawUrl : undefined;
+                          const url = rawUrl?.trim();
                           const formattedRef = source.citation || (
-                            url
+                            section && section.toLowerCase() !== book.toLowerCase()
                               ? `{ ${book}, ${section} / ${url} }`
-                              : `{ ${book}, ${section} }`
+                              : `{ ${book} / ${url} }`
                           );
 
                           return (
@@ -302,21 +332,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                               className="flex items-start gap-1.5 text-[11px] font-mono leading-relaxed text-text-secondary"
                             >
                               <span className="text-text-muted shrink-0 select-none">[{idx + 1}]</span>
-                              {url ? (
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-baseline gap-1 text-text-secondary hover:text-primary transition-colors underline decoration-border-subtle hover:decoration-primary break-all"
-                                  title={url}
-                                >
-                                  <span>{formattedRef}</span>
-                                  <ExternalLink size={10} className="shrink-0 text-text-muted hover:text-primary inline self-center" />
-                                </a>
-                              ) : (
-                                <span className="break-all">{formattedRef}</span>
-                              )}
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-baseline gap-1 text-primary hover:underline hover:text-primary/90 transition-colors break-all cursor-pointer font-medium"
+                                title={url}
+                              >
+                                <span>{formattedRef}</span>
+                                <ExternalLink size={10} className="shrink-0 text-primary/70 inline self-center" />
+                              </a>
                             </li>
                           );
                         })}

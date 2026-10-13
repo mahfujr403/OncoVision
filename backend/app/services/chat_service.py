@@ -48,18 +48,38 @@ _MEDICAL_DISCLAIMER = (
 )
 
 
-def _format_source_reference(doc) -> str:
-    """Format clean bibliographic reference string: { <book/publication>, <topic/doc> / <url> }."""
-    book = doc.source_title or doc.document_title or "Medical Literature"
-    section = doc.document_title or doc.topic or "Clinical Reference"
-    url_part = f" / {doc.source_url}" if doc.source_url else ""
-    if book.lower() != section.lower():
-        return f"{{ {book}, {section}{url_part} }}"
-    return f"{{ {book}{url_part} }}"
+def _format_source_reference(doc) -> str | None:
+    """Format clean bibliographic reference string: { <book/publication>, <topic/doc> / <url> }.
+
+    Returns None if the source lacks an external clickable URL or proper publication title.
+    """
+    url = (
+        getattr(doc, "source_url", None)
+        or getattr(doc, "url", None)
+        or (doc.metadata.get("source_url") if hasattr(doc, "metadata") and doc.metadata else None)
+        or (doc.metadata.get("url") if hasattr(doc, "metadata") and doc.metadata else None)
+        or ""
+    ).strip()
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return None
+
+    book = (getattr(doc, "source_title", None) or getattr(doc, "document_title", None) or "").strip()
+    section = (getattr(doc, "document_title", None) or getattr(doc, "topic", None) or "").strip()
+
+    if not book:
+        return None
+
+    if section and section.lower() != book.lower():
+        return f"{{ {book}, {section} / {url} }}"
+    return f"{{ {book} / {url} }}"
 
 
 def _filter_and_format_sources(chunks, citations=None, is_grounded: bool = True) -> list[dict[str, Any]]:
-    """Filter retrieved chunks to only those actually cited or most salient, formatted cleanly."""
+    """Filter retrieved chunks to only those actually cited and possessing valid clickable external URLs.
+
+    Enforces the rule: if there is no exact verifiable source title and no clickable external URL,
+    do not provide a reference.
+    """
     if not is_grounded or not chunks:
         return []
 
@@ -68,42 +88,51 @@ def _filter_and_format_sources(chunks, citations=None, is_grounded: bool = True)
     cited_titles = {c.document_title.lower() for c in citations if c.document_title} if citations else set()
 
     selected_chunks = []
-    seen_keys = set()
+    seen_urls = set()
 
     for i, doc in enumerate(chunks):
         cid = f"S{i+1}"
         is_cited = False
+        doc_url = (
+            getattr(doc, "source_url", None)
+            or getattr(doc, "url", None)
+            or (doc.metadata.get("source_url") if hasattr(doc, "metadata") and doc.metadata else None)
+            or (doc.metadata.get("url") if hasattr(doc, "metadata") and doc.metadata else None)
+            or ""
+        ).strip()
+
         if cited_ids and cid in cited_ids:
             is_cited = True
-        elif cited_urls and doc.source_url in cited_urls:
+        elif cited_urls and doc_url in cited_urls:
             is_cited = True
-        elif cited_titles and (doc.document_title or "").lower() in cited_titles:
+        elif cited_titles and (getattr(doc, "document_title", None) or "").lower() in cited_titles:
             is_cited = True
+        elif not cited_ids:
+            is_cited = (i == 0)
 
-        dedup_key = (doc.source_url or doc.document_title or doc.source_title or cid).lower()
-        if dedup_key in seen_keys:
+        if not is_cited:
             continue
 
-        if is_cited or (not cited_ids and len(selected_chunks) < 2):
-            seen_keys.add(dedup_key)
-            selected_chunks.append((cid, doc))
+        ref_str = _format_source_reference(doc)
+        if not ref_str or not doc_url:
+            continue
 
-    if not selected_chunks and chunks and is_grounded:
-        selected_chunks = [("S1", chunks[0])]
+        if doc_url.lower() in seen_urls:
+            continue
+        seen_urls.add(doc_url.lower())
 
-    return [
-        {
+        selected_chunks.append({
             "source_id": cid,
-            "title": doc.source_title or doc.topic or "Medical Literature",
-            "source": doc.source,
-            "relevance": round(doc.similarity, 4) if doc.similarity is not None else 0.9,
-            "url": doc.source_url,
-            "tier": doc.source_tier,
-            "citation": _format_source_reference(doc),
-            "document_title": doc.document_title,
-        }
-        for cid, doc in selected_chunks
-    ]
+            "title": getattr(doc, "source_title", None) or getattr(doc, "document_title", None) or "Medical Publication",
+            "source": getattr(doc, "source", "unknown"),
+            "relevance": round(doc.similarity, 4) if getattr(doc, "similarity", None) is not None else 0.9,
+            "url": doc_url,
+            "tier": getattr(doc, "source_tier", None),
+            "citation": ref_str,
+            "document_title": getattr(doc, "document_title", None) or getattr(doc, "topic", None),
+        })
+
+    return selected_chunks
 
 
 class ChatService:
@@ -946,10 +975,14 @@ class ChatService:
                     reason="retrieval_exception",
                 )
 
-        # 2. Emit sources event
-        sources_payload = _filter_and_format_sources(
-            retrieved_context.chunks,
-            is_grounded=True,
+        # 2. Emit sources event (empty for developer queries)
+        sources_payload = (
+            []
+            if is_explicit_developer_query(message)
+            else _filter_and_format_sources(
+                retrieved_context.chunks,
+                is_grounded=True,
+            )
         )
         yield {
             "event": "sources",

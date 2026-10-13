@@ -59,9 +59,35 @@ class RetrievedDocument(BaseModel):
     class_scope: str | list[str] | None = None
     source_title: str | None = None
     source_url: str | None = None
+    url: str | None = None
     source_tier: int | None = None
+    tier: int | None = None
     citation: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @classmethod
+    def model_validate(cls, obj: Any, *args, **kwargs):
+        if isinstance(obj, dict):
+            if obj.get("url") and not obj.get("source_url"):
+                obj["source_url"] = obj["url"]
+            elif obj.get("source_url") and not obj.get("url"):
+                obj["url"] = obj["source_url"]
+            if obj.get("tier") and not obj.get("source_tier"):
+                obj["source_tier"] = obj["tier"]
+            elif obj.get("source_tier") and not obj.get("tier"):
+                obj["tier"] = obj["source_tier"]
+        return super().model_validate(obj, *args, **kwargs)
+
+    def __init__(self, **data: Any):
+        if data.get("url") and not data.get("source_url"):
+            data["source_url"] = data["url"]
+        elif data.get("source_url") and not data.get("url"):
+            data["url"] = data["source_url"]
+        if data.get("tier") and not data.get("source_tier"):
+            data["source_tier"] = data["tier"]
+        elif data.get("source_tier") and not data.get("tier"):
+            data["tier"] = data["source_tier"]
+        super().__init__(**data)
 
 
 # Type alias for clear architectural semantics
@@ -437,6 +463,13 @@ class RAGRetriever:
                 KnowledgeEmbedding.domain.in_([
                     QueryDomain.SAFETY_POLICY.value,
                     QueryDomain.GENERAL_ONCOLOGY.value,
+                ])
+            )
+        elif is_explicit_dev or query_scope.domain in [QueryDomain.DEVELOPER_INFO, QueryDomain.PLATFORM_INFO]:
+            filters.append(
+                KnowledgeEmbedding.domain.in_([
+                    QueryDomain.DEVELOPER_INFO.value,
+                    QueryDomain.PLATFORM_INFO.value,
                 ])
             )
 

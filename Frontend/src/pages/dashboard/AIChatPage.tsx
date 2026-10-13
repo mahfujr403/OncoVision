@@ -64,29 +64,8 @@ export default function AIChatPage() {
           onStatus: (status) => {
             setCurrentStatus(status);
           },
-          onSources: (sourcesData) => {
-            setMessages((prev) => {
-              const existingIdx = prev.findIndex((m) => m.id === assistantMsgId);
-              if (existingIdx >= 0) {
-                const updated = [...prev];
-                updated[existingIdx] = {
-                  ...updated[existingIdx],
-                  sources: sourcesData.sources,
-                };
-                return updated;
-              }
-              return [
-                ...prev,
-                {
-                  id: assistantMsgId,
-                  role: 'assistant',
-                  content: accumulatedContent,
-                  sources: sourcesData.sources,
-                  created_at: new Date().toISOString(),
-                  isLiveStream: true,
-                },
-              ];
-            });
+          onSources: (_sourcesData) => {
+            // Do not render references before text generation finishes
           },
           onDelta: (deltaText) => {
             accumulatedContent += deltaText;
@@ -117,39 +96,62 @@ export default function AIChatPage() {
             if (doneData.conversation_id && !conversationId) {
               setConversationId(doneData.conversation_id);
             }
-            if (doneData.citations && doneData.citations.length > 0) {
-              setMessages((prev) => {
-                const existingIdx = prev.findIndex((m) => m.id === assistantMsgId);
-                if (existingIdx >= 0) {
-                  const updated = [...prev];
-                  const formattedSources = doneData.citations.map((c) => {
-                    const book = c.source_title || 'Medical Literature';
-                    const section = c.document_title || 'Clinical Reference';
-                    const rawUrl = c.source_url || (c as any).url || '';
-                    const urlPart = rawUrl ? ` / ${rawUrl}` : '';
-                    const citation =
-                      c.citation_display ||
-                      (c as any).citation ||
-                      `{ ${book}, ${section}${urlPart} }`;
-                    return {
-                      source_id: c.source_id,
-                      title: book,
-                      document_title: section,
-                      url: rawUrl,
-                      source: c.document_id,
-                      citation,
-                    };
-                  });
-                  updated[existingIdx] = {
-                    ...updated[existingIdx],
-                    sources: formattedSources,
-                    isLiveStream: false,
-                  };
-                  return updated;
+            const rawCitations = doneData.citations || doneData.sources || [];
+            const formattedSources = rawCitations
+              .map((c: any) => {
+                const rawUrl = (c.source_url || c.url || '').trim();
+                // User requirement: citation MUST be clickable with a valid external URL
+                if (!rawUrl || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) {
+                  return null;
                 }
-                return prev;
-              });
-            }
+                const book = (c.source_title || c.title || '').trim();
+                const section = (c.document_title || c.topic || '').trim();
+                if (
+                  !book ||
+                  [
+                    'histopathology',
+                    'lung cancer',
+                    'colon cancer',
+                    'general oncology',
+                    'clinical reference',
+                    'medical literature',
+                    'histopathological concepts',
+                    'lung pathology',
+                    'colon pathology',
+                  ].includes(book.toLowerCase())
+                ) {
+                  return null;
+                }
+                const urlPart = ` / ${rawUrl}`;
+                const citation =
+                  c.citation_display ||
+                  (book && section && book.toLowerCase() !== section.toLowerCase()
+                    ? `{ ${book}, ${section}${urlPart} }`
+                    : `{ ${book || section}${urlPart} }`);
+                return {
+                  source_id: c.source_id,
+                  title: book,
+                  document_title: section,
+                  url: rawUrl,
+                  source: c.document_id,
+                  citation,
+                };
+              })
+              .filter(Boolean);
+
+            setMessages((prev) => {
+              const existingIdx = prev.findIndex((m) => m.id === assistantMsgId);
+              if (existingIdx >= 0) {
+                const updated = [...prev];
+                updated[existingIdx] = {
+                  ...updated[existingIdx],
+                  sources: formattedSources.length > 0 ? formattedSources : undefined,
+                  isLiveStream: false,
+                };
+                return updated;
+              }
+              return prev;
+            });
             setCurrentStatus(null);
             setIsLoading(false);
           },

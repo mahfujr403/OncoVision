@@ -171,6 +171,45 @@ async function executeSSEChatStream(
       err?.message?.includes('Failed to fetch') ||
       err?.message?.includes('NetworkError')
     ) {
+      const lowerMsg = (request.message || '').toLowerCase();
+      const isDevQuery =
+        /who\s+(?:developed|created|built|build|designed|authored|made)\s+(?:this|you|u|oncovision|the\s+platform|the\s+system|the\s+app|the\s+model)/i.test(lowerMsg) ||
+        /who\s+(?:are\s+you|built\s+you|build\s+you|made\s+you|created\s+you|developed\s+you)/i.test(lowerMsg) ||
+        /who\s+is\s+your\s+(?:developer|creator|author|builder|maker)/i.test(lowerMsg) ||
+        /who\s+is\s+(?:the\s+)?(?:developer|creator|author|builder|architect|engineer|maker)/i.test(lowerMsg) ||
+        /tell\s+me\s+about\s+(?:the\s+)?(?:developer|creator|author|mahfuj)/i.test(lowerMsg);
+
+      if (isDevQuery) {
+        callbacks.onStatus?.({ stage: 'retrieving', message: 'Retrieving verified developer & system information…' });
+        await new Promise((r) => setTimeout(r, 200));
+
+        const devChunks = [
+          '**OncoVision AI** was designed and developed by **Md. Mahfujur Rahman**, a Machine Learning Engineer and AI Researcher specializing in deep learning, computer vision, and biomedical informatics.\n\n',
+          'He engineered the end-to-end multi-model ensemble histopathology classification architecture (achieving 99.97%–99.99% accuracy across high-confidence slides), asynchronous clinical decision support backend, and interactive evidence dashboard.\n\n',
+          '**Developer & Project Resources:**\n',
+          '- **Portfolio:** [https://md-mahfujur-rahman.vercel.app/](https://md-mahfujur-rahman.vercel.app/)\n',
+          '- **GitHub:** [https://github.com/mahfujr403](https://github.com/mahfujr403)\n',
+          '- **Google Scholar:** [Md. Mahfujur Rahman](https://scholar.google.com/citations?user=ssuw-WEAAAAJ&hl=en)\n',
+          '- **Email:** [mailto:mahfujr403@gmail.com](mailto:mahfujr403@gmail.com)',
+        ];
+
+        for (const chunk of devChunks) {
+          if (signal?.aborted) return;
+          callbacks.onDelta?.(chunk);
+          await new Promise((r) => setTimeout(r, 40));
+        }
+
+        callbacks.onDone?.({
+          conversation_id: request.conversation_id || 'demo-conv-1',
+          message_id: 'demo-msg-1',
+          is_grounded: false,
+          citations: [],
+          sources: [],
+          metadata: { latency_ms: 280, model: 'platform-metadata', grounded: false },
+        });
+        return;
+      }
+
       callbacks.onStatus?.({ stage: 'retrieving', message: 'Querying medical literature & vector index…' });
       await new Promise((r) => setTimeout(r, 300));
       callbacks.onStatus?.({ stage: 'grounding', message: 'Validating clinical citations & evidence…' });
@@ -206,8 +245,6 @@ async function executeSSEChatStream(
             '{ WHO Classification of Tumours, Thoracic Tumours, 5th Edition, Page 42-45 / https://tumourclassification.iarc.who.int/chapters/35 }',
         },
       ];
-
-      callbacks.onSources?.({ sources: mockSources });
 
       const textChunks = [
         '### Histopathological Analysis\n\n',

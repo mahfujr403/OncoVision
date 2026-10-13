@@ -343,7 +343,10 @@ def is_explicit_developer_query(query: str) -> bool:
         return False
 
     patterns = [
-        r"\bwho\s+(?:developed|created|built|designed|authored|made)\s+(?:this|oncovision|the\s+platform|the\s+system|the\s+app|the\s+model|the\s+models)\b",
+        r"\bwho\s+(?:developed|created|built|build|designed|authored|made)\s+(?:this|you|u|oncovision|the\s+platform|the\s+system|the\s+app|the\s+model|the\s+models)\b",
+        r"\bwho\s+(?:are\s+you|built\s+you|build\s+you|made\s+you|created\s+you|developed\s+you)\b",
+        r"\bwho\s+is\s+your\s+(?:developer|creator|author|builder|maker)\b",
+        r"\bwhat\s+is\s+oncovision\b",
         r"\bwho\s+is\s+(?:the\s+)?(?:developer|creator|author|builder|architect|engineer|maker)\b",
         r"\b(?:what\s+is|what's|give\s+me|show\s+me|tell\s+me)\s+(?:the\s+)?(?:developer|author|creator)'?s?\s+(?:github|google\s+scholar|portfolio|email|contact|profile|website|linkedin|details)\b",
         r"\b(?:how\s+can\s+i|how\s+to)\s+contact\s+(?:the\s+)?(?:developer|author|creator)\b",

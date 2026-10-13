@@ -230,19 +230,23 @@ def build_grounded_user_prompt(
 
     lang_note = "Respond in Bangla." if language == "bn" else "Respond in English."
     if is_explicit_developer_query(user_message):
-        dev_inst = "Answer the user's inquiry regarding the developer or project author using verified platform/developer context."
+        instruction_line = (
+            f"INSTRUCTIONS: The user is inquiring about the creator/developer, builder, or platform background. "
+            f"Explain clearly that OncoVision AI was designed and developed by Md. Mahfujur Rahman, Machine Learning Engineer and AI Researcher. "
+            f"Do NOT provide histopathological classifications, medical diagnoses, or cite medical literature chunks [S#] for developer inquiries. "
+            f"Provide a polite, professional response. {lang_note}"
+        )
     else:
-        dev_inst = (
-            "Developer/profile information is not part of medical evidence. "
-            "Do NOT append developer biographies, contact information, portfolio links, "
-            "GitHub links, Google Scholar links, or project promotion to medical answers."
+        instruction_line = (
+            f"INSTRUCTIONS: Provide a grounded, clear response citing supported statements with [S#] references. "
+            "If asked for sources or references, list or cite the retrieved medical sources [S#] supporting the medical claims. "
+            f"Never attribute medical facts to developer metadata or external repositories. "
+            f"Developer/profile information is not part of medical evidence. Do NOT append developer biographies or links to medical answers. {lang_note}"
         )
 
     sections.append(
         f"<user_query>\n{user_message}\n</user_query>\n\n"
-        f"INSTRUCTIONS: Provide a grounded, clear response citing supported statements with [S#] references. "
-        "If asked for sources or references, list or cite the retrieved medical sources [S#] supporting the medical claims. "
-        f"Never attribute medical facts to developer metadata or external repositories. {dev_inst} {lang_note}"
+        f"{instruction_line}"
     )
 
     return "\n\n========================================\n\n".join(sections)
