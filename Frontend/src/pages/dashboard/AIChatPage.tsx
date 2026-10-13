@@ -117,6 +117,39 @@ export default function AIChatPage() {
             if (doneData.conversation_id && !conversationId) {
               setConversationId(doneData.conversation_id);
             }
+            if (doneData.citations && doneData.citations.length > 0) {
+              setMessages((prev) => {
+                const existingIdx = prev.findIndex((m) => m.id === assistantMsgId);
+                if (existingIdx >= 0) {
+                  const updated = [...prev];
+                  const formattedSources = doneData.citations.map((c) => {
+                    const book = c.source_title || 'Medical Literature';
+                    const section = c.document_title || 'Clinical Reference';
+                    const rawUrl = c.source_url || (c as any).url || '';
+                    const urlPart = rawUrl ? ` / ${rawUrl}` : '';
+                    const citation =
+                      c.citation_display ||
+                      (c as any).citation ||
+                      `{ ${book}, ${section}${urlPart} }`;
+                    return {
+                      source_id: c.source_id,
+                      title: book,
+                      document_title: section,
+                      url: rawUrl,
+                      source: c.document_id,
+                      citation,
+                    };
+                  });
+                  updated[existingIdx] = {
+                    ...updated[existingIdx],
+                    sources: formattedSources,
+                    isLiveStream: false,
+                  };
+                  return updated;
+                }
+                return prev;
+              });
+            }
             setCurrentStatus(null);
             setIsLoading(false);
           },

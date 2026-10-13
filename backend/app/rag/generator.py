@@ -1132,6 +1132,10 @@ class GroundedRAGGenerator:
         valid_citations: list[Citation] = []
         for cid in unique_cids:
             doc = source_map[cid]
+            book = doc.source_title or doc.document_title or "Medical Literature"
+            section = doc.document_title or doc.topic or "Clinical Reference"
+            url_part = f" / {doc.source_url}" if doc.source_url else ""
+            cit_disp = f"{{ {book}, {section}{url_part} }}" if book.lower() != section.lower() else f"{{ {book}{url_part} }}"
             valid_citations.append(
                 Citation(
                     source_id=cid,
@@ -1141,6 +1145,7 @@ class GroundedRAGGenerator:
                     source_url=doc.source_url or "",
                     source_tier=doc.source_tier,
                     domain=doc.domain,
+                    citation_display=cit_disp,
                 )
             )
 

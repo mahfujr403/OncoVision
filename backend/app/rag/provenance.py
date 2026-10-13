@@ -133,7 +133,11 @@ class DocumentMetadata:
             "source_url": self.primary_source_url,
             "source_tier": self.primary_source_tier,
             "source_type": "guideline_policy" if self.is_safety_policy else "medical_literature",
-            "citation": f"{self.primary_source_title} ({self.primary_source_url})" if self.primary_source_url else self.document_title,
+            "citation": (
+                f"{{ {self.primary_source_title or self.document_title}, {self.document_title} / {self.primary_source_url} }}"
+                if self.primary_source_url
+                else f"{{ {self.primary_source_title or self.document_title} }}"
+            ),
             "last_reviewed": self.last_reviewed,
             "is_safety_policy": self.is_safety_policy,
             "claim_scope": self.claim_scope,

@@ -262,41 +262,53 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                     <span className="text-[10px] font-mono text-text-muted">Grounded Literature</span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 pt-1">
+                  <div className="flex flex-col gap-2 pt-1">
                     {sources.map((source, idx) => {
-                      const getSourceUrl = (): string => {
-                        if (source.url && (source.url.startsWith('http://') || source.url.startsWith('https://'))) {
-                          return source.url;
-                        }
-                        const cleanPath = (source.source || '').replace(/\\/g, '/');
-                        if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
-                          return cleanPath;
-                        }
-                        return `https://github.com/mahfujr403/OncoVision/blob/main/${cleanPath}`;
-                      };
+                      const book = source.source_title || source.title || 'Medical Literature';
+                      const section = source.document_title || source.topic || 'Clinical Reference';
+                      const rawUrl = source.url || (source as any).source_url;
+                      const isExternalUrl = Boolean(
+                        rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))
+                      );
+                      const url = isExternalUrl ? rawUrl : undefined;
+                      const formattedRef = source.citation || (
+                        url
+                          ? `{ ${book}, ${section} / ${url} }`
+                          : `{ ${book}, ${section} }`
+                      );
 
-                      const displayTitle = source.document_title || (source.title ? source.title.replace(/_/g, ' ') : 'Medical Evidence');
+                      if (url) {
+                        return (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex items-start justify-between gap-2 text-xs bg-surface hover:bg-surface-raised text-text-primary border border-border hover:border-primary/50 px-3 py-2 rounded-lg transition-all shadow-2xs"
+                            aria-label={`Source reference: ${formattedRef}`}
+                          >
+                            <div className="flex items-start gap-2 min-w-0 flex-1">
+                              <span className="font-mono text-[10px] text-primary font-bold shrink-0 mt-0.5">[{idx + 1}]</span>
+                              <span className="font-mono text-[11px] text-text-primary group-hover:text-primary transition-colors break-all leading-snug">
+                                {formattedRef}
+                              </span>
+                            </div>
+                            <ExternalLink size={12} className="text-text-muted group-hover:text-primary transition-colors shrink-0 mt-0.5" />
+                          </a>
+                        );
+                      }
 
                       return (
-                        <a
+                        <div
                           key={idx}
-                          href={getSourceUrl()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group inline-flex items-center gap-1.5 text-xs bg-surface hover:bg-surface-raised text-text-primary border border-border hover:border-primary/40 px-2.5 py-1.5 rounded-lg transition-colors shadow-2xs"
-                          aria-label={`Source reference: ${displayTitle} (${source.source})`}
+                          className="flex items-start gap-2 text-xs bg-surface text-text-primary border border-border px-3 py-2 rounded-lg shadow-2xs"
+                          aria-label={`Source reference: ${formattedRef}`}
                         >
-                          <span className="font-mono text-[10px] text-primary font-bold">[{idx + 1}]</span>
-                          <span className="truncate max-w-[220px] text-[11px] font-medium text-text-primary group-hover:text-primary transition-colors capitalize">
-                            {displayTitle}
+                          <span className="font-mono text-[10px] text-primary font-bold shrink-0 mt-0.5">[{idx + 1}]</span>
+                          <span className="font-mono text-[11px] text-text-primary break-all leading-snug">
+                            {formattedRef}
                           </span>
-                          {source.relevance != null && (
-                            <span className="font-mono text-[10px] tabular-nums text-text-muted">
-                              ({Math.round(source.relevance * 100)}%)
-                            </span>
-                          )}
-                          <ExternalLink size={10} className="text-text-muted group-hover:text-primary transition-colors shrink-0" />
-                        </a>
+                        </div>
                       );
                     })}
                   </div>

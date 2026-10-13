@@ -48,6 +48,64 @@ _MEDICAL_DISCLAIMER = (
 )
 
 
+def _format_source_reference(doc) -> str:
+    """Format clean bibliographic reference string: { <book/publication>, <topic/doc> / <url> }."""
+    book = doc.source_title or doc.document_title or "Medical Literature"
+    section = doc.document_title or doc.topic or "Clinical Reference"
+    url_part = f" / {doc.source_url}" if doc.source_url else ""
+    if book.lower() != section.lower():
+        return f"{{ {book}, {section}{url_part} }}"
+    return f"{{ {book}{url_part} }}"
+
+
+def _filter_and_format_sources(chunks, citations=None, is_grounded: bool = True) -> list[dict[str, Any]]:
+    """Filter retrieved chunks to only those actually cited or most salient, formatted cleanly."""
+    if not is_grounded or not chunks:
+        return []
+
+    cited_ids = {c.source_id for c in citations} if citations else set()
+    cited_urls = {c.source_url for c in citations if c.source_url} if citations else set()
+    cited_titles = {c.document_title.lower() for c in citations if c.document_title} if citations else set()
+
+    selected_chunks = []
+    seen_keys = set()
+
+    for i, doc in enumerate(chunks):
+        cid = f"S{i+1}"
+        is_cited = False
+        if cited_ids and cid in cited_ids:
+            is_cited = True
+        elif cited_urls and doc.source_url in cited_urls:
+            is_cited = True
+        elif cited_titles and (doc.document_title or "").lower() in cited_titles:
+            is_cited = True
+
+        dedup_key = (doc.source_url or doc.document_title or doc.source_title or cid).lower()
+        if dedup_key in seen_keys:
+            continue
+
+        if is_cited or (not cited_ids and len(selected_chunks) < 2):
+            seen_keys.add(dedup_key)
+            selected_chunks.append((cid, doc))
+
+    if not selected_chunks and chunks and is_grounded:
+        selected_chunks = [("S1", chunks[0])]
+
+    return [
+        {
+            "source_id": cid,
+            "title": doc.source_title or doc.topic or "Medical Literature",
+            "source": doc.source,
+            "relevance": round(doc.similarity, 4) if doc.similarity is not None else 0.9,
+            "url": doc.source_url,
+            "tier": doc.source_tier,
+            "citation": _format_source_reference(doc),
+            "document_title": doc.document_title,
+        }
+        for cid, doc in selected_chunks
+    ]
+
+
 class ChatService:
     """Service for handling prediction-specific and RAG knowledge chats (Phase 4)."""
 
@@ -222,18 +280,11 @@ class ChatService:
             telemetry=telemetry,
         )
 
-        sources = [
-            {
-                "title": doc.source_title or doc.topic,
-                "source": doc.source,
-                "relevance": round(doc.similarity, 4),
-                "url": doc.source_url,
-                "tier": doc.source_tier,
-                "citation": doc.citation,
-                "document_title": doc.document_title,
-            }
-            for doc in retrieved_context.chunks
-        ] if grounded_answer.grounded else []
+        sources = _filter_and_format_sources(
+            retrieved_context.chunks,
+            citations=grounded_answer.citations,
+            is_grounded=grounded_answer.grounded,
+        )
 
         # Persist the assistant response using verified prediction.id with rollback safety
         try:
@@ -411,18 +462,11 @@ class ChatService:
             telemetry=telemetry,
         )
 
-        sources = [
-            {
-                "title": doc.source_title or doc.topic,
-                "source": doc.source,
-                "relevance": round(doc.similarity, 4),
-                "url": doc.source_url,
-                "tier": doc.source_tier,
-                "citation": doc.citation,
-                "document_title": doc.document_title,
-            }
-            for doc in retrieved_context.chunks
-        ] if grounded_answer.grounded else []
+        sources = _filter_and_format_sources(
+            retrieved_context.chunks,
+            citations=grounded_answer.citations,
+            is_grounded=grounded_answer.grounded,
+        )
 
         # Persist the assistant response with rollback safety
         try:
@@ -631,19 +675,10 @@ class ChatService:
                 )
 
         # 2. Emit sources event
-        sources_payload = [
-            {
-                "source_id": f"S{i+1}",
-                "title": doc.source_title or doc.topic,
-                "source": doc.source,
-                "relevance": round(doc.similarity, 4),
-                "url": doc.source_url,
-                "tier": doc.source_tier,
-                "citation": doc.citation,
-                "document_title": doc.document_title,
-            }
-            for i, doc in enumerate(retrieved_context.chunks)
-        ]
+        sources_payload = _filter_and_format_sources(
+            retrieved_context.chunks,
+            is_grounded=True,
+        )
         yield {
             "event": "sources",
             "data": json.dumps({"sources": sources_payload}),
@@ -697,18 +732,11 @@ class ChatService:
             "data": json.dumps({"stage": "validating", "message": "Validating clinical boundaries and citations..."}),
         }
 
-        sources = [
-            {
-                "title": doc.source_title or doc.topic,
-                "source": doc.source,
-                "relevance": round(doc.similarity, 4),
-                "url": doc.source_url,
-                "tier": doc.source_tier,
-                "citation": doc.citation,
-                "document_title": doc.document_title,
-            }
-            for doc in retrieved_context.chunks
-        ] if grounded_answer.grounded else []
+        sources = _filter_and_format_sources(
+            retrieved_context.chunks,
+            citations=grounded_answer.citations,
+            is_grounded=grounded_answer.grounded,
+        )
 
         # 5. Persist assistant message ONLY after successful validation
         try:
@@ -919,19 +947,10 @@ class ChatService:
                 )
 
         # 2. Emit sources event
-        sources_payload = [
-            {
-                "source_id": f"S{i+1}",
-                "title": doc.source_title or doc.topic,
-                "source": doc.source,
-                "relevance": round(doc.similarity, 4),
-                "url": doc.source_url,
-                "tier": doc.source_tier,
-                "citation": doc.citation,
-                "document_title": doc.document_title,
-            }
-            for i, doc in enumerate(retrieved_context.chunks)
-        ]
+        sources_payload = _filter_and_format_sources(
+            retrieved_context.chunks,
+            is_grounded=True,
+        )
         yield {
             "event": "sources",
             "data": json.dumps({"sources": sources_payload}),
@@ -984,18 +1003,11 @@ class ChatService:
             "data": json.dumps({"stage": "validating", "message": "Validating clinical boundaries and citations..."}),
         }
 
-        sources = [
-            {
-                "title": doc.source_title or doc.topic,
-                "source": doc.source,
-                "relevance": round(doc.similarity, 4),
-                "url": doc.source_url,
-                "tier": doc.source_tier,
-                "citation": doc.citation,
-                "document_title": doc.document_title,
-            }
-            for doc in retrieved_context.chunks
-        ] if grounded_answer.grounded else []
+        sources = _filter_and_format_sources(
+            retrieved_context.chunks,
+            citations=grounded_answer.citations,
+            is_grounded=grounded_answer.grounded,
+        )
 
         # 5. Persist assistant message ONLY after successful validation
         try:

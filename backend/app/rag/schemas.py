@@ -56,6 +56,10 @@ class Citation(BaseModel):
         default=None,
         description="Medical domain (e.g. colon, lung, general_oncology).",
     )
+    citation_display: str | None = Field(
+        default=None,
+        description="Clean bibliographic reference string: { <book>, <section> / <url> }",
+    )
 
 
 class GroundedAnswer(BaseModel):
