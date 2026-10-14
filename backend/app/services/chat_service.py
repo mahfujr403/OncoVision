@@ -748,12 +748,24 @@ class ChatService:
             }
             return
         except Exception as gen_err:
-            logger.error("Error during generate_grounded_stream: %s", gen_err, exc_info=True)
-            yield {
-                "event": "error",
-                "data": json.dumps({"error_type": "server_error", "code": "server_error", "message": "An error occurred while generating the explanation."}),
-            }
-            return
+            logger.warning("generate_grounded_stream failed in stream_prediction_chat: %s, attempting generate_grounded_answer fallback", gen_err)
+            try:
+                grounded_answer = await self.generator.generate_grounded_answer(
+                    query=message,
+                    context=retrieved_context,
+                    prediction_summary=pred_summary,
+                    chat_history=chat_history,
+                    language=language,
+                    request_id=request_id,
+                    telemetry=telemetry,
+                )
+            except Exception as fb_err:
+                logger.error("Both stream and direct generation failed in stream_prediction_chat: %s | %s", gen_err, fb_err, exc_info=True)
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"error_type": "server_error", "code": "server_error", "message": f"An error occurred while generating the explanation: {gen_err}"}),
+                }
+                return
 
         if raw_request and await raw_request.is_disconnected():
             logger.info("Client disconnected before persistence in stream_prediction_chat.")
@@ -1023,12 +1035,23 @@ class ChatService:
             }
             return
         except Exception as gen_err:
-            logger.error("Error during generate_grounded_stream: %s", gen_err, exc_info=True)
-            yield {
-                "event": "error",
-                "data": json.dumps({"error_type": "server_error", "code": "server_error", "message": "An error occurred while generating the explanation."}),
-            }
-            return
+            logger.warning("generate_grounded_stream failed in stream_knowledge_chat: %s, attempting generate_grounded_answer fallback", gen_err)
+            try:
+                grounded_answer = await self.generator.generate_grounded_answer(
+                    query=message,
+                    context=retrieved_context,
+                    chat_history=chat_history,
+                    language=language,
+                    request_id=request_id,
+                    telemetry=telemetry,
+                )
+            except Exception as fb_err:
+                logger.error("Both stream and direct generation failed in stream_knowledge_chat: %s | %s", gen_err, fb_err, exc_info=True)
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"error_type": "server_error", "code": "server_error", "message": f"An error occurred while generating the explanation: {gen_err}"}),
+                }
+                return
 
         if raw_request and await raw_request.is_disconnected():
             logger.info("Client disconnected before persistence in stream_knowledge_chat.")
