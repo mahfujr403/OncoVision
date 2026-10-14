@@ -342,17 +342,52 @@ def is_explicit_developer_query(query: str) -> bool:
     ):
         return False
 
+    dev_verbs = (
+        r"(?:develop|develops|developed|developing|"
+        r"build|builds|built|building|"
+        r"create|creates|created|creating|"
+        r"make|makes|made|making|"
+        r"design|designs|designed|designing|"
+        r"author|authors|authored|authoring|"
+        r"code|codes|coded|coding|"
+        r"program|programs|programmed|programming|"
+        r"train|trains|trained|training|"
+        r"architect|architects|architected|"
+        r"write|writes|wrote|written)"
+    )
+
+    dev_targets = (
+        r"(?:you|u|this|oncovision|oncovision\s+ai|the\s+platform|the\s+system|"
+        r"the\s+app|the\s+application|the\s+model|the\s+models|it)"
+    )
+
+    dev_nouns = (
+        r"(?:developer|developers|creator|creators|author|authors|builder|builders|"
+        r"maker|makers|architect|architects|programmer|programmers|engineer|engineers|designer|designers)"
+    )
+
     patterns = [
-        r"\bwho\s+(?:developed|created|built|build|designed|authored|made)\s+(?:this|you|u|oncovision|the\s+platform|the\s+system|the\s+app|the\s+model|the\s+models)\b",
-        r"\bwho\s+(?:are\s+you|built\s+you|build\s+you|made\s+you|created\s+you|developed\s+you)\b",
-        r"\bwho\s+is\s+your\s+(?:developer|creator|author|builder|maker)\b",
-        r"\bwhat\s+is\s+oncovision\b",
-        r"\bwho\s+is\s+(?:the\s+)?(?:developer|creator|author|builder|architect|engineer|maker)\b",
+        # who <verb> <target> (e.g., who develop you, who developed oncovision, who built this)
+        rf"\bwho\s+{dev_verbs}\s+{dev_targets}\b",
+        # who did/has/have <verb> <target>
+        rf"\bwho\s+(?:did|has|have)\s+{dev_verbs}\s+{dev_targets}\b",
+        # who [was/were/are/is] <target> <verb> by (e.g., who were you built by, who was this developed by)
+        rf"\bwho\s+(?:was|were|are|is)\s+{dev_targets}\s+{dev_verbs}\s+by\b",
+        # <target> [was/were/are/is] <verb> by [whom/who] (e.g., you are developed by whom)
+        rf"\b{dev_targets}\s+(?:was|were|are|is)\s+{dev_verbs}\s+by\s+(?:whom|who)\b",
+        # who is behind <target> / worked on <target>
+        rf"\bwho\s+(?:is\s+behind\s+{dev_targets}|worked\s+on\s+{dev_targets})\b",
+        # who's / who is / who are your/the <developer/creator/builder/etc>
+        rf"\bwho(?:'s|\s+is|\s+are)\s+(?:your|the)\s+{dev_nouns}\b",
+        rf"\bwhat\s+is\s+oncovision\b",
+        rf"\bwho\s+is\s+(?:the\s+)?{dev_nouns}\b",
         r"\b(?:what\s+is|what's|give\s+me|show\s+me|tell\s+me)\s+(?:the\s+)?(?:developer|author|creator)'?s?\s+(?:github|google\s+scholar|portfolio|email|contact|profile|website|linkedin|details)\b",
         r"\b(?:how\s+can\s+i|how\s+to)\s+contact\s+(?:the\s+)?(?:developer|author|creator)\b",
         r"\btell\s+me\s+about\s+(?:the\s+)?(?:developer|project\s+author|creator|author)\b",
         r"\b(?:tell\s+me\s+about|who\s+is)\s+(?:md\.?\s*)?mahfujur\s+rahman\b",
         r"\bdeveloper\s+(?:contact|profile|portfolio|bio|biography|information|info)\b",
-        r"\bwho\s+(?:runs|maintains|owns)\s+(?:oncovision|this\s+project)\b",
+        r"\bwho\s+(?:runs|maintains|owns)\s+(?:oncovision|this\s+project|this\s+system|this\s+app)\b",
+        # Bengali patterns
+        r"(?:কে\s+(?:বানিয়েছে|বানাইছে|বানাল|বানালো|তৈরি\s+করেছে|ডেভেলপ\s+করেছে|ডিজাইন\s+করেছে|গড়েছে)|ডেভেলপার\s+কে|নির্মাতা\s+কে|কে\s+বানালো\s+তোমাকে|কে\s+বানিয়েছে\s+আপনাকে)",
     ]
     return any(re.search(pat, lower) for pat in patterns)

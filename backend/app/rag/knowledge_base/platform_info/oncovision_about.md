@@ -2,7 +2,7 @@
 
 ## Creator and Lead Developer
 OncoVision AI was designed, architected, and developed by **Md. Mahfujur Rahman**, a Machine Learning Engineer and AI Researcher specializing in biomedical computer vision and deep learning. 
-- **Developer Profile:** Md. Mahfujur Rahman ([Portfolio](https://md-mahfujur-rahman.vercel.app/) | [GitHub](https://github.com/mahfujr403) | [LinkedIn](https://linkedin.com/in/mahfujr403) | [Google Scholar](https://scholar.google.com/citations?user=ssuw-WEAAAAJ&hl=en))
+- **Developer Profile:** Md. Mahfujur Rahman, Machine Learning Engineer and AI Researcher.
 - **Primary Research Base:** The core classification models are based on Md. Mahfujur Rahman's peer-reviewed IEEE ICCIT 2025 research titled *"Polyarchitectural Deep Ensemble with Multimodal Feature Fusion for Histopathological Stratification of Colon and Lung Cancer"* (DOI: 10.1109/ICCIT68739.2025.11491066).
 
 ## What is OncoVision AI?

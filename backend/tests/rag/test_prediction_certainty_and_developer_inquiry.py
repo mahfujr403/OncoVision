@@ -66,12 +66,34 @@ def test_prediction_certainty_classification(classifier: QueryScopeClassifier):
 
 
 def test_developer_inquiry_detection(classifier: QueryScopeClassifier):
-    """'who build you?' is detected as an explicit developer query."""
-    q = "who build you?"
-    assert is_explicit_developer_query(q) is True
-    scope = classifier.classify(q)
-    assert scope.intent == QueryIntent.CLASSIFIER_EXPLANATION
-    assert scope.domain == QueryDomain.DEVELOPER_INFO
+    """Developer inquiries across all verb inflections and phrasings are detected as explicit developer queries."""
+    queries = [
+        "who develop you?",
+        "who build you?",
+        "who developed you?",
+        "who built you?",
+        "who create you?",
+        "who created you?",
+        "who make you?",
+        "who made you?",
+        "who design you?",
+        "who designed you?",
+        "who coded you?",
+        "who programmed you?",
+        "who is your developer?",
+        "who is your creator?",
+        "who's your developer?",
+        "who developed oncovision?",
+        "who develop oncovision?",
+        "you are developed by whom?",
+        "who are you built by?",
+        "who is behind oncovision?",
+    ]
+    for q in queries:
+        assert is_explicit_developer_query(q) is True, f"is_explicit_developer_query failed for '{q}'"
+        scope = classifier.classify(q)
+        assert scope.intent == QueryIntent.CLASSIFIER_EXPLANATION, f"Failed intent for '{q}'"
+        assert scope.domain == QueryDomain.DEVELOPER_INFO, f"Failed domain for '{q}'"
 
 
 def test_prediction_certainty_grounding_eligible(

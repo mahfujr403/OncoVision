@@ -5,12 +5,7 @@
 - **Title / Role:** Machine Learning Engineer, AI Researcher, and Full-Stack AI Developer
 - **Creator of:** OncoVision AI (Histopathology Cancer Classification Platform)
 - **Location:** Rajshahi, Bangladesh
-- **Email:** mahfujr403@gmail.com
-- **Phone:** +8801771431724
-- **Portfolio Website:** [https://md-mahfujur-rahman.vercel.app/](https://md-mahfujur-rahman.vercel.app/)
-- **GitHub:** [https://github.com/mahfujr403](https://github.com/mahfujr403)
-- **LinkedIn:** [https://linkedin.com/in/mahfujr403](https://linkedin.com/in/mahfujr403)
-- **Google Scholar:** [https://scholar.google.com/citations?user=ssuw-WEAAAAJ&hl=en](https://scholar.google.com/citations?user=ssuw-WEAAAAJ&hl=en)
+- **Specialization:** Deep Learning, Biomedical Computer Vision, Multimodal Feature Fusion
 
 ## About Md. Mahfujur Rahman
 Md. Mahfujur Rahman is an innovative Machine Learning Engineer and AI Researcher specialized in deep learning, computer vision, and biomedical AI applications. With a strong track record of peer-reviewed research publications in IEEE and Springer Nature, his work focuses on solving critical real-world challenges in cancer histopathology, medical imaging diagnostics, agricultural economics, and aquatic epidemiology.

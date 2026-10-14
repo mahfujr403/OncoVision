@@ -155,6 +155,10 @@ class QueryScopeClassifier:
 
     def _detect_intent(self, q: str, requires_safety: bool) -> QueryIntent:
         """Classify retrieval question intent."""
+        # Developer and platform inquiries take precedence over generic conversational greetings
+        if is_explicit_developer_query(q):
+            return QueryIntent.CLASSIFIER_EXPLANATION
+
         # Conversational greetings & assistant identity
         conversational_patterns = [
             r"^(hi|hello|hey|greetings|good (morning|afternoon|evening))\b",

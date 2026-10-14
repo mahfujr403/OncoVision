@@ -235,9 +235,10 @@ def build_grounded_user_prompt(
     if is_explicit_developer_query(user_message):
         instruction_line = (
             f"INSTRUCTIONS: The user is inquiring about the creator/developer, builder, or platform background. "
-            f"Explain clearly that OncoVision AI was designed and developed by Md. Mahfujur Rahman, Machine Learning Engineer and AI Researcher. "
+            f"Explain clearly that OncoVision AI was designed and developed by Md. Mahfujur Rahman, a Machine Learning Engineer and AI Researcher specializing in deep learning, computer vision, and biomedical AI applications. "
+            f"Strictly do NOT provide external URLs, website links, or personal contact details (such as email addresses, phone numbers, GitHub, LinkedIn, or portfolio links). "
             f"Do NOT provide histopathological classifications, medical diagnoses, or cite medical literature chunks [S#] for developer inquiries. "
-            f"Provide a polite, professional response. {lang_note}"
+            f"Provide a polite, professional, concise response. {lang_note}"
         )
     else:
         instruction_line = (
