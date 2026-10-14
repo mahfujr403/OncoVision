@@ -441,3 +441,49 @@ class TestRetrievalEvaluationBenchmark:
             successful_routes += 1
 
         assert successful_routes == 10
+
+    def test_full_qa_evaluation_dataset_cross_contamination_and_routing(self) -> None:
+        """Evaluate routing and zero cross-domain contamination across all curated JSONL benchmark pairs."""
+        eval_dir = (
+            Path(__file__).resolve().parents[3]
+            / "knowledge_base"
+            / "oncovision_medical_knowledgebase_v3"
+            / "09_qa_evaluation"
+        )
+        assert eval_dir.exists(), f"Evaluation dir not found at {eval_dir}"
+
+        classifier = QueryScopeClassifier()
+        total_queries = 0
+        correct_routes = 0
+        cross_contaminations = 0
+
+        for jsonl_file in eval_dir.glob("*.jsonl"):
+            cls_name = jsonl_file.stem
+            with open(jsonl_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    item = json.loads(line)
+                    q = item["question"]
+                    scope = classifier.classify(q)
+                    total_queries += 1
+
+                    if "colon" in cls_name and "vs" not in cls_name:
+                        if scope.domain == QueryDomain.LUNG:
+                            cross_contaminations += 1
+                        else:
+                            correct_routes += 1
+                    elif "lung" in cls_name and "vs" not in cls_name:
+                        if scope.domain == QueryDomain.COLON:
+                            cross_contaminations += 1
+                        else:
+                            correct_routes += 1
+                    elif "vs" in cls_name:
+                        if scope.domain in (QueryDomain.COMPARISON, QueryDomain.COLON, QueryDomain.LUNG):
+                            correct_routes += 1
+                    else:
+                        correct_routes += 1
+
+        assert total_queries == 25, f"Expected 25 queries in JSONL benchmarks, found {total_queries}"
+        assert cross_contaminations == 0, f"Found {cross_contaminations} cross-domain contaminations"
+        assert correct_routes == 25, f"Routing accuracy was {correct_routes}/{total_queries}"

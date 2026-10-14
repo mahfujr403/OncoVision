@@ -233,3 +233,44 @@ def test_generator_explains_no_active_prediction_gracefully():
     assert "There is no active histopathology slide evaluation" in ans.answer
     assert "The available OncoVision knowledge base provides only limited information" not in ans.answer
 
+
+def test_generator_answers_contact_info_request():
+    """Generator answers 'Can you give me his contact information?' with verified public links."""
+    q = "Can you give me his contact information?"
+    classifier = QueryScopeClassifier()
+    scope = classifier.classify(q)
+    assert scope.domain == QueryDomain.DEVELOPER_INFO
+    assert is_explicit_developer_query(q) is True
+
+    context = RetrievedContext(
+        chunks=[],
+        query_scope=scope,
+        reason="developer_context",
+    )
+
+    mock_client = MagicMock()
+    mock_client.generate = AsyncMock(
+        return_value=(
+            "You can contact the developer of OncoVision AI, Md. Mahfujur Rahman, through his verified public channels:\n"
+            "- Email: mahfujr403@gmail.com\n"
+            "- Portfolio: https://md-mahfujur-rahman.vercel.app/\n"
+            "- GitHub: https://github.com/mahfujr403\n"
+            "- LinkedIn: https://linkedin.com/in/mahfujr403\n"
+            "- Project Repository: https://github.com/mahfujr403/OncoVision\n"
+            "Please note that private contact information such as phone numbers or home addresses are unavailable."
+        )
+    )
+
+    generator = GroundedRAGGenerator(llm_client=mock_client)
+    ans = asyncio.run(
+        generator.generate_grounded_answer(
+            query=q,
+            context=context,
+        )
+    )
+
+    assert ans.grounded is True
+    assert "mahfujr403@gmail.com" in ans.answer
+    assert "md-mahfujur-rahman.vercel.app" in ans.answer
+    assert "github.com/mahfujr403" in ans.answer
+    assert "phone numbers" in ans.answer.lower() or "unavailable" in ans.answer.lower()

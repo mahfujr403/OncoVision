@@ -7,6 +7,14 @@
 - **Location:** Rajshahi, Bangladesh
 - **Specialization:** Deep Learning, Biomedical Computer Vision, Multimodal Feature Fusion
 
+## Verified Public Links & Contact Details
+- **Email:** mahfujr403@gmail.com
+- **Portfolio Website:** https://md-mahfujur-rahman.vercel.app/
+- **GitHub Profile:** https://github.com/mahfujr403
+- **LinkedIn Profile:** https://linkedin.com/in/mahfujr403
+- **Project Repository:** https://github.com/mahfujr403/OncoVision
+- **Unavailable Information:** Phone numbers, residential addresses, and private account credentials are not publicly available.
+
 ## About Md. Mahfujur Rahman
 Md. Mahfujur Rahman is an innovative Machine Learning Engineer and AI Researcher specialized in deep learning, computer vision, and biomedical AI applications. With a strong track record of peer-reviewed research publications in IEEE and Springer Nature, his work focuses on solving critical real-world challenges in cancer histopathology, medical imaging diagnostics, agricultural economics, and aquatic epidemiology.
 
