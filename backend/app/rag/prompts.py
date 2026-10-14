@@ -165,15 +165,18 @@ def build_prediction_context_block(
     if not prediction or not prediction.predicted_class:
         return ""
 
-    conf_pct = round(prediction.confidence * 100, 2)
-    agree_pct = round(prediction.agreement_ratio * 100, 2)
+    conf_pct = round(prediction.confidence, 2) if prediction.confidence > 1.0 else round(prediction.confidence * 100, 2)
+    agree_pct = round(prediction.agreement_ratio * 100, 2) if prediction.agreement_ratio <= 1.0 else round(prediction.agreement_ratio, 2)
     models_str = ", ".join(prediction.successful_models) if prediction.successful_models else "Ensemble"
 
     individual_summary = []
     if prediction.individual_predictions:
         for entry in prediction.individual_predictions:
-            c_pct = round(entry.confidence * 100, 1)
-            individual_summary.append(f"{entry.model_name}: {entry.predicted_class} ({c_pct}%)")
+            pred_label = getattr(entry, "prediction", None) or getattr(entry, "predicted_class", "unknown")
+            raw_conf = getattr(entry, "confidence", 0.0) or 0.0
+            c_pct = round(raw_conf, 1) if raw_conf > 1.0 else round(raw_conf * 100, 1)
+            model_name = getattr(entry, "model_name", "Model")
+            individual_summary.append(f"{model_name}: {pred_label} ({c_pct}%)")
 
     breakdown_str = " | ".join(individual_summary) if individual_summary else "N/A"
 
