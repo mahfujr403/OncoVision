@@ -144,6 +144,8 @@ class QueryScopeClassifier:
             # Personal treatment advice
             r"\bwhat treatment should i (take|have|use|get)\b",
             r"\bhow should i treat (my|this) (cancer|tumor)\b",
+            r"\b(recommend|prescribe|suggest)\b.*\b(chemotherapy|regimen|treatment|medication|drug|dose|dosing)\b",
+            r"\bcan (this chatbot|oncovision|you|ai)\b.*\b(recommend|prescribe|suggest)\b.*\b(chemotherapy|regimen|treatment|protocol)\b",
             r"\bprescribe\b",
             # Benign label vs absence of disease
             r"\bdoes benign\b.*\bmean no disease\b",
@@ -212,11 +214,11 @@ class QueryScopeClassifier:
         # Classifier explanation & prediction certainty
         if (
             re.search(
-                r"\b(classifier|model output|confidence score|agreement ratio|ai model|prediction score|prediction confidence)\b",
+                r"\b(classifier|model output|confidence score|agreement ratio|ai model|prediction score|prediction confidence|predicted class|prediction return|latest prediction|this prediction|explain my prediction|prediction result)\b",
                 q,
             )
             or re.search(
-                r"\b(?:are you sure|how sure|how confident|how accurate|why this prediction|explain this prediction|is this prediction|certainty|confidence|accuracy|model agreement|ensemble consensus|can i trust this prediction|is this reliable)\b",
+                r"\b(?:are you sure|how sure|how confident|how accurate|why this prediction|explain this prediction|is this prediction|certainty|confidence|accuracy|model agreement|ensemble consensus|can i trust this prediction|is this reliable|models? agree|participating models?|models? disagree|model disagreement|individual models?|confirmed clinical diagnosis)\b",
                 q,
             )
         ):
@@ -226,7 +228,7 @@ class QueryScopeClassifier:
         if any(
             re.search(pat, q)
             for pat in [
-                r"\b(histology|histological|histopathology|morphology|microscopic|crypts?|lepidic|cribriform|budding|acinar|papillary|intercellular bridges|keratin pearl)\b",
+                r"\b(histology|histological|histopathology|morphology|microscopic|crypts?|lepidic|cribriform|budding|acinar|papillary|intercellular bridges|keratin pearl|glandular|differentiation|architectur)\b",
                 r"\b(h&e|hematoxylin|eosin|biopsy|cellular|features?|characteristics?)\b",
                 r"\b(হিস্টোপ্যাথলজি|হিস্টোপ্যাথলজিক্যাল|বায়োপসি|টিস্যু|লক্ষণ)\b",
             ]
@@ -315,8 +317,10 @@ class QueryScopeClassifier:
     ) -> QueryDomain | None:
         """Determine target medical knowledge domain."""
         # Safety policy domain: strictly when asking about image staging, image prescription, or diagnostic boundaries
-        if requires_safety and intent in {QueryIntent.STAGING, QueryIntent.TREATMENT, QueryIntent.SAFETY_BOUNDARY}:
-            if re.search(r"\b(stage|staging|tnm)\b", q) or re.search(r"\b(treatment|treat|prescribe)\b", q):
+        if (requires_safety and intent in {QueryIntent.STAGING, QueryIntent.TREATMENT, QueryIntent.SAFETY_BOUNDARY}) or (
+            intent == QueryIntent.TREATMENT and re.search(r"\b(recommend|prescribe|chemotherapy|regimen)\b", q)
+        ):
+            if re.search(r"\b(stage|staging|tnm)\b", q) or re.search(r"\b(treatment|treat|prescribe|chemotherapy|regimen)\b", q):
                 return QueryDomain.SAFETY_POLICY
 
         # Comparison domain
@@ -347,7 +351,7 @@ class QueryScopeClassifier:
 
         # General histopathology (no specific organ)
         if intent == QueryIntent.HISTOPATHOLOGY or any(
-            w in q for w in ["histopathology", "biopsy", "h&e", "staining", "pathology", "হিস্টোপ্যাথলজি", "হিস্টোপ্যাথলজিক্যাল", "বায়োপসি", "টিস্যু"]
+            w in q for w in ["histopathology", "biopsy", "h&e", "staining", "pathology", "glandular", "differentiation", "হিস্টোপ্যাথলজি", "হিস্টোপ্যাথলজিক্যাল", "বায়োপসি", "টিস্যু"]
         ):
             return QueryDomain.HISTOPATHOLOGY
 

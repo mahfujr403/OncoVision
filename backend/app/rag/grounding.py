@@ -215,6 +215,7 @@ class GroundingEvaluator:
         if prediction_summary is not None and (
             query_scope.intent == QueryIntent.CLASSIFIER_EXPLANATION
             or query_scope.domain == QueryDomain.CLASSIFIER_CONTEXT
+            or any(kw in query.lower() for kw in ["predict", "model", "confidence", "agree", "class", "result", "classifier", "disagree"])
         ):
             sims = [chunk.similarity for chunk in context.chunks if chunk.similarity is not None]
             top_sim = max(sims) if sims else 0.85
@@ -233,7 +234,7 @@ class GroundingEvaluator:
         # Inquiries about a specific prediction when no prediction is loaded in the session
         is_specific_pred_query = bool(
             re.search(
-                r"\b(?:are you sure|how sure|how confident|why this prediction|explain this prediction|is this prediction|certainty of this|trust this prediction|confident about this|এই প্রেডিকশন|প্রেডিকশন সম্পর্কে নিশ্চিত)\b",
+                r"\b(?:are you sure|how sure|how confident|why this prediction|explain this prediction|is this prediction|certainty of this|trust this prediction|confident about this|predicted class|my latest prediction|what class did|model confidence|did all participating models agree|individual models disagreed|what does 100% agreement|why might two models disagree|treated as a confirmed clinical diagnosis|এই প্রেডিকশন|প্রেডিকশন সম্পর্কে নিশ্চিত)\b",
                 query.lower(),
             )
         )

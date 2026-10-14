@@ -456,6 +456,29 @@ class RAGRetriever:
                     QueryDomain.COLON.value,
                     QueryDomain.LUNG.value,
                     QueryDomain.HISTOPATHOLOGY.value,
+                    QueryDomain.GENERAL_ONCOLOGY.value,
+                ])
+            )
+        elif query_scope.domain == QueryDomain.HISTOPATHOLOGY:
+            filters.append(
+                KnowledgeEmbedding.domain.in_([
+                    QueryDomain.HISTOPATHOLOGY.value,
+                    QueryDomain.GENERAL_ONCOLOGY.value,
+                    QueryDomain.COLON.value,
+                    QueryDomain.LUNG.value,
+                    QueryDomain.CLASSIFIER_CONTEXT.value,
+                    QueryDomain.CLINICAL_EXPLANATION.value,
+                ])
+            )
+        elif query_scope.domain == QueryDomain.GENERAL_ONCOLOGY:
+            filters.append(
+                KnowledgeEmbedding.domain.in_([
+                    QueryDomain.GENERAL_ONCOLOGY.value,
+                    QueryDomain.HISTOPATHOLOGY.value,
+                    QueryDomain.COLON.value,
+                    QueryDomain.LUNG.value,
+                    QueryDomain.CLASSIFIER_CONTEXT.value,
+                    QueryDomain.CLINICAL_EXPLANATION.value,
                 ])
             )
         elif query_scope.domain == QueryDomain.SAFETY_POLICY:
@@ -555,14 +578,33 @@ class RAGRetriever:
         doc_counts: dict[str, int] = {}
         max_chunks_per_doc = 2
 
+        # When comparing multiple classes, ensure each target class is represented if available
+        if query_scope.domain == QueryDomain.COMPARISON and len(target_classes) > 1:
+            for req_cls in target_classes:
+                for record, score in scored_candidates:
+                    meta = record.chunk_metadata or {}
+                    c_cls = meta.get("class_scope")
+                    matches_cls = False
+                    if isinstance(c_cls, list) and req_cls in c_cls:
+                        matches_cls = True
+                    elif isinstance(c_cls, str) and req_cls == c_cls:
+                        matches_cls = True
+                    if matches_cls and record.id not in {r.id for r, _ in selected_candidates}:
+                        selected_candidates.append((record, score))
+                        doc_id = record.document_id or record.source
+                        doc_counts[doc_id] = doc_counts.get(doc_id, 0) + 1
+                        break
+
         # Primary pass with document diversity constraint
         for record, score in scored_candidates:
+            if len(selected_candidates) >= top_k:
+                break
+            if record.id in {r.id for r, _ in selected_candidates}:
+                continue
             doc_id = record.document_id or record.source
             if doc_counts.get(doc_id, 0) < max_chunks_per_doc:
                 selected_candidates.append((record, score))
                 doc_counts[doc_id] = doc_counts.get(doc_id, 0) + 1
-                if len(selected_candidates) >= top_k:
-                    break
 
         # Fallback pass: fill remaining slots from candidates if diversity limited total count
         if len(selected_candidates) < top_k:

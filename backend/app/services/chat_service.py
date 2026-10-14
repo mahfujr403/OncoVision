@@ -276,15 +276,20 @@ class ChatService:
                     classifier=self.classifier,
                     safety_evaluator=self.generator.safety,
                 )
+                has_valid_class = bool(
+                    prediction.predicted_class and prediction.predicted_class.strip().lower() not in {"unknown", "none", ""}
+                )
+                class_prefix = f"{prediction.predicted_class} " if has_valid_class else ""
+
                 if is_meta_source_query(message):
                     if past_user_msgs:
-                        retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria {past_user_msgs[-1]}"
+                        retrieval_query = f"{class_prefix}histopathology diagnostic criteria {past_user_msgs[-1]}".strip()
                     else:
-                        retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria morphology classification"
+                        retrieval_query = f"{class_prefix}histopathology diagnostic criteria morphology classification".strip()
                 elif is_explicit_developer_query(message):
                     retrieval_query = message
                 else:
-                    retrieval_query = f"{prediction.predicted_class} histopathology {message}"
+                    retrieval_query = f"{class_prefix}histopathology {message}".strip()
 
                 retrieved_context = await retriever.retrieve_context(
                     query=retrieval_query,
@@ -682,15 +687,20 @@ class ChatService:
                     classifier=self.classifier,
                     safety_evaluator=self.generator.safety,
                 )
+                has_valid_class = bool(
+                    prediction.predicted_class and prediction.predicted_class.strip().lower() not in {"unknown", "none", ""}
+                )
+                class_prefix = f"{prediction.predicted_class} " if has_valid_class else ""
+
                 if is_meta_source_query(message):
                     if past_user_msgs:
-                        retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria {past_user_msgs[-1]}"
+                        retrieval_query = f"{class_prefix}histopathology diagnostic criteria {past_user_msgs[-1]}".strip()
                     else:
-                        retrieval_query = f"{prediction.predicted_class} histopathology diagnostic criteria morphology classification"
+                        retrieval_query = f"{class_prefix}histopathology diagnostic criteria morphology classification".strip()
                 elif is_explicit_developer_query(message):
                     retrieval_query = message
                 else:
-                    retrieval_query = f"{prediction.predicted_class} histopathology {message}"
+                    retrieval_query = f"{class_prefix}histopathology {message}".strip()
 
                 retrieved_context = await retriever.retrieve_context(
                     query=retrieval_query,

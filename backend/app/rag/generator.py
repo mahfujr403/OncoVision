@@ -1268,6 +1268,7 @@ class GroundedRAGGenerator:
             and (
                 (context.query_scope and context.query_scope.intent == QueryIntent.CLASSIFIER_EXPLANATION)
                 or (context.query_scope and context.query_scope.domain == QueryDomain.CLASSIFIER_CONTEXT)
+                or any(kw in query.lower() for kw in ["predict", "model", "confidence", "agree", "class", "result", "classifier", "disagree"])
             )
         )
         is_grounded = bool(
@@ -1290,6 +1291,11 @@ class GroundedRAGGenerator:
                 valid_citations = []
                 if fin_refusal_reason == "developer_source_laundering":
                     clean_answer = DEVELOPER_ATTRIBUTION_REFUSAL_MESSAGE
+                elif not context.chunks or context.reason in {"no_relevant_knowledge_found", "empty_knowledge_base"}:
+                    clean_answer = (
+                        "I don't have enough relevant information in the current OncoVision knowledge base "
+                        "to answer that reliably."
+                    )
                 else:
                     clean_answer = (
                         "The available OncoVision knowledge base provides only limited information "
