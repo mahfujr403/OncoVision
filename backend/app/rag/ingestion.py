@@ -86,6 +86,10 @@ def resolve_corpus_path(configured_path: str | Path | None = None) -> Path:
     )
 
 
+class IngestionSessionFatalError(RuntimeError):
+    """Raised when a database session encounters an unrecoverable failure (e.g. rollback fails)."""
+
+
 @dataclass
 class IngestionStats:
     """Detailed metrics tracking for an ingestion run."""
@@ -102,26 +106,33 @@ class IngestionStats:
     cached_chunks: int = 0
     domain_counts: dict[str, int] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    dry_run: bool = False
 
     def summary(self) -> str:
-        """Format a human-readable execution summary."""
+        """Format a human-readable execution summary distinguishing dry-run from live persistence."""
         domain_lines = [
             f"  - {d}: {cnt}" for d, cnt in sorted(self.domain_counts.items())
         ]
         domain_str = "\n".join(domain_lines) if domain_lines else "  None"
         error_str = f"\nErrors ({len(self.errors)}):\n" + "\n".join(f"  ! {e}" for e in self.errors) if self.errors else ""
+        mode_str = (
+            "DRY-RUN (In-memory discovery & chunking; no database writes or embedding API calls)"
+            if self.dry_run
+            else "LIVE INGESTION (Committed to PostgreSQL)"
+        )
 
         return (
             f"==================================================\n"
             f"OncoVision KB Ingestion Pipeline Execution Summary\n"
+            f"Mode: {mode_str}\n"
             f"==================================================\n"
             f"Documents:\n"
             f"  Discovered: {self.documents_discovered}\n"
-            f"  Ingested:   {self.documents_ingested}\n"
+            f"  Ingested:   {self.documents_ingested} {'(parsed in-memory)' if self.dry_run else '(persisted to DB)'}\n"
             f"  Skipped:    {self.documents_skipped} (unchanged / hash matched)\n"
             f"  Excluded:   {self.documents_excluded} (sources, retrieval, qa_eval, non-md)\n"
             f"Chunks:\n"
-            f"  Created:    {self.chunks_created}\n"
+            f"  Created:    {self.chunks_created} {'(in-memory)' if self.dry_run else '(persisted)'}\n"
             f"  Updated:    {self.chunks_updated}\n"
             f"  Skipped:    {self.chunks_skipped} (identical content hash)\n"
             f"  Removed:    {self.chunks_removed} (stale)\n"
@@ -235,137 +246,174 @@ class DocumentIngestionPipeline:
             logger.warning("No chunks generated for %s", file_path)
             return []
 
-        if stats:
-            stats.domain_counts[doc_meta.domain] = (
-                stats.domain_counts.get(doc_meta.domain, 0) + len(chunks)
-            )
-
         if dry_run or session is None:
             if stats:
                 stats.documents_ingested += 1
                 stats.chunks_created += len(chunks)
-            return chunks
-
-        # 3. Idempotency Check: Examine existing records for this document
-        stmt = (
-            select(KnowledgeEmbedding)
-            .where(KnowledgeEmbedding.document_id == doc_meta.document_id)
-            .order_by(KnowledgeEmbedding.chunk_index)
-        )
-        result = await session.execute(stmt)
-        existing_rows = list(result.scalars().all())
-
-        is_unchanged = False
-        if not force and len(existing_rows) == len(chunks):
-            all_hashes_match = True
-            for row, chunk in zip(existing_rows, chunks):
-                row_hash = (row.chunk_metadata or {}).get("content_hash")
-                if row_hash != chunk.content_hash:
-                    all_hashes_match = False
-                    break
-            if all_hashes_match:
-                is_unchanged = True
-
-        if is_unchanged:
-            logger.debug("Document %s is unchanged. Skipping embedding generation.", doc_meta.document_id)
-            if stats:
-                stats.documents_skipped += 1
-                stats.chunks_skipped += len(chunks)
-                stats.cached_chunks += len(chunks)
-            return chunks
-
-        # 4. Generate Embeddings (caching unchanged chunks where applicable)
-        existing_embeddings_by_hash: dict[str, list[float]] = {}
-        for row in existing_rows:
-            r_hash = (row.chunk_metadata or {}).get("content_hash")
-            if (
-                r_hash
-                and row.embedding is not None
-                and len(row.embedding) == EXPECTED_EMBEDDING_DIMENSION
-            ):
-                existing_embeddings_by_hash[r_hash] = row.embedding
-
-        chunks_to_embed: list[tuple[int, str]] = []
-        final_embeddings: list[list[float]] = [[] for _ in chunks]
-
-        for i, chunk in enumerate(chunks):
-            if not force and chunk.content_hash in existing_embeddings_by_hash:
-                final_embeddings[i] = existing_embeddings_by_hash[chunk.content_hash]
-                if stats:
-                    stats.cached_chunks += 1
-            else:
-                chunks_to_embed.append((i, chunk.content))
-
-        if chunks_to_embed:
-            if not self.embedding_service:
-                raise RuntimeError(
-                    f"EmbeddingService is required to embed {len(chunks_to_embed)} new chunks "
-                    f"for document {doc_meta.document_id}."
+                stats.domain_counts[doc_meta.domain] = (
+                    stats.domain_counts.get(doc_meta.domain, 0) + len(chunks)
                 )
-            texts = [text for _, text in chunks_to_embed]
-            new_embeddings = await self.embedding_service.get_embeddings(texts)
-            if stats:
-                stats.embedding_api_calls += 1
+            return chunks
 
-            for (idx, _), emb in zip(chunks_to_embed, new_embeddings):
-                if len(emb) != EXPECTED_EMBEDDING_DIMENSION:
-                    raise ValueError(
-                        f"Generated embedding dimension {len(emb)} != expected {EXPECTED_EMBEDDING_DIMENSION}"
+        try:
+            # 3. Idempotency Check: Examine existing records for this document
+            stmt = (
+                select(KnowledgeEmbedding)
+                .where(KnowledgeEmbedding.document_id == doc_meta.document_id)
+                .order_by(KnowledgeEmbedding.chunk_index)
+            )
+            result = await session.execute(stmt)
+            existing_rows = list(result.scalars().all())
+
+            is_unchanged = False
+            if not force and len(existing_rows) == len(chunks):
+                all_hashes_match = True
+                for row, chunk in zip(existing_rows, chunks):
+                    row_hash = (row.chunk_metadata or {}).get("content_hash")
+                    if row_hash != chunk.content_hash:
+                        all_hashes_match = False
+                        break
+                if all_hashes_match:
+                    is_unchanged = True
+
+            if is_unchanged:
+                logger.debug("Document %s is unchanged. Skipping embedding generation.", doc_meta.document_id)
+                if stats:
+                    stats.documents_skipped += 1
+                    stats.chunks_skipped += len(chunks)
+                    stats.cached_chunks += len(chunks)
+                    stats.domain_counts[doc_meta.domain] = (
+                        stats.domain_counts.get(doc_meta.domain, 0) + len(chunks)
                     )
-                final_embeddings[idx] = emb
+                return chunks
 
-        # 5. Database Upsert and Stale Chunk Removal
-        new_chunk_ids = {c.id for c in chunks}
-        stale_rows = [r for r in existing_rows if r.id not in new_chunk_ids]
-        for stale_row in stale_rows:
-            await session.delete(stale_row)
+            # 4. Generate Embeddings (caching unchanged chunks where applicable)
+            existing_embeddings_by_hash: dict[str, list[float]] = {}
+            for row in existing_rows:
+                r_hash = (row.chunk_metadata or {}).get("content_hash")
+                if (
+                    r_hash
+                    and row.embedding is not None
+                    and len(row.embedding) == EXPECTED_EMBEDDING_DIMENSION
+                ):
+                    existing_embeddings_by_hash[r_hash] = row.embedding
+
+            chunks_to_embed: list[tuple[int, str]] = []
+            final_embeddings: list[list[float]] = [[] for _ in chunks]
+            pending_cached_chunks = 0
+
+            for i, chunk in enumerate(chunks):
+                if not force and chunk.content_hash in existing_embeddings_by_hash:
+                    final_embeddings[i] = existing_embeddings_by_hash[chunk.content_hash]
+                    pending_cached_chunks += 1
+                else:
+                    chunks_to_embed.append((i, chunk.content))
+
+            if chunks_to_embed:
+                if not self.embedding_service:
+                    raise RuntimeError(
+                        f"EmbeddingService is required to embed {len(chunks_to_embed)} new chunks "
+                        f"for document {doc_meta.document_id}."
+                    )
+                texts = [text for _, text in chunks_to_embed]
+                new_embeddings = await self.embedding_service.get_embeddings(texts)
+                if stats:
+                    stats.embedding_api_calls += 1
+
+                for (idx, _), emb in zip(chunks_to_embed, new_embeddings):
+                    if len(emb) != EXPECTED_EMBEDDING_DIMENSION:
+                        raise ValueError(
+                            f"Generated embedding dimension {len(emb)} != expected {EXPECTED_EMBEDDING_DIMENSION}"
+                        )
+                    final_embeddings[idx] = emb
+
+            # 5. Database Upsert and Stale Chunk Removal (staged in session)
+            new_chunk_ids = {c.id for c in chunks}
+            stale_rows = [r for r in existing_rows if r.id not in new_chunk_ids]
+            for stale_row in stale_rows:
+                await session.delete(stale_row)
+
+            pending_removed = len(stale_rows)
+            pending_updated = 0
+            pending_created = 0
+
+            existing_rows_by_id = {r.id: r for r in existing_rows}
+
+            for chunk, emb in zip(chunks, final_embeddings):
+                if chunk.id in existing_rows_by_id:
+                    row = existing_rows_by_id[chunk.id]
+                    row.content = chunk.content
+                    row.source = doc_meta.relative_path
+                    row.topic = doc_meta.domain
+                    row.chunk_index = chunk.chunk_index
+                    row.embedding = emb
+                    row.document_id = doc_meta.document_id
+                    row.document_title = doc_meta.document_title
+                    row.document_version = doc_meta.document_version
+                    row.domain = doc_meta.domain
+                    row.chunk_metadata = chunk.metadata
+                    row.embedding_model = EXPECTED_EMBEDDING_MODEL
+                    row.embedding_dimension = EXPECTED_EMBEDDING_DIMENSION
+                    pending_updated += 1
+                else:
+                    new_record = KnowledgeEmbedding(
+                        id=chunk.id,
+                        content=chunk.content,
+                        source=doc_meta.relative_path,
+                        topic=doc_meta.domain,
+                        chunk_index=chunk.chunk_index,
+                        embedding=emb,
+                        document_id=doc_meta.document_id,
+                        document_title=doc_meta.document_title,
+                        document_version=doc_meta.document_version,
+                        domain=doc_meta.domain,
+                        chunk_metadata=chunk.metadata,
+                        embedding_model=EXPECTED_EMBEDDING_MODEL,
+                        embedding_dimension=EXPECTED_EMBEDDING_DIMENSION,
+                    )
+                    session.add(new_record)
+                    pending_created += 1
+
+            # 6. Commit the per-document unit of work
+            await session.commit()
+
+            # 7. Only increment persistence metrics AFTER commit succeeds
             if stats:
-                stats.chunks_removed += 1
-
-        existing_rows_by_id = {r.id: r for r in existing_rows}
-
-        for chunk, emb in zip(chunks, final_embeddings):
-            if chunk.id in existing_rows_by_id:
-                row = existing_rows_by_id[chunk.id]
-                row.content = chunk.content
-                row.source = doc_meta.relative_path
-                row.topic = doc_meta.domain
-                row.chunk_index = chunk.chunk_index
-                row.embedding = emb
-                row.document_id = doc_meta.document_id
-                row.document_title = doc_meta.document_title
-                row.document_version = doc_meta.document_version
-                row.domain = doc_meta.domain
-                row.chunk_metadata = chunk.metadata
-                row.embedding_model = EXPECTED_EMBEDDING_MODEL
-                row.embedding_dimension = EXPECTED_EMBEDDING_DIMENSION
-                if stats:
-                    stats.chunks_updated += 1
-            else:
-                new_record = KnowledgeEmbedding(
-                    id=chunk.id,
-                    content=chunk.content,
-                    source=doc_meta.relative_path,
-                    topic=doc_meta.domain,
-                    chunk_index=chunk.chunk_index,
-                    embedding=emb,
-                    document_id=doc_meta.document_id,
-                    document_title=doc_meta.document_title,
-                    document_version=doc_meta.document_version,
-                    domain=doc_meta.domain,
-                    chunk_metadata=chunk.metadata,
-                    embedding_model=EXPECTED_EMBEDDING_MODEL,
-                    embedding_dimension=EXPECTED_EMBEDDING_DIMENSION,
+                stats.documents_ingested += 1
+                stats.chunks_created += pending_created
+                stats.chunks_updated += pending_updated
+                stats.chunks_removed += pending_removed
+                stats.cached_chunks += pending_cached_chunks
+                stats.domain_counts[doc_meta.domain] = (
+                    stats.domain_counts.get(doc_meta.domain, 0) + len(chunks)
                 )
-                session.add(new_record)
-                if stats:
-                    stats.chunks_created += 1
 
-        await session.commit()
-        if stats:
-            stats.documents_ingested += 1
+            return chunks
 
-        return chunks
+        except asyncio.CancelledError:
+            # Cancellation must never be swallowed; rollback uncommitted work and re-raise
+            if session is not None:
+                try:
+                    await session.rollback()
+                except Exception as rb_exc:
+                    logger.warning("Rollback during task cancellation failed: %s", rb_exc)
+            raise
+        except Exception as exc:
+            # Document-level failure: roll back uncommitted work to prevent leaking into next document
+            if session is not None:
+                try:
+                    await session.rollback()
+                except Exception as rb_exc:
+                    logger.critical(
+                        "Fatal: session.rollback() failed after document ingestion error in %s: %s",
+                        file_path.name,
+                        rb_exc,
+                        exc_info=True,
+                    )
+                    raise IngestionSessionFatalError(
+                        f"Database session rollback failed after error in {file_path.name}: {rb_exc}"
+                    ) from rb_exc
+            raise
 
     async def ingest_corpus(
         self,
@@ -376,7 +424,7 @@ class DocumentIngestionPipeline:
         target_document: str | None = None,
     ) -> IngestionStats:
         """Ingest the complete knowledge base corpus with statistics and error resilience."""
-        stats = IngestionStats()
+        stats = IngestionStats(dry_run=dry_run)
 
         # Update registry if source_registry.json exists in corpus
         registry_file = corpus_path / "07_sources" / "source_registry.json"
@@ -412,10 +460,28 @@ class DocumentIngestionPipeline:
                     dry_run=dry_run,
                     stats=stats,
                 )
+            except asyncio.CancelledError:
+                raise
+            except IngestionSessionFatalError as fatal_err:
+                msg = f"Fatal database session failure processing {file_path.name}: {fatal_err}"
+                logger.critical(msg)
+                stats.errors.append(msg)
+                break
             except Exception as e:
                 msg = f"Error ingesting document {file_path.name}: {e}"
                 logger.error(msg, exc_info=True)
                 stats.errors.append(msg)
+
+                # If session is inactive or dead after error, halt remaining corpus ingestion
+                if session is not None and not dry_run:
+                    if hasattr(session, "is_active") and not session.is_active:
+                        fatal_msg = (
+                            f"Database session is inactive after error in {file_path.name}. "
+                            f"Halting remaining corpus ingestion to prevent corruption."
+                        )
+                        logger.error(fatal_msg)
+                        stats.errors.append(fatal_msg)
+                        break
 
         return stats
 

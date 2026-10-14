@@ -30,6 +30,7 @@ from app.rag.ingestion import (
     DocumentIngestionPipeline,
     EXPECTED_EMBEDDING_DIMENSION,
     EXPECTED_EMBEDDING_MODEL,
+    IngestionSessionFatalError,
     IngestionStats,
     resolve_corpus_path,
 )
@@ -384,3 +385,411 @@ class TestStartupSafety:
         settings = get_settings()
         assert settings.AUTO_INGEST_ON_STARTUP is False
         assert "oncovision_medical_knowledgebase_v3" in settings.KNOWLEDGE_BASE_PATH
+
+
+class TestIngestionTransactionRecoveryAndStatistics:
+    """Regression tests verifying explicit rollback, session recovery, and accurate statistics."""
+
+    @pytest.fixture
+    def test_corpus_two_docs(self, tmp_path: Path) -> Path:
+        """Create a minimal 2-document valid corpus."""
+        corpus = tmp_path / "test_corpus"
+        doc_dir = corpus / "00_general"
+        doc_dir.mkdir(parents=True)
+
+        doc1 = doc_dir / "clinical_overview_1.md"
+        doc1.write_text(
+            "# Clinical Overview 1\n\n"
+            "This is the first test clinical document discussing general pathology.\n\n"
+            "## Diagnostic Context\n\n"
+            "Diagnostic context details for document 1.\n",
+            encoding="utf-8",
+        )
+
+        doc2 = doc_dir / "clinical_overview_2.md"
+        doc2.write_text(
+            "# Clinical Overview 2\n\n"
+            "This is the second test clinical document discussing general oncology.\n\n"
+            "## Diagnostic Context\n\n"
+            "Diagnostic context details for document 2.\n",
+            encoding="utf-8",
+        )
+
+        sources_dir = corpus / "07_sources"
+        sources_dir.mkdir(parents=True)
+        registry_file = sources_dir / "source_registry.json"
+        registry_file.write_text('{"sources": []}', encoding="utf-8")
+
+        return corpus
+
+    def test_lookup_failure_rolls_back_and_allows_subsequent_document(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """A failure during existing record lookup triggers rollback and allows doc 2 to succeed."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        exec_call_count = 0
+
+        async def _execute_side_effect(stmt):
+            nonlocal exec_call_count
+            exec_call_count += 1
+            if exec_call_count == 1:
+                raise RuntimeError("Simulated DB lookup connection error on doc 1")
+            res = MagicMock()
+            res.scalars.return_value.all.return_value = []
+            return res
+
+        fake_session.execute = AsyncMock(side_effect=_execute_side_effect)
+
+        stats = asyncio.run(
+            pipeline.ingest_corpus(
+                corpus_path=test_corpus_two_docs,
+                session=fake_session,
+                dry_run=False,
+            )
+        )
+
+        assert fake_session.rollback.await_count >= 1
+        assert stats.documents_discovered == 2
+        assert stats.documents_ingested == 1
+        assert len(stats.errors) == 1
+        assert "Simulated DB lookup connection error on doc 1" in stats.errors[0]
+
+    def test_commit_failure_rolls_back_and_allows_subsequent_document(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """A commit failure triggers rollback and allows next document to proceed and commit cleanly."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        fake_exec_result = MagicMock()
+        fake_exec_result.scalars.return_value.all.return_value = []
+        fake_session.execute = AsyncMock(return_value=fake_exec_result)
+
+        commit_call_count = 0
+
+        async def _commit_side_effect():
+            nonlocal commit_call_count
+            commit_call_count += 1
+            if commit_call_count == 1:
+                raise RuntimeError("Simulated deadlock or commit constraint failure on doc 1")
+            return None
+
+        fake_session.commit = AsyncMock(side_effect=_commit_side_effect)
+
+        stats = asyncio.run(
+            pipeline.ingest_corpus(
+                corpus_path=test_corpus_two_docs,
+                session=fake_session,
+                dry_run=False,
+            )
+        )
+
+        assert fake_session.rollback.await_count >= 1
+        assert stats.documents_discovered == 2
+        assert stats.documents_ingested == 1
+        assert len(stats.errors) == 1
+        assert "Simulated deadlock or commit constraint failure on doc 1" in stats.errors[0]
+
+    def test_rollback_is_awaited_after_database_write_failure(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """Explicitly assert session.rollback() is awaited when ingest_document fails."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+        doc1 = test_corpus_two_docs / "00_general" / "clinical_overview_1.md"
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        fake_exec_result = MagicMock()
+        fake_exec_result.scalars.return_value.all.return_value = []
+        fake_session.execute = AsyncMock(return_value=fake_exec_result)
+        fake_session.commit = AsyncMock(side_effect=RuntimeError("Disk write I/O error"))
+
+        with pytest.raises(RuntimeError, match="Disk write I/O error"):
+            asyncio.run(
+                pipeline.ingest_document(
+                    file_path=doc1,
+                    session=fake_session,
+                    corpus_root=test_corpus_two_docs,
+                    dry_run=False,
+                )
+            )
+
+        assert fake_session.rollback.await_count == 1
+
+    def test_pending_changes_from_failed_document_cannot_leak_into_later_commit(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """Stateful session test: staged objects from a failed doc are rolled back and never committed."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+
+        class StatefulTrackingSession:
+            def __init__(self):
+                self.staged: list[Any] = []
+                self.committed: list[Any] = []
+                self.commit_attempts = 0
+                self.is_active = True
+                self.rollback_called = False
+
+            def add(self, obj: Any) -> None:
+                self.staged.append(obj)
+
+            async def delete(self, obj: Any) -> None:
+                if obj in self.staged:
+                    self.staged.remove(obj)
+
+            async def execute(self, stmt: Any) -> Any:
+                res = MagicMock()
+                res.scalars.return_value.all.return_value = []
+                return res
+
+            async def commit(self) -> None:
+                self.commit_attempts += 1
+                if self.commit_attempts == 1:
+                    raise RuntimeError("Simulated first commit failure")
+                self.committed.extend(self.staged)
+                self.staged.clear()
+
+            async def rollback(self) -> None:
+                self.rollback_called = True
+                self.staged.clear()
+
+        tracking_session = StatefulTrackingSession()
+
+        stats = asyncio.run(
+            pipeline.ingest_corpus(
+                corpus_path=test_corpus_two_docs,
+                session=tracking_session,  # type: ignore[arg-type]
+                dry_run=False,
+            )
+        )
+
+        assert tracking_session.rollback_called is True
+        assert len(tracking_session.committed) > 0
+        # Verify committed objects belong ONLY to doc 2
+        for item in tracking_session.committed:
+            assert "clinical_overview_2.md" in item.source
+            assert "clinical_overview_1.md" not in item.source
+        assert stats.documents_ingested == 1
+        assert len(stats.errors) == 1
+
+    def test_failed_commit_is_reflected_accurately_in_statistics(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """When commit fails, stats for chunks_created, updated, removed are NOT incremented."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+        doc1 = test_corpus_two_docs / "00_general" / "clinical_overview_1.md"
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        fake_exec_result = MagicMock()
+        fake_exec_result.scalars.return_value.all.return_value = []
+        fake_session.execute = AsyncMock(return_value=fake_exec_result)
+        fake_session.commit = AsyncMock(side_effect=RuntimeError("Constraint violation"))
+
+        stats = IngestionStats()
+
+        with pytest.raises(RuntimeError):
+            asyncio.run(
+                pipeline.ingest_document(
+                    file_path=doc1,
+                    session=fake_session,
+                    corpus_root=test_corpus_two_docs,
+                    dry_run=False,
+                    stats=stats,
+                )
+            )
+
+        assert stats.documents_ingested == 0
+        assert stats.chunks_created == 0
+        assert stats.chunks_updated == 0
+        assert stats.chunks_removed == 0
+
+    def test_unrecoverable_rollback_halts_remaining_ingestion(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """When rollback fails, pipeline halts immediately and raises IngestionSessionFatalError."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        fake_exec_result = MagicMock()
+        fake_exec_result.scalars.return_value.all.return_value = []
+        fake_session.execute = AsyncMock(return_value=fake_exec_result)
+        fake_session.commit = AsyncMock(side_effect=RuntimeError("Commit failed"))
+        fake_session.rollback = AsyncMock(side_effect=RuntimeError("Fatal connection drop during rollback"))
+
+        stats = asyncio.run(
+            pipeline.ingest_corpus(
+                corpus_path=test_corpus_two_docs,
+                session=fake_session,
+                dry_run=False,
+            )
+        )
+
+        # Fatal error must stop processing doc 2
+        assert stats.documents_ingested == 0
+        assert len(stats.errors) == 1
+        assert "Fatal database session failure" in stats.errors[0]
+        # Only 1 document should have attempted execution
+        assert fake_session.execute.await_count == 1
+
+    def test_inactive_session_halts_remaining_ingestion(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """When session becomes inactive after an error, remaining documents are skipped."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        fake_session.is_active = True
+        fake_exec_result = MagicMock()
+        fake_exec_result.scalars.return_value.all.return_value = []
+        fake_session.execute = AsyncMock(return_value=fake_exec_result)
+
+        async def _rollback_side_effect():
+            fake_session.is_active = False
+
+        fake_session.commit = AsyncMock(side_effect=RuntimeError("Commit failed"))
+        fake_session.rollback = AsyncMock(side_effect=_rollback_side_effect)
+
+        stats = asyncio.run(
+            pipeline.ingest_corpus(
+                corpus_path=test_corpus_two_docs,
+                session=fake_session,
+                dry_run=False,
+            )
+        )
+
+        assert stats.documents_ingested == 0
+        assert any("session is inactive" in err for err in stats.errors)
+        assert fake_session.execute.await_count == 1
+
+    def test_cancellation_rolls_back_and_never_swallows_cancelled_error(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """asyncio.CancelledError triggers session rollback and is re-raised."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+        doc1 = test_corpus_two_docs / "00_general" / "clinical_overview_1.md"
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        fake_exec_result = MagicMock()
+        fake_exec_result.scalars.return_value.all.return_value = []
+        fake_session.execute = AsyncMock(return_value=fake_exec_result)
+        fake_session.commit = AsyncMock(side_effect=asyncio.CancelledError())
+
+        with pytest.raises(asyncio.CancelledError):
+            asyncio.run(
+                pipeline.ingest_document(
+                    file_path=doc1,
+                    session=fake_session,
+                    corpus_root=test_corpus_two_docs,
+                    dry_run=False,
+                )
+            )
+
+        assert fake_session.rollback.await_count == 1
+
+    def test_dry_run_statistics_and_summary_clarity(
+        self, corpus_root: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """Dry-run summary explicitly states in-memory mode and produces expected discovery counts."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+        stats = asyncio.run(
+            pipeline.ingest_corpus(
+                corpus_path=corpus_root,
+                session=None,
+                dry_run=True,
+            )
+        )
+
+        assert stats.dry_run is True
+        assert stats.documents_discovered == 40
+        assert stats.documents_ingested == 40
+        assert stats.chunks_created == 146
+        assert stats.embedding_api_calls == 0
+        summary = stats.summary()
+        assert "Mode: DRY-RUN" in summary
+        assert "(parsed in-memory)" in summary
+
+    def test_failed_commit_does_not_increase_domain_counts(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """When commit fails, domain_counts for that document's domain is NOT incremented."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+        doc1 = test_corpus_two_docs / "00_general" / "clinical_overview_1.md"
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        fake_exec_result = MagicMock()
+        fake_exec_result.scalars.return_value.all.return_value = []
+        fake_session.execute = AsyncMock(return_value=fake_exec_result)
+        fake_session.commit = AsyncMock(side_effect=RuntimeError("Simulated commit failure"))
+
+        stats = IngestionStats()
+
+        with pytest.raises(RuntimeError):
+            asyncio.run(
+                pipeline.ingest_document(
+                    file_path=doc1,
+                    session=fake_session,
+                    corpus_root=test_corpus_two_docs,
+                    dry_run=False,
+                    stats=stats,
+                )
+            )
+
+        assert stats.domain_counts == {}
+
+    def test_successful_live_commit_updates_domain_counts_correctly(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """When commit succeeds, domain_counts is updated with chunk counts for that domain."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+        doc1 = test_corpus_two_docs / "00_general" / "clinical_overview_1.md"
+
+        fake_session = AsyncMock()
+        fake_session.add = MagicMock()
+        fake_exec_result = MagicMock()
+        fake_exec_result.scalars.return_value.all.return_value = []
+        fake_session.execute = AsyncMock(return_value=fake_exec_result)
+        fake_session.commit = AsyncMock(return_value=None)
+
+        stats = IngestionStats()
+
+        chunks = asyncio.run(
+            pipeline.ingest_document(
+                file_path=doc1,
+                session=fake_session,
+                corpus_root=test_corpus_two_docs,
+                dry_run=False,
+                stats=stats,
+            )
+        )
+
+        assert len(chunks) > 0
+        assert "general_oncology" in stats.domain_counts
+        assert stats.domain_counts["general_oncology"] == len(chunks)
+
+    def test_dry_run_reports_correct_in_memory_domain_counts(
+        self, test_corpus_two_docs: Path, mock_embedding_service: MagicMock
+    ) -> None:
+        """Dry-run mode populates domain_counts in memory across discovered documents."""
+        pipeline = DocumentIngestionPipeline(embedding_service=mock_embedding_service)
+
+        stats = asyncio.run(
+            pipeline.ingest_corpus(
+                corpus_path=test_corpus_two_docs,
+                session=None,
+                dry_run=True,
+            )
+        )
+
+        assert stats.dry_run is True
+        assert "general_oncology" in stats.domain_counts
+        assert stats.domain_counts["general_oncology"] == stats.chunks_created
+        assert stats.chunks_created > 0

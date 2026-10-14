@@ -141,18 +141,42 @@ class AdminIngestionRequest(BaseModel):
 class AdminIngestionStatsData(BaseModel):
     """Response payload data describing ingestion results."""
 
-    dry_run: bool
-    documents_discovered: int
-    documents_ingested: int
-    documents_skipped: int
-    documents_excluded: int
-    chunks_created: int
-    chunks_updated: int
-    chunks_removed: int
-    embedding_api_calls: int
-    duration_seconds: float
-    errors: list[str]
-    summary: str
+    dry_run: bool = Field(
+        description="Whether this was a dry run (in-memory processing without DB writes or embedding calls)."
+    )
+    documents_discovered: int = Field(
+        description="Total candidate markdown documents discovered in the corpus directory."
+    )
+    documents_ingested: int = Field(
+        description="Count of documents successfully processed. In dry-run, represents chunked documents in memory; in live mode, represents documents committed to PostgreSQL."
+    )
+    documents_skipped: int = Field(
+        description="Count of documents skipped because content hashes matched existing database records (always 0 in dry-run)."
+    )
+    documents_excluded: int = Field(
+        description="Count of files excluded by discovery filters (non-markdown, hidden, or excluded directories)."
+    )
+    chunks_created: int = Field(
+        description="Count of chunks generated. In dry-run, represents in-memory chunks; in live mode, represents new KnowledgeEmbedding rows committed."
+    )
+    chunks_updated: int = Field(
+        description="Count of existing chunk rows updated in the database (always 0 in dry-run)."
+    )
+    chunks_removed: int = Field(
+        description="Count of obsolete chunk rows deleted from the database (always 0 in dry-run)."
+    )
+    embedding_api_calls: int = Field(
+        description="Count of batch requests sent to the embedding service (always 0 in dry-run)."
+    )
+    duration_seconds: float = Field(
+        description="Elapsed wall-clock execution time in seconds."
+    )
+    errors: list[str] = Field(
+        description="List of sanitized error messages encountered during ingestion."
+    )
+    summary: str = Field(
+        description="Human-readable summary of the ingestion run."
+    )
 
 
 router = APIRouter(
@@ -267,11 +291,18 @@ async def trigger_knowledge_ingestion(
             summary=stats.summary(),
         )
 
-        message = (
-            "Knowledgebase dry-run completed successfully."
-            if request_data.dry_run
-            else "Knowledgebase live ingestion completed successfully."
-        )
+        if sanitized_errors:
+            message = (
+                "Knowledgebase dry-run completed with errors."
+                if request_data.dry_run
+                else "Knowledgebase live ingestion completed with errors."
+            )
+        else:
+            message = (
+                "Knowledgebase dry-run completed successfully."
+                if request_data.dry_run
+                else "Knowledgebase live ingestion completed successfully."
+            )
 
         return success_response(
             data=data.model_dump(),

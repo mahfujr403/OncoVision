@@ -270,3 +270,116 @@ class TestAdminKnowledgeIngestionErrorSanitization:
         body_lower = response.text.lower()
         for forbidden in ("password", "secret", "database_url", "jwt_secret", "aiza"):
             assert forbidden not in body_lower
+
+
+class TestAdminKnowledgeIngestionMessageAccuracy:
+    """Verifies that API message string accurately reflects success vs completion with errors."""
+
+    def test_successful_dry_run_retains_success_message(
+        self, admin_user, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Successful dry-run returns 'Knowledgebase dry-run completed successfully.'."""
+        settings = get_settings()
+        monkeypatch.setattr(settings, "ADMIN_INGESTION_ENDPOINT_ENABLED", True)
+        app.dependency_overrides[get_current_active_user] = lambda: admin_user
+
+        mock_stats = IngestionStats(dry_run=True)
+        mock_stats.documents_discovered = 40
+        mock_stats.documents_ingested = 40
+        mock_stats.chunks_created = 146
+
+        with patch("app.rag.ingestion.DocumentIngestionPipeline.ingest_corpus", new_callable=AsyncMock) as mock_ingest:
+            mock_ingest.return_value = mock_stats
+            client = TestClient(app)
+            response = client.post(ENDPOINT_PATH, json={"dry_run": True})
+            assert response.status_code == 200
+            assert response.json()["message"] == "Knowledgebase dry-run completed successfully."
+
+    def test_successful_live_ingestion_retains_success_message(
+        self, admin_user, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Successful live ingestion returns 'Knowledgebase live ingestion completed successfully.'."""
+        settings = get_settings()
+        monkeypatch.setattr(settings, "ADMIN_INGESTION_ENDPOINT_ENABLED", True)
+        monkeypatch.setattr(settings, "GOOGLE_API_KEY", "test-fake-key")
+        app.dependency_overrides[get_current_active_user] = lambda: admin_user
+
+        fake_db = AsyncMock()
+        async def fake_get_db():
+            yield fake_db
+        app.dependency_overrides[get_db] = fake_get_db
+
+        mock_stats = IngestionStats(dry_run=False)
+        mock_stats.documents_discovered = 40
+        mock_stats.documents_ingested = 40
+        mock_stats.chunks_created = 146
+        mock_stats.embedding_api_calls = 40
+
+        with patch("app.rag.ingestion.DocumentIngestionPipeline.ingest_corpus", new_callable=AsyncMock) as mock_ingest:
+            mock_ingest.return_value = mock_stats
+            with patch("app.llm.client.get_gemini_client"):
+                client = TestClient(app)
+                response = client.post(
+                    ENDPOINT_PATH,
+                    json={"dry_run": False, "confirm_live_ingestion": True},
+                )
+                assert response.status_code == 200
+                assert response.json()["message"] == "Knowledgebase live ingestion completed successfully."
+
+    def test_dry_run_with_errors_returns_completed_with_errors_message(
+        self, admin_user, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Dry-run with errors returns 'Knowledgebase dry-run completed with errors.'."""
+        settings = get_settings()
+        monkeypatch.setattr(settings, "ADMIN_INGESTION_ENDPOINT_ENABLED", True)
+        app.dependency_overrides[get_current_active_user] = lambda: admin_user
+
+        mock_stats = IngestionStats(dry_run=True)
+        mock_stats.documents_discovered = 40
+        mock_stats.documents_ingested = 39
+        mock_stats.chunks_created = 140
+        mock_stats.errors = ["Simulated discovery parsing error in test_doc.md"]
+
+        with patch("app.rag.ingestion.DocumentIngestionPipeline.ingest_corpus", new_callable=AsyncMock) as mock_ingest:
+            mock_ingest.return_value = mock_stats
+            client = TestClient(app)
+            response = client.post(ENDPOINT_PATH, json={"dry_run": True})
+            assert response.status_code == 200
+            assert response.json()["message"] == "Knowledgebase dry-run completed with errors."
+            assert len(response.json()["data"]["errors"]) == 1
+
+    def test_live_ingestion_with_errors_returns_completed_with_errors_message(
+        self, admin_user, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Live ingestion with errors returns 'Knowledgebase live ingestion completed with errors.'."""
+        settings = get_settings()
+        monkeypatch.setattr(settings, "ADMIN_INGESTION_ENDPOINT_ENABLED", True)
+        monkeypatch.setattr(settings, "GOOGLE_API_KEY", "test-fake-key")
+        app.dependency_overrides[get_current_active_user] = lambda: admin_user
+
+        fake_db = AsyncMock()
+        async def fake_get_db():
+            yield fake_db
+        app.dependency_overrides[get_db] = fake_get_db
+
+        mock_stats = IngestionStats(dry_run=False)
+        mock_stats.documents_discovered = 40
+        mock_stats.documents_ingested = 38
+        mock_stats.chunks_created = 135
+        mock_stats.embedding_api_calls = 38
+        mock_stats.errors = [
+            "Error ingesting document doc1.md: Simulated DB timeout",
+            "Error ingesting document doc2.md: Simulated commit deadlock",
+        ]
+
+        with patch("app.rag.ingestion.DocumentIngestionPipeline.ingest_corpus", new_callable=AsyncMock) as mock_ingest:
+            mock_ingest.return_value = mock_stats
+            with patch("app.llm.client.get_gemini_client"):
+                client = TestClient(app)
+                response = client.post(
+                    ENDPOINT_PATH,
+                    json={"dry_run": False, "confirm_live_ingestion": True},
+                )
+                assert response.status_code == 200
+                assert response.json()["message"] == "Knowledgebase live ingestion completed with errors."
+                assert len(response.json()["data"]["errors"]) == 2
