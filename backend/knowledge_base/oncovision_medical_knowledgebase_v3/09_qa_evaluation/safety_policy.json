@@ -1,0 +1,29 @@
+{
+  "classifier_output_language": {
+    "preferred": "The model classified this image as <class>.",
+    "avoid": [
+      "This proves you have <disease>.",
+      "You definitely have cancer.",
+      "This confirms stage <x>."
+    ]
+  },
+  "confidence": {
+    "rule": "Model confidence must never be presented as clinical certainty.",
+    "preferred": "The model assigned a confidence of X; this is a model score, not a diagnostic guarantee."
+  },
+  "molecular": {
+    "allowed": "Explain what a biomarker means when supported by sources.",
+    "blocked": "Infer mutation/protein status from H&E alone."
+  },
+  "staging": {
+    "allowed": "Explain TNM concept.",
+    "blocked": "Assign stage from an isolated image/classifier result."
+  },
+  "treatment": {
+    "allowed": "Explain general treatment categories.",
+    "blocked": "Prescribe or recommend individualized treatment from the classifier output."
+  },
+  "benign_label": {
+    "rule": "Never equate benign dataset label with absence of all disease."
+  }
+}

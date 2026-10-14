@@ -1,0 +1,62 @@
+[
+  {
+    "id": "RT-001",
+    "query": "What does adenocarcinoma mean?",
+    "expected_route": "00_general",
+    "expected_class": "general"
+  },
+  {
+    "id": "RT-002",
+    "query": "What do normal colon crypts look like?",
+    "expected_route": "01_colon",
+    "expected_class": "benign_colonic_tissue"
+  },
+  {
+    "id": "RT-003",
+    "query": "What is tumor budding?",
+    "expected_route": "01_colon",
+    "expected_class": "colon_adenocarcinoma"
+  },
+  {
+    "id": "RT-004",
+    "query": "What are the five patterns of lung adenocarcinoma?",
+    "expected_route": "02_lung",
+    "expected_class": "lung_adenocarcinoma"
+  },
+  {
+    "id": "RT-005",
+    "query": "What is p40 used for?",
+    "expected_route": "02_lung",
+    "expected_class": "lung_squamous_cell_carcinoma"
+  },
+  {
+    "id": "RT-006",
+    "query": "Why can’t you tell EGFR from this image?",
+    "expected_route": "06_safety",
+    "expected_class": "lung_adenocarcinoma"
+  },
+  {
+    "id": "RT-007",
+    "query": "What is the difference between lung adenocarcinoma and squamous?",
+    "expected_route": "04_comparisons",
+    "expected_class": "lung_adenocarcinoma_vs_squamous"
+  },
+  {
+    "id": "RT-008",
+    "query": "Does benign lung mean no disease?",
+    "expected_route": "03_classes",
+    "expected_class": "benign_lung_tissue"
+  },
+  {
+    "id": "RT-009",
+    "query": "Can this image tell me the stage?",
+    "expected_route": "06_safety",
+    "expected_class": "general"
+  },
+  {
+    "id": "RT-010",
+    "query": "What treatments exist for lung cancer?",
+    "expected_route": "00_general",
+    "expected_class": "general"
+  }
+]

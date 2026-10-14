@@ -1,0 +1,19 @@
+{
+  "name": "OncoVision Medical Knowledge Base v2",
+  "created": "2026-10-06",
+  "classes": [
+    "Colon Adenocarcinoma",
+    "Benign Colonic Tissue",
+    "Lung Adenocarcinoma",
+    "Benign Lung Tissue",
+    "Lung Squamous Cell Carcinoma"
+  ],
+  "source_policy": "Free-to-access/legal sources; prefer NCI/NIH/NCBI, CAP, PMC, OpenStax, and the original LC25000 repository.",
+  "intended_use": "Educational/explanatory RAG after classifier prediction",
+  "not_for": [
+    "autonomous diagnosis",
+    "treatment recommendation",
+    "staging from image patch",
+    "molecular inference from H&E"
+  ]
+}

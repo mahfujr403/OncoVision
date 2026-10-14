@@ -1,0 +1,29 @@
+{
+  "chunk_metadata": {
+    "id": "string",
+    "document": "string",
+    "organ": "general|colon|lung",
+    "class": "string|null",
+    "topic": "string",
+    "question_type": "definition|histology|differential|ihc|molecular|reporting|staging|treatment|safety",
+    "source_title": "string",
+    "source_url": "string",
+    "source_tier": "integer",
+    "last_reviewed": "YYYY-MM-DD",
+    "safety_level": "low|medium|high",
+    "claim_scope": "educational|classifier-explanation|clinical-context|boundary",
+    "freshness": "stable|review-annually|review-on-guideline-update"
+  },
+  "qa_item": {
+    "id": "string",
+    "question": "string",
+    "answer": "string",
+    "class": "string",
+    "type": "string",
+    "difficulty": "easy|medium|hard",
+    "answerable": "boolean",
+    "sources": [
+      "url"
+    ]
+  }
+}

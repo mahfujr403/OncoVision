@@ -69,9 +69,12 @@ def resolve_corpus_path(configured_path: str | Path | None = None) -> Path:
     candidates = [
         raw_path,
         Path.cwd() / raw_path,
+        Path.cwd() / "backend" / raw_path,
         Path.cwd().parent / raw_path,
+        Path(__file__).resolve().parents[2] / raw_path,  # Backend / path (e.g. /app/knowledge_base/...)
         Path(__file__).resolve().parents[3] / raw_path,  # Repo root / path
-        Path(__file__).resolve().parents[2] / raw_path,  # Backend / path
+        Path(__file__).resolve().parents[2] / "knowledge_base" / "oncovision_medical_knowledgebase_v3",
+        Path(__file__).resolve().parents[3] / "backend" / "knowledge_base" / "oncovision_medical_knowledgebase_v3",
     ]
     for cand in candidates:
         if cand.exists() and cand.is_dir():

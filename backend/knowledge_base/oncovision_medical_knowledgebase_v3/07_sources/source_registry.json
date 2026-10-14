@@ -1,0 +1,142 @@
+[
+  {
+    "title": "NCI What Is Cancer",
+    "url": "https://www.cancer.gov/about-cancer/understanding/what-is-cancer",
+    "tier": 1
+  },
+  {
+    "title": "NCI Diagnosis",
+    "url": "https://www.cancer.gov/about-cancer/diagnosis-staging/diagnosis",
+    "tier": 1
+  },
+  {
+    "title": "NCI Staging",
+    "url": "https://www.cancer.gov/about-cancer/diagnosis-staging/staging",
+    "tier": 1
+  },
+  {
+    "title": "NCI Pathology Reports",
+    "url": "https://www.cancer.gov/about-cancer/diagnosis-staging/diagnosis/pathology-reports-fact-sheet",
+    "tier": 1
+  },
+  {
+    "title": "NCI Biomarker",
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/biomarker",
+    "tier": 1
+  },
+  {
+    "title": "NCI Biomarker Testing",
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/biomarker-testing",
+    "tier": 1
+  },
+  {
+    "title": "NCI Immunohistochemistry",
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/immunohistochemistry",
+    "tier": 1
+  },
+  {
+    "title": "NCI Treatment Types",
+    "url": "https://www.cancer.gov/about-cancer/treatment/types",
+    "tier": 1
+  },
+  {
+    "title": "NCI Colon Cancer PDQ",
+    "url": "https://www.cancer.gov/types/colorectal/hp/colon-treatment-pdq",
+    "tier": 1
+  },
+  {
+    "title": "NCI NSCLC PDQ",
+    "url": "https://www.cancer.gov/types/lung/hp/non-small-cell-lung-treatment-pdq",
+    "tier": 1
+  },
+  {
+    "title": "CAP Current Cancer Protocols",
+    "url": "https://www.cap.org/protocols-and-guidelines/cancer-reporting-tools/cancer-protocol-templates",
+    "tier": 1
+  },
+  {
+    "title": "NCBI Colon Cancer",
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK470380/",
+    "tier": 2
+  },
+  {
+    "title": "NCBI Lung Adenocarcinoma",
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK519578/",
+    "tier": 2
+  },
+  {
+    "title": "NCBI Squamous Cell Lung Cancer",
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK564510/",
+    "tier": 2
+  },
+  {
+    "title": "NCBI Histology Lung",
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK534789/",
+    "tier": 2
+  },
+  {
+    "title": "NCBI Goblet Cells",
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK553208/",
+    "tier": 2
+  },
+  {
+    "title": "NCBI Colon Adenocarcinoma",
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK13888/",
+    "tier": 2
+  },
+  {
+    "title": "NCBI Cancer Pathology",
+    "url": "https://www.ncbi.nlm.nih.gov/books/NBK13899/",
+    "tier": 2
+  },
+  {
+    "title": "PMC Lung IHC Best Practices",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6422775/",
+    "tier": 3
+  },
+  {
+    "title": "PMC TTF1 Napsin p40 CK5",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4467219/",
+    "tier": 3
+  },
+  {
+    "title": "PMC Colorectal adenomas/serrated",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8299322/",
+    "tier": 3
+  },
+  {
+    "title": "PMC Serrated lesions review",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10955069/",
+    "tier": 3
+  },
+  {
+    "title": "PMC Serrated pathologic concepts",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7385269/",
+    "tier": 3
+  },
+  {
+    "title": "PMC Pulmonary Adenocarcinoma Histology",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4367552/",
+    "tier": 3
+  },
+  {
+    "title": "PMC Normal colon microanatomy",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12278992/",
+    "tier": 3
+  },
+  {
+    "title": "OpenStax Epithelial Tissue",
+    "url": "https://openstax.org/books/anatomy-and-physiology-2e/pages/4-2-epithelial-tissue",
+    "tier": 4
+  },
+  {
+    "title": "LC25000 paper",
+    "url": "https://arxiv.org/abs/1912.12142",
+    "tier": 5
+  },
+  {
+    "title": "LC25000 repository",
+    "url": "https://github.com/tampapath/lung_colon_image_set",
+    "tier": 5
+  }
+]

@@ -62,6 +62,8 @@ COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 COPY --chown=appuser:appuser app ./app
 COPY --chown=appuser:appuser alembic ./alembic
 COPY --chown=appuser:appuser alembic.ini .
+COPY --chown=appuser:appuser scripts ./scripts
+COPY --chown=appuser:appuser knowledge_base ./knowledge_base
 
 # Create storage/log directories expected by the application at runtime.
 RUN mkdir -p storage/uploads storage/reports storage/models logs \
