@@ -10,7 +10,7 @@ public or standard-user-facing endpoint anywhere under this package.
 
 from fastapi import APIRouter
 
-from app.api.v1.admin import analytics, history, system, users
+from app.api.v1.admin import analytics, history, knowledge, system, users
 from app.constants.app import TAG_ADMIN
 
 router = APIRouter(prefix="/admin", tags=[TAG_ADMIN])
@@ -19,3 +19,4 @@ router.include_router(users.router)
 router.include_router(history.router)
 router.include_router(system.router)
 router.include_router(analytics.router)
+router.include_router(knowledge.router)

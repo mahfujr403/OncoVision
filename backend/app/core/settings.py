@@ -161,6 +161,7 @@ class Settings(BaseSettings):
     # Knowledge Base & Ingestion configuration (Phase 2)
     KNOWLEDGE_BASE_PATH: str = "knowledge_base/oncovision_medical_knowledgebase_v3"
     AUTO_INGEST_ON_STARTUP: bool = False
+    ADMIN_INGESTION_ENDPOINT_ENABLED: bool = False
 
     # Grounded RAG Generation configuration (Phase 4)
     RAG_GENERATION_MODEL: str = "gemini-3.5-flash-lite"
