@@ -1263,12 +1263,57 @@ class GroundedRAGGenerator:
         # -------------------------------------------------------------
         # 7. Grounding Determination & Request Completion
         # -------------------------------------------------------------
+        is_wh_stage_treatment = bool(
+            re.search(
+                r"^(?:what|which|how|why)\s+(?:stage|staging|tnm|treatment|medication|drug|dose|chemo)",
+                query.lower(),
+            )
+        )
+        is_demonstrative_query = bool(
+            not is_wh_stage_treatment
+            and (context.query_scope is None or context.query_scope.intent not in {QueryIntent.STAGING, QueryIntent.TREATMENT, QueryIntent.BIOMARKER, QueryIntent.IMMUNOHISTOCHEMISTRY})
+            and (
+                re.search(
+                    r"\b(?:is\s+(?:this|that|it)|this\s+is|that\s+is)\b.*\b(?:cancer|malignan\w*|benign|carcinoma|adenocarcinoma)\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"\b(?:is\s+(?:this|that|it)|this\s+is|that\s+is)\s+a\s+tumor\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"\b(?:surely|definitely|certainly|actually)\s+(?:a\s+)?(?:cancer|malignan\w*|benign|carcinoma|tumor)\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"\b(?:does\s+(?:this|that|it)\s+mean|can\s+(?:this|that|it)\s+be)\b.*\b(?:cancer|malignan\w*|benign|carcinoma)\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"\b(?:is\s+(?:this|that|it)\s+(?:benign\s+or\s+malignant|malignant\s+or\s+benign))\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"(?:এটা|এটি)\s+(?:কি|কী|কি\s+সত্যি|কি\s+নিশ্চিত).*?(?:ক্যান্সার|ম্যালিগন্যান্ট|বিনাইন|টিউমার)",
+                    query,
+                )
+                or re.search(
+                    r"\b(?:নিশ্চিত|নিশ্চিতভাবে|সত্যিই)\s+(?:ক্যান্সার|ম্যালিগন্যান্ট)\b",
+                    query,
+                )
+                or re.search(
+                    r"\b(?:বিনাইন\s+নাকি\s+ম্যালিগন্যান্ট|ম্যালিগন্যান্ট\s+নাকি\s+বিনাইন)\b",
+                    query,
+                )
+            )
+        )
         is_classifier_eval = bool(
             prediction_summary is not None
             and (
                 (context.query_scope and context.query_scope.intent == QueryIntent.CLASSIFIER_EXPLANATION)
                 or (context.query_scope and context.query_scope.domain == QueryDomain.CLASSIFIER_CONTEXT)
                 or any(kw in query.lower() for kw in ["predict", "model", "confidence", "agree", "class", "result", "classifier", "disagree"])
+                or is_demonstrative_query
             )
         )
         is_grounded = bool(

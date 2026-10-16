@@ -211,7 +211,7 @@ class QueryScopeClassifier:
         ):
             return QueryIntent.IMMUNOHISTOCHEMISTRY
 
-        # Classifier explanation & prediction certainty
+        # Classifier explanation, prediction certainty & demonstrative inquiries
         if (
             re.search(
                 r"\b(classifier|model output|confidence score|agreement ratio|ai model|prediction score|prediction confidence|predicted class|prediction return|latest prediction|this prediction|explain my prediction|prediction result)\b",
@@ -219,6 +219,38 @@ class QueryScopeClassifier:
             )
             or re.search(
                 r"\b(?:are you sure|how sure|how confident|how accurate|why this prediction|explain this prediction|is this prediction|certainty|confidence|accuracy|model agreement|ensemble consensus|can i trust this prediction|is this reliable|models? agree|participating models?|models? disagree|model disagreement|individual models?|confirmed clinical diagnosis)\b",
+                q,
+            )
+            or re.search(
+                r"\b(?:is\s+(?:this|that|it)|this\s+is|that\s+is)\b.*\b(?:cancer|malignan\w*|benign|carcinoma|adenocarcinoma)\b",
+                q,
+            )
+            or re.search(
+                r"\b(?:is\s+(?:this|that|it)|this\s+is|that\s+is)\s+a\s+tumor\b",
+                q,
+            )
+            or re.search(
+                r"\b(?:surely|definitely|certainly|actually)\s+(?:a\s+)?(?:cancer|malignan\w*|benign|carcinoma|tumor)\b",
+                q,
+            )
+            or re.search(
+                r"\b(?:does\s+(?:this|that|it)\s+mean|can\s+(?:this|that|it)\s+be)\b.*\b(?:cancer|malignan\w*|benign|carcinoma)\b",
+                q,
+            )
+            or re.search(
+                r"\b(?:is\s+(?:this|that|it)\s+(?:benign\s+or\s+malignant|malignant\s+or\s+benign))\b",
+                q,
+            )
+            or re.search(
+                r"(?:এটা|এটি)\s+(?:কি|কী|কি\s+সত্যি|কি\s+নিশ্চিত).*?(?:ক্যান্সার|ম্যালিগন্যান্ট|বিনাইন|টিউমার)",
+                q,
+            )
+            or re.search(
+                r"\b(?:নিশ্চিত|নিশ্চিতভাবে|সত্যিই)\s+(?:ক্যান্সার|ম্যালিগন্যান্ট)\b",
+                q,
+            )
+            or re.search(
+                r"\b(?:বিনাইন\s+নাকি\s+ম্যালিগন্যান্ট|ম্যালিগন্যান্ট\s+নাকি\s+বিনাইন)\b",
                 q,
             )
         ):

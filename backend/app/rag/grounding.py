@@ -211,11 +211,58 @@ class GroundingEvaluator:
                 details={"gate": "developer_inquiry"},
             )
 
+        # Demonstrative inquiry pattern referring to active case/prediction
+        is_wh_stage_treatment = bool(
+            re.search(
+                r"^(?:what|which|how|why)\s+(?:stage|staging|tnm|treatment|medication|drug|dose|chemo)",
+                query.lower(),
+            )
+        )
+        is_demonstrative_case_query = bool(
+            not is_wh_stage_treatment
+            and (context.query_scope is None or context.query_scope.intent not in {QueryIntent.STAGING, QueryIntent.TREATMENT, QueryIntent.BIOMARKER, QueryIntent.IMMUNOHISTOCHEMISTRY})
+            and (
+                re.search(
+                    r"\b(?:is\s+(?:this|that|it)|this\s+is|that\s+is)\b.*\b(?:cancer|malignan\w*|benign|carcinoma|adenocarcinoma)\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"\b(?:is\s+(?:this|that|it)|this\s+is|that\s+is)\s+a\s+tumor\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"\b(?:surely|definitely|certainly|actually)\s+(?:a\s+)?(?:cancer|malignan\w*|benign|carcinoma|tumor)\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"\b(?:does\s+(?:this|that|it)\s+mean|can\s+(?:this|that|it)\s+be)\b.*\b(?:cancer|malignan\w*|benign|carcinoma)\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"\b(?:is\s+(?:this|that|it)\s+(?:benign\s+or\s+malignant|malignant\s+or\s+benign))\b",
+                    query.lower(),
+                )
+                or re.search(
+                    r"(?:এটা|এটি)\s+(?:কি|কী|কি\s+সত্যি|কি\s+নিশ্চিত).*?(?:ক্যান্সার|ম্যালিগন্যান্ট|বিনাইন|টিউমার)",
+                    query,
+                )
+                or re.search(
+                    r"\b(?:নিশ্চিত|নিশ্চিতভাবে|সত্যিই)\s+(?:ক্যান্সার|ম্যালিগন্যান্ট)\b",
+                    query,
+                )
+                or re.search(
+                    r"\b(?:বিনাইন\s+নাকি\s+ম্যালিগন্যান্ট|ম্যালিগন্যান্ট\s+নাকি\s+বিনাইন)\b",
+                    query,
+                )
+            )
+        )
+
         # Classifier Prediction & Certainty Queries: Grounded in authoritative prediction summary
         if prediction_summary is not None and (
             query_scope.intent == QueryIntent.CLASSIFIER_EXPLANATION
             or query_scope.domain == QueryDomain.CLASSIFIER_CONTEXT
             or any(kw in query.lower() for kw in ["predict", "model", "confidence", "agree", "class", "result", "classifier", "disagree"])
+            or is_demonstrative_case_query
         ):
             sims = [chunk.similarity for chunk in context.chunks if chunk.similarity is not None]
             top_sim = max(sims) if sims else 0.85
@@ -237,6 +284,7 @@ class GroundingEvaluator:
                 r"\b(?:are you sure|how sure|how confident|why this prediction|explain this prediction|is this prediction|certainty of this|trust this prediction|confident about this|predicted class|my latest prediction|what class did|model confidence|did all participating models agree|individual models disagreed|what does 100% agreement|why might two models disagree|treated as a confirmed clinical diagnosis|এই প্রেডিকশন|প্রেডিকশন সম্পর্কে নিশ্চিত)\b",
                 query.lower(),
             )
+            or is_demonstrative_case_query
         )
         if prediction_summary is None and is_specific_pred_query:
             return GroundingDecision(

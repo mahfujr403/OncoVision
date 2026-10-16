@@ -274,3 +274,96 @@ def test_generator_answers_contact_info_request():
     assert "md-mahfujur-rahman.vercel.app" in ans.answer
     assert "github.com/mahfujr403" in ans.answer
     assert "phone numbers" in ans.answer.lower() or "unavailable" in ans.answer.lower()
+
+
+def test_demonstrative_query_classification(classifier: QueryScopeClassifier):
+    """Demonstrative inquiries about the active case/prediction map to CLASSIFIER_EXPLANATION."""
+    queries = [
+        "this is a cancer?",
+        "is this cancer?",
+        "if i supposed to that is surely a cancer?",
+        "is this surely a cancer?",
+        "is this benign or malignant?",
+        "does this mean cancer?",
+        "is that cancer?",
+        "can this be cancer?",
+        "এটা কি ক্যান্সার?",
+        "এটা কি নিশ্চিত ক্যান্সার?",
+    ]
+    for q in queries:
+        scope = classifier.classify(q)
+        assert scope.intent == QueryIntent.CLASSIFIER_EXPLANATION, f"Failed intent for '{q}'"
+        assert scope.domain == QueryDomain.CLASSIFIER_CONTEXT, f"Failed domain for '{q}'"
+
+
+def test_demonstrative_query_grounding(
+    grounding_evaluator: GroundingEvaluator,
+    classifier: QueryScopeClassifier,
+    sample_prediction_summary: PredictionHistorySummary,
+):
+    """Demonstrative queries are grounded in active prediction, or report no_active_prediction if missing."""
+    queries = [
+        "this is a cancer?",
+        "if i supposed to that is surely a cancer?",
+        "is this benign or malignant?",
+    ]
+    for q in queries:
+        scope = classifier.classify(q)
+        ctx = RetrievedContext(chunks=[], query_scope=scope, reason="no_relevant_knowledge_found")
+
+        # With active prediction summary
+        decision_with_pred = grounding_evaluator.evaluate(
+            query=q,
+            context=ctx,
+            prediction_summary=sample_prediction_summary,
+        )
+        assert decision_with_pred.is_eligible is True, f"Failed eligibility with pred for '{q}'"
+        assert decision_with_pred.decision_reason == "classifier_prediction_context", f"Wrong reason for '{q}'"
+
+        # Without active prediction summary
+        decision_without_pred = grounding_evaluator.evaluate(
+            query=q,
+            context=ctx,
+            prediction_summary=None,
+        )
+        assert decision_without_pred.is_eligible is True, f"Failed eligibility without pred for '{q}'"
+        assert decision_without_pred.decision_reason == "no_active_prediction", f"Wrong reason without pred for '{q}'"
+
+
+def test_generator_answers_demonstrative_cancer_inquiry(
+    classifier: QueryScopeClassifier,
+    sample_prediction_summary: PredictionHistorySummary,
+):
+    """Generator answers 'this is a cancer?' using active prediction context without falling back."""
+    q = "this is a cancer?"
+    scope = classifier.classify(q)
+    context = RetrievedContext(
+        chunks=[],
+        query_scope=scope,
+        reason="prediction_context",
+    )
+
+    mock_client = MagicMock()
+    mock_client.generate = AsyncMock(
+        return_value=(
+            "Yes, Colon Adenocarcinoma is a malignant epithelial neoplasm (cancer) originating in the glandular "
+            "epithelium of the colon. The OncoVision system classified the analyzed slide as Colon Adenocarcinoma "
+            "with 99.97% ensemble confidence and 100% agreement across participating models. "
+            "Please note that this algorithmic prediction represents statistical ensemble probability, "
+            "not a confirmed clinical diagnosis; definitive clinical confirmation requires histological evaluation by a qualified pathologist."
+        )
+    )
+
+    generator = GroundedRAGGenerator(llm_client=mock_client)
+    ans = asyncio.run(
+        generator.generate_grounded_answer(
+            query=q,
+            context=context,
+            prediction_summary=sample_prediction_summary,
+        )
+    )
+
+    assert ans.grounded is True
+    assert "Colon Adenocarcinoma" in ans.answer
+    assert "99.97%" in ans.answer
+    assert "The available OncoVision knowledge base provides only limited information" not in ans.answer
